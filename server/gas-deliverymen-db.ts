@@ -26,8 +26,8 @@ export async function createDeliveryman(data: {
 export async function getDeliverymanById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const [result] = await db.select().from(gasDeliverymen).where(eq(gasDeliverymen.id, id));
-  return result[0];
+  const rows = await db.select().from(gasDeliverymen).where(eq(gasDeliverymen.id, id));
+  return rows[0];
 }
 
 /**
@@ -36,8 +36,8 @@ export async function getDeliverymanById(id: number) {
 export async function getDeliverymanByUserId(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const [result] = await db.select().from(gasDeliverymen).where(eq(gasDeliverymen.userId, userId));
-  return result[0];
+  const rows = await db.select().from(gasDeliverymen).where(eq(gasDeliverymen.userId, userId));
+  return rows[0];
 }
 
 /**

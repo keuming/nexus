@@ -100,7 +100,7 @@ app.post("/api/hub2/notify", async (req, res) => {
     if (payload?.purchase_ref) {
       const creditRequest = await getCreditRequestByHub2PurchaseRef(payload.purchase_ref);
       if (creditRequest && payload.status === "SUCCESSFUL") {
-        await confirmCreditRequestPayment(creditRequest.id);
+        await confirmCreditRequestPayment(creditRequest.id, "hub2_webhook");
       }
     }
 

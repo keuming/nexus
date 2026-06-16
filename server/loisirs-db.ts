@@ -87,7 +87,7 @@ export async function getActivityById(activityId: number): Promise<LeisureActivi
     .from(leisureActivities)
     .where(eq(leisureActivities.id, activityId))
     .limit(1);
-  return result[0];
+  return result[0] as any;
 }
 
 export async function updateActivity(
@@ -197,7 +197,7 @@ export async function getBookingById(bookingId: number): Promise<LeisureBooking 
     .from(leisureBookings)
     .where(eq(leisureBookings.id, bookingId))
     .limit(1);
-  return result[0];
+  return result[0] as any;
 }
 
 export async function updateBookingStatus(

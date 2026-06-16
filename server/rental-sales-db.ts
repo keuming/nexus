@@ -99,7 +99,7 @@ export async function getProductById(productId: number): Promise<RentalProduct |
     .from(rentalProducts)
     .where(eq(rentalProducts.id, productId))
     .limit(1);
-  return result[0];
+  return result[0] as any;
 }
 
 export async function updateProduct(
@@ -210,7 +210,7 @@ export async function getInventory(productId: number): Promise<RentalInventory |
     .from(rentalInventory)
     .where(eq(rentalInventory.productId, productId))
     .limit(1);
-  return result[0];
+  return result[0] as any;
 }
 
 export async function decreaseInventory(
@@ -301,7 +301,7 @@ export async function getOrderById(orderId: number): Promise<SalesOrder | undefi
     .from(salesOrders)
     .where(eq(salesOrders.id, orderId))
     .limit(1);
-  return result[0];
+  return result[0] as any;
 }
 
 export async function updateOrderStatus(

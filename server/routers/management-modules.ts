@@ -74,8 +74,8 @@ export const financeRouter = router({
         .where(
           and(
             eq(transportCharges.companyId, input.companyId),
-            gte(transportCharges.chargeDate, startOfDay),
-            lte(transportCharges.chargeDate, endOfDay)
+            gte(transportCharges.chargeDate, typeof startOfDay === "string" ? startOfDay : (startOfDay as Date).toISOString().split("T")[0]),
+            lte(transportCharges.chargeDate, typeof endOfDay === "string" ? endOfDay : (endOfDay as Date).toISOString().split("T")[0])
           )
         );
 
@@ -142,8 +142,8 @@ export const financeRouter = router({
         .where(
           and(
             eq(transportCharges.companyId, input.companyId),
-            gte(transportCharges.chargeDate, startOfMonth),
-            lte(transportCharges.chargeDate, endOfMonth)
+            gte(transportCharges.chargeDate, typeof startOfMonth === "string" ? startOfMonth : (startOfMonth as Date).toISOString().split("T")[0]),
+            lte(transportCharges.chargeDate, typeof endOfMonth === "string" ? endOfMonth : (endOfMonth as Date).toISOString().split("T")[0])
           )
         );
 
@@ -214,8 +214,8 @@ export const financeRouter = router({
         .where(
           and(
             eq(transportCharges.companyId, input.companyId),
-            gte(transportCharges.chargeDate, startDate),
-            lte(transportCharges.chargeDate, endDate)
+            gte(transportCharges.chargeDate, typeof startDate === "string" ? startDate : (startDate as Date).toISOString().split("T")[0]),
+            lte(transportCharges.chargeDate, typeof endDate === "string" ? endDate : (endDate as Date).toISOString().split("T")[0])
           )
         )
         .orderBy(desc(transportCharges.chargeDate));
