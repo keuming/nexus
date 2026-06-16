@@ -15,7 +15,7 @@ import { chatbotSessions, chatbotMessages } from "../../drizzle/schema";
 import { desc, eq, and, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { invokeLLM } from "../_core/llm";
-import crypto from "crypto";
+import { nanoid } from "nanoid";
 
 const SYSTEM_PROMPT = `Tu es l'agent virtuel de NEXUS, la plateforme multi-services en Afrique de l'Ouest.
 
@@ -59,9 +59,16 @@ export const chatbotRouter = {
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        // DB non configurée - retourner une session locale de fallback
+        return { 
+          token: nanoid(64), 
+          sessionId: undefined,
+          fallback: true 
+        };
+      }
 
-      const token = crypto.randomBytes(32).toString("hex");
+      const token = nanoid(64);
       await db.insert(chatbotSessions).values({
         sessionToken: token,
         visitorName: input.visitorName,
@@ -97,7 +104,12 @@ export const chatbotRouter = {
     }))
     .mutation(async ({ input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (!db) {
+        return { 
+          aiResponse: "Je suis l'assistant NEXUS. La base de données n'est pas encore configurée. Contactez-nous directement au +225 0504921096 ou par email à support@nexus.africa.", 
+          waitingForCSN: false 
+        };
+      }
 
       const session = await db
         .select()
