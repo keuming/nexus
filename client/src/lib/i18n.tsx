@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { translations, Language } from "./translations";
 
-const STORAGE_KEY = "hub_resa_lang";
+const STORAGE_KEY = "nexus_lang";
 
 interface I18nContextValue {
   lang: Language;
@@ -32,7 +32,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback((newLang: Language) => {
     setLangState(newLang);
     localStorage.setItem(STORAGE_KEY, newLang);
+    document.documentElement.lang = newLang;
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const t = useCallback(
     (section: keyof typeof translations, key: string): string => {
