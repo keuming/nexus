@@ -2192,12 +2192,66 @@ export default function HubVoyage() {
             ))}
           </nav>
           {/* Actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <LanguageSwitcher variant="dark" />
-            <button onClick={() => navigate("/register-company")} style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "8px 16px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", cursor: "pointer" }}>
-              Espace compagnies
-            </button>
-            <button onClick={() => setShowAuthModal(true)} style={{ color: "#fff", fontSize: 13, fontWeight: 700, padding: "8px 20px", borderRadius: 9, background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(249,115,22,0.4)" }}>
+
+            {/* Menu Accès Espaces */}
+            <div style={{ position: "relative" }}
+              onMouseEnter={e => { const m = e.currentTarget.querySelector('[data-menu]') as HTMLElement; if (m) m.style.display = 'block'; }}
+              onMouseLeave={e => { const m = e.currentTarget.querySelector('[data-menu]') as HTMLElement; if (m) m.style.display = 'none'; }}
+            >
+              <button style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "8px 14px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                Mes espaces
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <div data-menu style={{
+                display: "none", position: "absolute", top: "calc(100% + 8px)", right: 0,
+                background: "#1a1a24", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 14, padding: "8px", minWidth: 240, zIndex: 200,
+                boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+              }}>
+                {[
+                  { label: "🏢 Dashboard CSN", path: "/csn-dashboard", desc: "Administration centrale" },
+                  { label: "⚙️ Admin Général", path: "/admin-general", desc: "Configuration services" },
+                  { label: "🚌 Dashboard Transport", path: "/transport-dashboard", desc: "Compagnies transport" },
+                  { label: "🍽️ Dashboard Restaurant", path: "/restaurant-dashboard", desc: "Compagnies restauration" },
+                  { label: "🛍️ Dashboard Boutique", path: "/boutique-dashboard", desc: "Compagnies boutique" },
+                  { label: "⛽ Dashboard Gaz", path: "/gas-supplier-dashboard-v2", desc: "Fournisseurs de gaz" },
+                  { label: "🏨 Dashboard Hôtel", path: "/dashboard", desc: "Gestion hôtelière" },
+                  { label: "📊 Business Développeur", path: "/bdev/dashboard", desc: "Tableau de bord BDev" },
+                  { label: "👤 Espace Client", path: "/client-dashboard", desc: "Mon compte client" },
+                ].map((item, i) => (
+                  <button key={i} onClick={() => navigate(item.path)}
+                    style={{ display: "flex", alignItems: "flex-start", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, border: "none", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.07)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <div>
+                      <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{item.label}</div>
+                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 11 }}>{item.desc}</div>
+                    </div>
+                  </button>
+                ))}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", margin: "6px 0", padding: "6px 0 0" }}>
+                  <button onClick={() => navigate("/register-company")}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px", borderRadius: 9, border: "none", background: "transparent", cursor: "pointer", color: "#f97316", fontSize: 13, fontWeight: 600 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(249,115,22,0.1)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    ➕ Inscrire mon entreprise
+                  </button>
+                  <button onClick={() => { setActivity("transport" as any); navigate("/bdev/register"); }}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px", borderRadius: 9, border: "none", background: "transparent", cursor: "pointer", color: "#22c55e", fontSize: 13, fontWeight: 600 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(34,197,94,0.1)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    💼 Devenir Business Développeur
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button onClick={() => setShowAuthModal(true)} style={{ color: "#fff", fontSize: 13, fontWeight: 700, padding: "8px 20px", borderRadius: 9, background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(249,115,22,0.4)", whiteSpace: "nowrap" }}>
               Connexion
             </button>
           </div>
@@ -2416,7 +2470,30 @@ export default function HubVoyage() {
             <div>
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 18 }}>Liens utiles</p>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-                {[{ l: "Espace compagnies", p: "/register-company" }, { l: "Annuaire", p: "/directory" }, { l: "À propos", p: "/about" }, { l: "Mentions légales", p: "/legal" }, { l: "Conditions générales", p: "/conditions" }].map(lnk => (
+                {[{ l: "Espace compagnies", p: "/register-company" }, { l: "Annuaire", p: "/directory" }, { l: "À propos", p: "/about" }, { l: "Mentions légales", p: "/legal" }, { l: "Conditions générales", p: "/conditions" }, { l: "Devenir Business Développeur", p: "/bdev/register" }, { l: "Carrières", p: "/careers/apply" }].map(lnk => (
+                  <li key={lnk.p}>
+                    <button onClick={() => navigate(lnk.p)} style={{ color: "rgba(255,255,255,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0 }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "#f97316")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+                    >{lnk.l}</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Espaces */}
+            <div>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 18 }}>Espaces dédiés</p>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  { l: "Dashboard CSN", p: "/csn-dashboard" },
+                  { l: "Admin Général", p: "/admin-general" },
+                  { l: "Dashboard Transport", p: "/transport-dashboard" },
+                  { l: "Dashboard Restaurant", p: "/restaurant-dashboard" },
+                  { l: "Dashboard Hôtel", p: "/dashboard" },
+                  { l: "Dashboard BDev", p: "/bdev/login" },
+                  { l: "Espace Client", p: "/client-dashboard" },
+                ].map(lnk => (
                   <li key={lnk.p}>
                     <button onClick={() => navigate(lnk.p)} style={{ color: "rgba(255,255,255,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0 }}
                       onMouseEnter={e => (e.currentTarget.style.color = "#f97316")}
