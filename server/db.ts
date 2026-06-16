@@ -1,5 +1,5 @@
 import { and, count, desc, eq, gte, lte, sql, like, or, notInArray, lt } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
 import {
   InsertUser, users,
   rooms, roomTypes, clients, reservations, services,
@@ -12,7 +12,10 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+import { Pool } from "pg";
+
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: Pool | null = null;
 
 export async function getDb() {
   if (!_db) {
@@ -21,8 +24,13 @@ export async function getDb() {
       return null;
     }
     try {
-      _db = drizzle(process.env.DATABASE_URL);
-      console.log("[Database] Connected successfully");
+      _pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        max: 10,
+      });
+      _db = drizzle(_pool);
+      console.log("[Database] Connected to PostgreSQL (Neon)");
     } catch (error) {
       console.error("[Database] Failed to connect:", error);
       _db = null;
