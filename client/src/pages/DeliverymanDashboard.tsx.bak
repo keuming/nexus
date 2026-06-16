@@ -1,0 +1,264 @@
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useWebSocketNotifications } from "@/hooks/useWebSocketNotifications";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, CheckCircle2, Truck, MapPin, Phone, Mail, Wifi, WifiOff } from "lucide-react";
+
+export default function DeliverymanDashboard() {
+  const { user } = useAuth();
+  const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<number | null>(null);
+
+  // Récupérer les commandes assignées au livreur
+  const { data: assignedOrders, isLoading: loadingOrders } = trpc.gas.workflow.getAssignedToDeliveryman.useQuery(
+    user?.id || 0,
+    { enabled: !!user?.id }
+  );
+
+  // Utiliser le hook WebSocket pour les notifications temps réel
+  const { isConnected: wsConnected, error: wsError } = useWebSocketNotifications({
+    userId: user?.id?.toString() || "",
+    role: "deliveryman",
+    onNotification: (notification) => {
+      console.log("[Dashboard] Nouvelle notification:", notification);
+      setUnreadNotificationsCount((prev: number) => prev + 1);
+      // Invalider les requêtes pour récupérer les nouvelles données
+      if (notification.type === "new_order" || notification.type === "order_assigned") {
+        // Refetch assigned orders
+      }
+    },
+  });
+
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
+  // Mutation pour valider une commande
+  const validateMutation = trpc.gas.workflow.validateByDeliveryman.useMutation();
+
+  // Mutation pour confirmer la livraison
+  const confirmMutation = trpc.gas.workflow.confirmDelivery.useMutation();
+
+  const handleValidateOrder = async (orderId: number, supplierId: number) => {
+    try {
+      await validateMutation.mutateAsync({ orderId, supplierId });
+      setSelectedOrder(null);
+      setSelectedSupplier(null);
+    } catch (error) {
+      console.error("Erreur lors de la validation:", error);
+    }
+  };
+
+  const handleConfirmDelivery = async (orderId: number) => {
+    try {
+      await confirmMutation.mutateAsync(orderId);
+      setSelectedOrder(null);
+    } catch (error) {
+      console.error("Erreur lors de la confirmation:", error);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Accès Refusé</CardTitle>
+            <CardDescription>Vous devez être connecté pour accéder à ce dashboard</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard Livreur</h1>
+          <p className="text-gray-600">Gérez vos commandes de gaz et confirmez les livraisons</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Commandes Assignées</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{assignedOrders?.length || 0}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Notifications Non Lues</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">{unreadNotificationsCount}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">Statut</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className="bg-green-500">Actif</Badge>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="assigned" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="assigned">Commandes Assignées</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          </TabsList>
+
+          {/* Commandes Assignées */}
+          <TabsContent value="assigned" className="space-y-4">
+            {loadingOrders ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500">Chargement des commandes...</p>
+                </CardContent>
+              </Card>
+            ) : !assignedOrders || assignedOrders.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500">Aucune commande assignée</p>
+                </CardContent>
+              </Card>
+            ) : (
+              assignedOrders.map((order: any) => (
+                <Card key={order.id} className="overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Commande #{order.reference}</CardTitle>
+                        <CardDescription>{order.clientName}</CardDescription>
+                      </div>
+                      <Badge
+                        variant={
+                          order.status === "assigned_to_deliveryman"
+                            ? "default"
+                            : order.status === "validated_by_deliveryman"
+                              ? "secondary"
+                              : "outline"
+                        }
+                      >
+                        {order.status === "assigned_to_deliveryman" && "Assignée"}
+                        {order.status === "validated_by_deliveryman" && "Validée"}
+                        {order.status === "delivered" && "Livrée"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="pt-6 space-y-4">
+                    {/* Détails Client */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-start gap-3">
+                        <Phone className="w-5 h-5 text-orange-600 mt-1" />
+                        <div>
+                          <p className="text-sm text-gray-600">Téléphone</p>
+                          <p className="font-medium">{order.clientPhone}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <Mail className="w-5 h-5 text-orange-600 mt-1" />
+                        <div>
+                          <p className="text-sm text-gray-600">Email</p>
+                          <p className="font-medium">{order.clientEmail || "N/A"}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Adresse Livraison */}
+                    <div className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+                      <MapPin className="w-5 h-5 text-orange-600 mt-1" />
+                      <div>
+                        <p className="text-sm text-gray-600">Adresse de Livraison</p>
+                        <p className="font-medium">{order.deliveryAddress}</p>
+                        <p className="text-sm text-gray-600">{order.city}</p>
+                      </div>
+                    </div>
+
+                    {/* Montant Total */}
+                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                      <span className="font-medium text-gray-700">Montant Total</span>
+                      <span className="text-2xl font-bold text-green-600">{order.totalAmountXOF} FCFA</span>
+                    </div>
+
+                    {/* Actions */}
+                    {order.status === "assigned_to_deliveryman" && (
+                      <div className="pt-4 border-t">
+                        <p className="text-sm text-gray-600 mb-3">Sélectionner le fournisseur pour valider la commande</p>
+                        <div className="space-y-2">
+                          {/* Simuler une liste de fournisseurs */}
+                          <Button
+                            onClick={() => {
+                              setSelectedOrder(order.id);
+                              setSelectedSupplier(1); // ZAZA DEPOT ID
+                            }}
+                            className="w-full bg-orange-600 hover:bg-orange-700"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Valider avec ZAZA DEPOT
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {order.status === "validated_by_deliveryman" && (
+                      <div className="pt-4 border-t">
+                        <Button
+                          onClick={() => handleConfirmDelivery(order.id)}
+                          disabled={confirmMutation.isPending}
+                          className="w-full bg-green-600 hover:bg-green-700"
+                        >
+                          <Truck className="w-4 h-4 mr-2" />
+                          {confirmMutation.isPending ? "Confirmation en cours..." : "Confirmer la Livraison"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {order.status === "delivered" && (
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center gap-2 text-green-600">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-medium">Livraison Confirmée</span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          {/* Notifications */}
+          <TabsContent value="notifications" className="space-y-4">
+            {unreadNotificationsCount === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500">Aucune notification non lue</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-gray-500">Notifications: {unreadNotificationsCount}</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

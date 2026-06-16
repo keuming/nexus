@@ -1,0 +1,20 @@
+CREATE TABLE `credit_purchases` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`companyId` int NOT NULL,
+	`amountLocal` decimal(12,2) NOT NULL,
+	`creditsGranted` int NOT NULL,
+	`paymentMethod` varchar(50) NOT NULL,
+	`paymentStatus` varchar(30) NOT NULL DEFAULT 'pending',
+	`paymentLink` text,
+	`stripePaymentIntentId` varchar(255),
+	`hub2TransactionId` varchar(255),
+	`hub2PaymentUrl` text,
+	`currency` varchar(10) NOT NULL DEFAULT 'XOF',
+	`reference` varchar(100),
+	`notes` varchar(500),
+	`completedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `credit_purchases_id` PRIMARY KEY(`id`),
+	CONSTRAINT `credit_purchases_reference_unique` UNIQUE(`reference`)
+);

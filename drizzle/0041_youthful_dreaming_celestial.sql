@@ -1,0 +1,1 @@
+ALTER TABLE `transport_companies` MODIFY COLUMN `activityType` enum('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble') NOT NULL DEFAULT 'transport';

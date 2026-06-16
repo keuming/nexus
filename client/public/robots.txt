@@ -1,0 +1,39 @@
+User-agent: *
+Allow: /
+
+# Pages publiques indexables
+Allow: /
+Allow: /about
+Allow: /directory
+Allow: /legal
+Allow: /careers/apply
+Allow: /register-company
+Allow: /bibliotheque
+Allow: /hotels
+
+# Pages privées — ne pas indexer
+Disallow: /dashboard
+Disallow: /csn/
+Disallow: /transport/dashboard
+Disallow: /transport/settings
+Disallow: /transport/menu
+Disallow: /client-dashboard
+Disallow: /clients-management
+Disallow: /chambres
+Disallow: /reservations
+Disallow: /clients
+Disallow: /caisse
+Disallow: /services
+Disallow: /housekeeping
+Disallow: /inventaire
+Disallow: /analytics
+Disallow: /employes
+Disallow: /avis
+Disallow: /offres
+Disallow: /credits
+Disallow: /credit-requests
+Disallow: /parametres
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://www.hubresa.cloud/sitemap.xml

@@ -1,0 +1,2 @@
+ALTER TABLE `quote_requests` MODIFY COLUMN `activityType` enum('transport','restauration','expedition','hotel','boutique','residence_meuble','loisirs','location_vente') NOT NULL;--> statement-breakpoint
+ALTER TABLE `transport_companies` MODIFY COLUMN `activityType` enum('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente') NOT NULL DEFAULT 'transport';

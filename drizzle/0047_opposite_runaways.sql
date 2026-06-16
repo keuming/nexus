@@ -1,0 +1,1 @@
+ALTER TABLE `transport_companies` DROP INDEX `transport_companies_userId_unique`;

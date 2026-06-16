@@ -1,0 +1,20 @@
+CREATE TABLE `credit_requests` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`companyId` int NOT NULL,
+	`points` int NOT NULL,
+	`amountLocal` decimal(12,2) NOT NULL,
+	`currency` varchar(10) NOT NULL DEFAULT 'XOF',
+	`paymentMethod` varchar(50) NOT NULL DEFAULT 'mobile_money',
+	`paymentPhone` varchar(30),
+	`paymentOperator` varchar(50),
+	`paymentRef` varchar(200),
+	`status` varchar(30) NOT NULL DEFAULT 'pending',
+	`rejectionReason` varchar(500),
+	`paymentConfirmedAt` timestamp,
+	`creditedAt` timestamp,
+	`validatedBy` varchar(100),
+	`notes` varchar(500),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `credit_requests_id` PRIMARY KEY(`id`)
+);

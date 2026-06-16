@@ -1,0 +1,1 @@
+ALTER TABLE `quote_requests` MODIFY COLUMN `activityType` enum('transport','restauration','expedition','hotel','boutique','residence_meuble') NOT NULL;

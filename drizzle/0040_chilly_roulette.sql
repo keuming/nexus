@@ -1,0 +1,1 @@
+ALTER TABLE `business_developers` ADD `referrerBdevId` varchar(7);

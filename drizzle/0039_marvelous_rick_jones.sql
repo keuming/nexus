@@ -1,0 +1,1 @@
+ALTER TABLE `business_developers` ADD `commissionRate` decimal(5,2) DEFAULT '5.00' NOT NULL;

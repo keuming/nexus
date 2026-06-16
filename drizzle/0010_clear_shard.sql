@@ -1,0 +1,1 @@
+ALTER TABLE `transport_companies` ADD `activityType` enum('transport','restauration','expedition') DEFAULT 'transport' NOT NULL;
