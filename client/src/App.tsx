@@ -23,7 +23,7 @@ import Reservations from "./pages/Reservations";
 import ReservationsEnAttente from "./pages/ReservationsEnAttente";
 import Services from "./pages/Services";
 // Transport module
-import NexusHome from "./pages/NexusHome";
+import NexusHome from "./pages/HubVoyage";
 import RegisterCompany from "./pages/RegisterCompany";
 import About from "./pages/About";
 import Directory from "./pages/Directory";
