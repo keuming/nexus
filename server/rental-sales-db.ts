@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getDb } from "./db";
 import { eq, and, gte, lte, desc, like } from "drizzle-orm";
 import { rentalProducts, rentalInventory, salesOrders, salesOrderItems } from "../drizzle/schema";

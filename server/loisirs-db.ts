@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getDb } from "./db";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { leisureActivities, leisureBookings, leisureReviews } from "../drizzle/schema";

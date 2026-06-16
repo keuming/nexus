@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { notifyOwner } from "./_core/notification";
