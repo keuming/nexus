@@ -59,7 +59,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   else if (user.openId === ENV.ownerOpenId) { values.role = "admin"; updateSet.role = "admin"; }
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -222,8 +222,8 @@ export async function getClientById(id: number) {
 export async function createClient(data: InsertClient) {
   const db = await getDb();
   if (!db) return null;
-  const [result] = await db.insert(clients).values(data);
-  return { id: (result as any).insertId as number };
+  const result = await db.insert(clients).values(data).returning({ id: clients.id });
+  return { id: result[0]?.id ?? 0 };
 }
 
 export async function updateClient(id: number, data: Partial<InsertClient>) {
@@ -899,8 +899,8 @@ export async function seedCountriesAndCities() {
   ];
 
   for (const country of data) {
-    const [inserted] = await db.insert(countries).values({ code: country.code, name: country.name, flag: country.flag });
-    const countryId = (inserted as any).insertId;
+    const inserted = await db.insert(countries).values({ code: country.code, name: country.name, flag: country.flag }).returning({ id: countries.id });
+    const countryId = inserted[0]?.id;
     if (countryId) {
       for (const cityName of country.cities) {
         await db.insert(cities).values({ name: cityName, countryId });
@@ -1014,8 +1014,8 @@ export async function upsertHotelProfile(userId: number, data: Partial<InsertHot
     await db.update(hotelProfiles).set({ ...data, updatedAt: new Date() }).where(eq(hotelProfiles.userId, userId));
     return existing[0].id;
   } else {
-    const [res] = await db.insert(hotelProfiles).values({ userId, hotelName: data.hotelName ?? "Mon Hôtel", ...data });
-    return (res as any).insertId as number;
+    const res = await db.insert(hotelProfiles).values({ userId, hotelName: data.hotelName ?? "Mon Hôtel", ...data }).returning({ id: hotelProfiles.id });
+    return res[0]?.id ?? 0;
   }
 }
 
@@ -1080,7 +1080,8 @@ export async function getHotelRatingSummary(hotelProfileId: number) {
 export async function createReview(data: InsertReview) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  const [res] = await db.insert(reviews).values(data);
+  const resRes = await db.insert(reviews).values(data).returning({ id: sql`lastval()` });
+  const res = { insertId: resRes[0]?.id ?? 0 };
   return { id: (res as any).insertId as number };
 }
 
@@ -1153,7 +1154,8 @@ export async function getActiveOffersByHotel(hotelProfileId: number) {
 export async function createOffer(data: InsertSpecialOffer) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  const [result] = await db.insert(specialOffers).values(data);
+  const resultRes = await db.insert(specialOffers).values(data).returning({ id: sql`lastval()` });
+  const result = { insertId: resultRes[0]?.id ?? 0 };
   return { id: (result as any).insertId as number };
 }
 

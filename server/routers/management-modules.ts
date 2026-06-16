@@ -185,7 +185,7 @@ export const financeRouter = router({
         description: input.description,
         amount: input.amount,
         station: input.station,
-        chargeDate: new Date(),
+        chargeDate: new Date().toISOString().split("T")[0],
         createdAt: new Date(),
       });
 

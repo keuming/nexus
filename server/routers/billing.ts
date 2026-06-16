@@ -78,7 +78,8 @@ export const billingRouter = {
           currency: "XOF",
           reference,
         })
-        .$returningId();
+        .returning({ id: creditPurchases.id });
+
 
       // Générer le lien de paiement selon la méthode
       let paymentLink = "";

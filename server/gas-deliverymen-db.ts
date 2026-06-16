@@ -16,8 +16,8 @@ export async function createDeliveryman(data: {
 }) {
   const db = await getDb();
   if (!db) return;
-  const [result] = await db.insert(gasDeliverymen).values(data as any);
-  return result;
+  const result = await db.insert(gasDeliverymen).values(data as any).returning({ id: gasDeliverymen.id });
+  return result[0];
 }
 
 /**
@@ -27,7 +27,7 @@ export async function getDeliverymanById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
   const [result] = await db.select().from(gasDeliverymen).where(eq(gasDeliverymen.id, id));
-  return result;
+  return result[0];
 }
 
 /**
@@ -37,7 +37,7 @@ export async function getDeliverymanByUserId(userId: number) {
   const db = await getDb();
   if (!db) return undefined;
   const [result] = await db.select().from(gasDeliverymen).where(eq(gasDeliverymen.userId, userId));
-  return result;
+  return result[0];
 }
 
 /**
@@ -111,8 +111,8 @@ export async function createNotification(data: {
 }) {
   const db = await getDb();
   if (!db) return;
-  const [result] = await db.insert(gasOrderNotifications).values(data);
-  return result;
+  const result = await db.insert(gasOrderNotifications).values(data).returning({ id: gasOrderNotifications.id });
+  return result[0];
 }
 
 /**

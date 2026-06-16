@@ -224,7 +224,7 @@ export async function upsertBusLine(
     return data.id;
   } else {
     const result = await db.insert(transportBusLines).values({ ...data, companyId });
-    return (result as any).insertId as number;
+    return result[0]?.id ?? 0 as number;
   }
 }
 
@@ -269,7 +269,7 @@ export async function upsertBus(
     return data.id;
   } else {
     const result = await db.insert(transportBuses).values({ ...data, companyId });
-    return (result as any).insertId as number;
+    return result[0]?.id ?? 0 as number;
   }
 }
 
@@ -291,7 +291,7 @@ export async function getTripsByCompany(companyId: number) {
       id: transportTrips.id,
       companyId: transportTrips.companyId,
       busLineId: transportTrips.busLineId,
-      departureDate: transportTrips.departureDate,
+      departureDate: typeof transportTrips.departureDate === "string" ? transportTrips.departureDate : transportTrips.departureDate.toISOString().split("T")[0],
       departureTime: transportTrips.departureTime,
       priceXOF: transportTrips.priceXOF,
       priceGHS: transportTrips.priceGHS,
@@ -316,7 +316,7 @@ export async function getPublicTripsByCompany(companyId: number) {
       id: transportTrips.id,
       companyId: transportTrips.companyId,
       busLineId: transportTrips.busLineId,
-      departureDate: transportTrips.departureDate,
+      departureDate: typeof transportTrips.departureDate === "string" ? transportTrips.departureDate : transportTrips.departureDate.toISOString().split("T")[0],
       departureTime: transportTrips.departureTime,
       priceXOF: transportTrips.priceXOF,
       priceGHS: transportTrips.priceGHS,
@@ -339,7 +339,7 @@ export async function getPublicTripsByCountry(countryId: number) {
       id: transportTrips.id,
       companyId: transportTrips.companyId,
       busLineId: transportTrips.busLineId,
-      departureDate: transportTrips.departureDate,
+      departureDate: typeof transportTrips.departureDate === "string" ? transportTrips.departureDate : transportTrips.departureDate.toISOString().split("T")[0],
       departureTime: transportTrips.departureTime,
       priceXOF: transportTrips.priceXOF,
       priceGHS: transportTrips.priceGHS,
@@ -381,12 +381,12 @@ export async function upsertTrip(
   if (data.id) {
     await db
       .update(transportTrips)
-      .set({ ...data, departureDate: new Date(data.departureDate), companyId, updatedAt: new Date() })
+      .set({ ...data, departureDate: new Date(data.departureDate).toISOString().split("T")[0], companyId, updatedAt: new Date() })
       .where(and(eq(transportTrips.id, data.id), eq(transportTrips.companyId, companyId)));
     return data.id;
   } else {
-    const result = await db.insert(transportTrips).values({ ...data, departureDate: new Date(data.departureDate), companyId });
-    return (result as any).insertId as number;
+    const result = await db.insert(transportTrips).values({ ...data, departureDate: new Date(data.departureDate).toISOString().split("T")[0], companyId });
+    return result[0]?.id ?? 0 as number;
   }
 }
 
@@ -402,7 +402,7 @@ export async function getDeparturesByCompany(companyId: number) {
       busLineId: transportDepartures.busLineId,
       busId: transportDepartures.busId,
       tripId: transportDepartures.tripId,
-      departureDate: transportDepartures.departureDate,
+      departureDate: typeof transportDepartures.departureDate === "string" ? transportDepartures.departureDate : transportDepartures.departureDate.toISOString().split("T")[0],
       departureTime: transportDepartures.departureTime,
       driverName: transportDepartures.driverName,
       status: transportDepartures.status,
@@ -430,7 +430,7 @@ export async function getDepartureById(id: number, companyId: number) {
       busLineId: transportDepartures.busLineId,
       busId: transportDepartures.busId,
       tripId: transportDepartures.tripId,
-      departureDate: transportDepartures.departureDate,
+      departureDate: typeof transportDepartures.departureDate === "string" ? transportDepartures.departureDate : transportDepartures.departureDate.toISOString().split("T")[0],
       departureTime: transportDepartures.departureTime,
       driverName: transportDepartures.driverName,
       status: transportDepartures.status,
@@ -468,12 +468,12 @@ export async function upsertDeparture(
   if (data.id) {
     await db
       .update(transportDepartures)
-      .set({ ...data, departureDate: new Date(data.departureDate), companyId, updatedAt: new Date() })
+      .set({ ...data, departureDate: new Date(data.departureDate).toISOString().split("T")[0], companyId, updatedAt: new Date() })
       .where(and(eq(transportDepartures.id, data.id), eq(transportDepartures.companyId, companyId)));
     return data.id;
   } else {
-    const result = await db.insert(transportDepartures).values({ ...data, departureDate: new Date(data.departureDate), companyId });
-    return (result as any).insertId as number;
+    const result = await db.insert(transportDepartures).values({ ...data, departureDate: new Date(data.departureDate).toISOString().split("T")[0], companyId });
+    return result[0]?.id ?? 0 as number;
   }
 }
 
@@ -533,7 +533,7 @@ export async function getTicketsByCompany(companyId: number, limit = 100) {
       cashStatus: transportTickets.cashStatus,
       boardingStatus: transportTickets.boardingStatus,
       createdAt: transportTickets.createdAt,
-      departureDate: transportDepartures.departureDate,
+      departureDate: typeof transportDepartures.departureDate === "string" ? transportDepartures.departureDate : transportDepartures.departureDate.toISOString().split("T")[0],
       departureTime: transportDepartures.departureTime,
       departureCity: transportBusLines.departureCity,
       arrivalCity: transportBusLines.arrivalCity,
@@ -607,7 +607,7 @@ export async function verifyTicketByNumber(ticketNumber: string) {
       dropOffCity: transportTickets.dropOffCity,
       ticketStatus: transportTickets.ticketStatus,
       boardingStatus: transportTickets.boardingStatus,
-      departureDate: transportDepartures.departureDate,
+      departureDate: typeof transportDepartures.departureDate === "string" ? transportDepartures.departureDate : transportDepartures.departureDate.toISOString().split("T")[0],
       departureTime: transportDepartures.departureTime,
       departureCity: transportBusLines.departureCity,
       arrivalCity: transportBusLines.arrivalCity,
@@ -645,7 +645,7 @@ export async function getBookingsByCompany(companyId: number, limit = 100) {
       status: transportBookings.status,
       cashStatus: transportBookings.cashStatus,
       createdAt: transportBookings.createdAt,
-      departureDate: transportTrips.departureDate,
+      departureDate: typeof transportTrips.departureDate === "string" ? transportTrips.departureDate : transportTrips.departureDate.toISOString().split("T")[0],
       departureTime: transportTrips.departureTime,
       departureCity: transportBusLines.departureCity,
       arrivalCity: transportBusLines.arrivalCity,
@@ -841,7 +841,7 @@ export async function upsertStaff(
     return data.id;
   } else {
     const result = await db.insert(transportStaff).values({ ...data, companyId });
-    return (result as any).insertId as number;
+    return result[0]?.id ?? 0 as number;
   }
 }
 
@@ -870,7 +870,7 @@ export async function upsertStation(
     return data.id;
   } else {
     const result = await db.insert(transportStations).values({ ...data, companyId });
-    return (result as any).insertId as number;
+    return result[0]?.id ?? 0 as number;
   }
 }
 
@@ -904,7 +904,7 @@ export async function createCharge(
     description: data.description,
     amount: data.amount,
     station: data.station,
-    chargeDate: new Date(data.chargeDate),
+    chargeDate: new Date(data.chargeDate).toISOString().split("T")[0],
   });
 }
 
@@ -1227,7 +1227,7 @@ export async function searchPublicTrips(params: {
       departureCity: transportBusLines.departureCity,
       arrivalCity: transportBusLines.arrivalCity,
       lineType: transportBusLines.lineType,
-      departureDate: transportTrips.departureDate,
+      departureDate: typeof transportTrips.departureDate === "string" ? transportTrips.departureDate : transportTrips.departureDate.toISOString().split("T")[0],
       departureTime: transportTrips.departureTime,
       priceXOF: transportTrips.priceXOF,
       totalSeats: transportTrips.totalSeats,
@@ -1635,7 +1635,7 @@ export async function createCreditRequest(data: {
     notes: data.notes ?? null,
     status: "pending",
   });
-  const id = (result as any).insertId as number;
+  const id = result[0]?.id ?? 0 as number;
   // Notifier NEXUS d'une nouvelle demande
   const company = await getCompanyById(data.companyId);
   notifyOwner({

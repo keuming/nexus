@@ -74,7 +74,8 @@ export const photosRouter = router({
           caption: input.caption,
           sortOrder: existing.length,
         })
-        .$returningId();
+        .returning({ id: companyPhotos.id });
+
 
       return { id: photo.id, url, caption: input.caption };
     }),

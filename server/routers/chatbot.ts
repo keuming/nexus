@@ -478,7 +478,7 @@ export const chatbotRouter = {
         role: input.senderRole,
         content: input.message,
         isRead: input.senderRole === "csn", // Les messages NEXUS sont lus
-      }).$returningId();
+      }).returning({ id: chatbotMessages.id });
 
       return {
         messageId: msg[0].id,

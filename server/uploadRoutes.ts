@@ -98,13 +98,13 @@ router.post(
 
         const { url } = await storagePut(fileKey, file.buffer, file.mimetype);
 
-        const [result] = await db.insert(roomPhotos).values({
+        const result = await db.insert(roomPhotos).values({
           roomId,
           url,
           fileKey,
           caption: null,
           sortOrder: maxOrder + 1 + i,
-        });
+        }).returning({ id: roomPhotos.id });
 
         uploaded.push({ id: (result as any).insertId, url, fileKey });
       }

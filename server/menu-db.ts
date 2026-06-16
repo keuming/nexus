@@ -23,13 +23,13 @@ export async function createCategory(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  const [result] = await db.insert(menuCategories).values({
+  const result = await db.insert(menuCategories).values({
     companyId: data.companyId,
     name: data.name,
     description: data.description,
     sortOrder: data.sortOrder ?? 0,
-  });
-  return { id: (result as any).insertId };
+  }).returning({ id: menuCategories.id });
+  return { id: result[0]?.id ?? 0 };
 }
 
 export async function updateCategory(
@@ -85,7 +85,7 @@ export async function createItem(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB unavailable");
-  const [result] = await db.insert(menuItems).values({
+  const result = await db.insert(menuItems).values({
     companyId: data.companyId,
     categoryId: data.categoryId,
     name: data.name,
@@ -94,8 +94,8 @@ export async function createItem(data: {
     available: data.available ?? true,
     preparationTime: data.preparationTime ?? 15,
     sortOrder: data.sortOrder ?? 0,
-  });
-  return { id: (result as any).insertId };
+  }).returning({ id: menuItems.id });
+  return { id: result[0]?.id ?? 0 };
 }
 
 export async function updateItem(
@@ -255,14 +255,14 @@ export async function upsertDeliveryZone(data: {
       .where(and(eq(deliveryZones.id, data.id), eq(deliveryZones.companyId, data.companyId)));
     return { id: data.id };
   } else {
-    const [result] = await db.insert(deliveryZones).values({
+    const result = await db.insert(deliveryZones).values({
       companyId: data.companyId,
       name: data.name,
       description: data.description,
       extraMinutes: data.extraMinutes,
       active: data.active ?? true,
-    });
-    return { id: (result as any).insertId };
+    }).returning({ id: deliveryZones.id });
+    return { id: result[0]?.id ?? 0 };
   }
 }
 
