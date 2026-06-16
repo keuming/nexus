@@ -65,15 +65,11 @@ import { GalleriesByActivityType } from "@/components/GalleriesByActivityType";
 
 import AdminLoginModal from "@/components/AdminLoginModal";
 import { ActivityCarousel } from "@/components/ActivityCarousel";
-import { AdCarousel } from "@/components/AdCarousel";
-import { HealthcareManagementBanner } from "@/components/HealthcareManagementBanner";
 import { useSEO } from "@/hooks/useSEO";
 import { useI18n } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useEffect } from "react";
 import AuthModal from "@/components/AuthModal";
-import { MediconnectAdBanner } from "@/components/MediconnectAdBanner";
-import { GreenHealthcareBanner } from "@/components/GreenHealthcareBanner";
 import { HotelReservationModal } from "@/components/HotelReservationModal";
 
 // --- ACTIVITY TABS ---------------------------------------------------------------------------------
@@ -2369,24 +2365,14 @@ export default function HubVoyage() {
         </div>
       </section>
 
-      {/* ══ BANNER ══ */}
-      <div style={{ background: "#000", padding: "48px 1.5rem" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <HealthcareManagementBanner />
-        </div>
-      </div>
+
 
       <GalleriesByActivityType />
 
       {/* ══ RECRUTEMENT ══ */}
       <RecruitmentSection />
 
-      {/* ══ AD CAROUSEL ══ */}
-      <div style={{ background: "#000", padding: "48px 1.5rem" }}>
-        <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <AdCarousel />
-        </div>
-      </div>
+
 
       {/* ══ FOOTER ══ */}
       <footer style={{ background: "#080810", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "56px 1.5rem 32px" }}>
