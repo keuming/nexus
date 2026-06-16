@@ -9,10 +9,10 @@ function getStorageConfig(): StorageConfig {
   const baseUrl = ENV.forgeApiUrl;
   const apiKey = ENV.forgeApiKey;
 
+  // Graceful fallback — storage non disponible sans les credentials Manus
   if (!baseUrl || !apiKey) {
-    throw new Error(
-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY"
-    );
+    console.warn("[Storage] BUILT_IN_FORGE_API_URL/KEY non configurés — upload désactivé");
+    return { baseUrl: "https://placeholder.storage", apiKey: "placeholder" };
   }
 
   return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
