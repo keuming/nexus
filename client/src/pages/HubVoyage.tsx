@@ -61,7 +61,6 @@ import { Separator } from "@/components/ui/separator";
 import { MobilePayment } from "@/components/MobilePayment";
 import CarrouselGalerie from "@/components/CarrouselGalerie";
 import RecruitmentForm from "@/components/RecruitmentForm";
-import { GalleriesByActivityType } from "@/components/GalleriesByActivityType";
 
 import AdminLoginModal from "@/components/AdminLoginModal";
 import { ActivityCarousel } from "@/components/ActivityCarousel";
@@ -2365,9 +2364,6 @@ export default function HubVoyage() {
         </div>
       </section>
 
-
-
-      <GalleriesByActivityType />
 
       {/* ══ RECRUTEMENT ══ */}
       <RecruitmentSection />
