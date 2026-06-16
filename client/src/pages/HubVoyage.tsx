@@ -2063,226 +2063,351 @@ export default function HubVoyage() {
 
   const cfg = activityConfig[activity];
 
-  // Color map per activity for accent
   const accentMap: Record<ActivityType, string> = {
-    transport:      "#f97316",
-    restauration:   "#f59e0b",
-    expedition:     "#3b82f6",
-    hotel:          "#8b5cf6",
-    boutique:       "#ec4899",
-    agence_voyage:  "#0ea5e9",
+    transport:       "#f97316",
+    restauration:    "#f59e0b",
+    expedition:      "#3b82f6",
+    hotel:           "#8b5cf6",
+    boutique:        "#ec4899",
+    agence_voyage:   "#0ea5e9",
     residence_meuble:"#f59e0b",
-    loisirs:        "#22c55e",
-    location_vente: "#ef4444",
+    loisirs:         "#22c55e",
+    location_vente:  "#ef4444",
   };
   const accent = accentMap[activity];
 
-  return (
-    <div className="min-h-screen" style={{ background: "#0a0a0f" }}>
+  // Service cards config
+  const serviceCards = [
+    {
+      key: "transport" as ActivityType,
+      icon: <Bus size={28} />,
+      color: "#f97316",
+      bg: "rgba(249,115,22,0.12)",
+      border: "rgba(249,115,22,0.25)",
+      label: "Transport",
+      desc: "Billets de bus inter-villes",
+      emoji: "🚌",
+    },
+    {
+      key: "hotel" as ActivityType,
+      icon: <Hotel size={28} />,
+      color: "#8b5cf6",
+      bg: "rgba(139,92,246,0.12)",
+      border: "rgba(139,92,246,0.25)",
+      label: "Hôtel",
+      desc: "Réservez votre hébergement",
+      emoji: "🏨",
+    },
+    {
+      key: "restauration" as ActivityType,
+      icon: <UtensilsCrossed size={28} />,
+      color: "#f59e0b",
+      bg: "rgba(245,158,11,0.12)",
+      border: "rgba(245,158,11,0.25)",
+      label: "Restauration",
+      desc: "Commandez vos repas",
+      emoji: "🍽️",
+    },
+    {
+      key: "expedition" as ActivityType,
+      icon: <Package size={28} />,
+      color: "#3b82f6",
+      bg: "rgba(59,130,246,0.12)",
+      border: "rgba(59,130,246,0.25)",
+      label: "Expédition",
+      desc: "Envoi de colis rapide",
+      emoji: "📦",
+    },
+    {
+      key: "boutique" as ActivityType,
+      icon: <ShoppingBag size={28} />,
+      color: "#ec4899",
+      bg: "rgba(236,72,153,0.12)",
+      border: "rgba(236,72,153,0.25)",
+      label: "Boutique",
+      desc: "Commerce & shopping",
+      emoji: "🛍️",
+    },
+    {
+      key: "agence_voyage" as ActivityType,
+      icon: <Plane size={28} />,
+      color: "#0ea5e9",
+      bg: "rgba(14,165,233,0.12)",
+      border: "rgba(14,165,233,0.25)",
+      label: "Agence Voyage",
+      desc: "Vols & forfaits",
+      emoji: "✈️",
+    },
+    {
+      key: "loisirs" as ActivityType,
+      icon: <Briefcase size={28} />,
+      color: "#22c55e",
+      bg: "rgba(34,197,94,0.12)",
+      border: "rgba(34,197,94,0.25)",
+      label: "Loisirs",
+      desc: "Activités & divertissements",
+      emoji: "🎯",
+    },
+    {
+      key: "residence_meuble" as ActivityType,
+      icon: <Home size={28} />,
+      color: "#f97316",
+      bg: "rgba(249,115,22,0.08)",
+      border: "rgba(249,115,22,0.2)",
+      label: "Résidence",
+      desc: "Logements meublés",
+      emoji: "🏠",
+    },
+    {
+      key: "location_vente" as ActivityType,
+      icon: <ShoppingCart size={28} />,
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.12)",
+      border: "rgba(239,68,68,0.25)",
+      label: "Location & Vente",
+      desc: "Louez ou achetez",
+      emoji: "🔑",
+    },
+  ];
 
-      {/* ══════════════ NAVBAR NEXUS ══════════════ */}
-      <header style={{
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(10,10,15,0.85)",
-        backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-      }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5rem", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0d0d12", color: "#fff", fontFamily: "system-ui, sans-serif" }}>
+
+      {/* ══ NAVBAR ══ */}
+      <header style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(13,13,18,0.92)", backdropFilter: "blur(24px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 1.5rem", height: 68, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${accent}, ${accent}99)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 0 18px ${accent}55` }}>
-              <span style={{ color: "#fff", fontSize: 16, fontWeight: 700, letterSpacing: -0.5 }}>N</span>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 20px rgba(249,115,22,0.4)" }}>
+              <span style={{ color: "#fff", fontSize: 18, fontWeight: 900, letterSpacing: -1 }}>N</span>
             </div>
             <div>
-              <span style={{ color: "#fff", fontSize: 18, fontWeight: 700, letterSpacing: -0.5 }}>NEXUS</span>
-              <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 6 }}>Multi-Services</span>
+              <div style={{ color: "#fff", fontSize: 20, fontWeight: 800, letterSpacing: -0.8, lineHeight: 1 }}>NEXUS</div>
+              <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 10, fontWeight: 500, letterSpacing: 0.5 }}>PLATEFORME MULTI-SERVICES</div>
             </div>
           </div>
-
-          {/* Nav centre — visible md+ */}
-          <nav style={{ display: "flex", gap: 4, alignItems: "center" }} className="hidden md:flex">
-            {[
-              { label: "Annuaire", path: "/directory" },
-              { label: "Bibliothèque", path: "/bibliotheque" },
-              { label: "À propos", path: "/about" },
-            ].map(l => (
-              <button key={l.path} onClick={() => navigate(l.path)} style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 500, padding: "6px 12px", borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", transition: "color 0.2s" }}
+          {/* Nav */}
+          <nav style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            {[{ l: "Annuaire", p: "/directory" }, { l: "À propos", p: "/about" }, { l: "Bibliothèque", p: "/bibliotheque" }].map(n => (
+              <button key={n.p} onClick={() => navigate(n.p)} style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 500, padding: "6px 14px", borderRadius: 8, background: "transparent", border: "none", cursor: "pointer" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.55)")}
-              >{l.label}</button>
+                onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
+              >{n.l}</button>
             ))}
           </nav>
-
-          {/* Actions droite */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {/* Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <LanguageSwitcher variant="dark" />
-            <button
-              onClick={() => navigate("/register-company")}
-              style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "7px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.15)", background: "transparent", cursor: "pointer", whiteSpace: "nowrap" }}
-            >Espace compagnies</button>
-            <button
-              onClick={() => setShowAuthModal(true)}
-              style={{ color: "#fff", fontSize: 13, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: accent, border: "none", cursor: "pointer", boxShadow: `0 0 14px ${accent}66`, whiteSpace: "nowrap" }}
-            >Connexion</button>
+            <button onClick={() => navigate("/register-company")} style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, padding: "8px 16px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", cursor: "pointer" }}>
+              Espace compagnies
+            </button>
+            <button onClick={() => setShowAuthModal(true)} style={{ color: "#fff", fontSize: 13, fontWeight: 700, padding: "8px 20px", borderRadius: 9, background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(249,115,22,0.4)" }}>
+              Connexion
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Auth Modal */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
-      {/* ══════════════ HERO NEXUS ══════════════ */}
-      <section style={{ position: "relative", overflow: "hidden", paddingTop: 72, paddingBottom: 56 }} data-hero-section>
-        {/* Ambient glow bg */}
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-          <div style={{ position: "absolute", top: "-20%", left: "30%", width: 600, height: 600, borderRadius: "50%", background: `radial-gradient(circle, ${accent}22 0%, transparent 70%)`, transition: "background 0.5s" }} />
-          <div style={{ position: "absolute", bottom: "0%", right: "10%", width: 400, height: 400, borderRadius: "50%", background: `radial-gradient(circle, ${accent}15 0%, transparent 70%)` }} />
+      {/* ══ HERO ══ */}
+      <section style={{ position: "relative", padding: "80px 1.5rem 60px", overflow: "hidden" }}>
+        {/* Fond décoratif */}
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)", width: 800, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(249,115,22,0.18) 0%, transparent 70%)" }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
         </div>
 
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 1.5rem", position: "relative" }}>
-          {/* Badge */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 14px", borderRadius: 99, border: `1px solid ${accent}55`, background: `${accent}15`, color: accent, fontSize: 12, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent, display: "inline-block" }} />
-              Plateforme Multi-Services · Afrique de l'Ouest
-            </span>
+        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center", position: "relative" }}>
+          {/* Pill badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 99, background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", marginBottom: 28 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f97316", display: "inline-block", boxShadow: "0 0 8px #f97316" }} />
+            <span style={{ color: "#f97316", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>Afrique de l'Ouest · 9 Services disponibles</span>
           </div>
 
-          {/* Titre animé */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activity}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -12 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              style={{ textAlign: "center", marginBottom: 40 }}
-            >
-              <h1 style={{ color: "#fff", fontSize: "clamp(2rem,5vw,3.25rem)", fontWeight: 800, lineHeight: 1.12, letterSpacing: -1.5, marginBottom: 14 }}>
-                {cfg.hero.split(" ").map((word, i) => (
-                  <span key={i} style={{ color: i === 0 ? accent : "#fff" }}>{word}{" "}</span>
-                ))}
-              </h1>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 17, maxWidth: 540, margin: "0 auto" }}>{cfg.subtitle}</p>
-            </motion.div>
-          </AnimatePresence>
+          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)", fontWeight: 900, lineHeight: 1.08, letterSpacing: -2, marginBottom: 20, color: "#fff" }}>
+            Tous vos services en{" "}
+            <span style={{ color: "#f97316", position: "relative" }}>un seul endroit</span>
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 18, lineHeight: 1.6, maxWidth: 580, margin: "0 auto 48px" }}>
+            Transport, hôtel, restauration, expédition et bien plus — réservez en quelques clics depuis toute l'Afrique de l'Ouest.
+          </p>
 
-          {/* ── Activity Tabs ── */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 40 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px", borderRadius: 16, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", justifyContent: "center" }}>
-              {(Object.entries(activityConfig) as [ActivityType, typeof activityConfig[ActivityType]][]).map(([key, val]) => {
-                const isActive = activity === key;
-                const tabAccent = accentMap[key];
-                return (
-                  <button
-                    key={key}
-                    onClick={() => { setActivity(key); setTimeout(() => document.querySelector('[data-hero-section]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 7,
-                      padding: "8px 16px", borderRadius: 10,
-                      border: isActive ? `1px solid ${tabAccent}55` : "1px solid transparent",
-                      background: isActive ? `${tabAccent}22` : "transparent",
-                      color: isActive ? tabAccent : "rgba(255,255,255,0.45)",
-                      fontSize: 13, fontWeight: isActive ? 600 : 500,
-                      cursor: "pointer", transition: "all 0.2s",
-                      boxShadow: isActive ? `0 0 12px ${tabAccent}33` : "none",
-                    }}
-                  >
-                    {val.icon}
-                    <span className="hidden sm:inline">{val.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* CTA buttons */}
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 16 }}>
+            <button onClick={() => { setActivity("transport"); document.getElementById("services-section")?.scrollIntoView({ behavior: "smooth" }); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: 12, background: "linear-gradient(135deg, #f97316, #ea580c)", color: "#fff", fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 8px 30px rgba(249,115,22,0.4)" }}>
+              <Bus size={18} /> Réserver un billet <ArrowRight size={16} />
+            </button>
+            <button onClick={() => navigate("/register-company")} style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: 12, background: "rgba(255,255,255,0.07)", color: "#fff", fontSize: 15, fontWeight: 600, border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer" }}>
+              <UserPlus size={18} /> Inscrire mon entreprise
+            </button>
           </div>
 
-          {/* Search panel transport */}
-          {activity === "transport" && (
-            <div style={{ maxWidth: 820, margin: "0 auto" }}>
-              <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 20, padding: "24px", backdropFilter: "blur(10px)" }}>
-                <TransportSearchPanel />
+          {/* Stats */}
+          <div style={{ display: "flex", gap: 32, justifyContent: "center", flexWrap: "wrap", marginTop: 40 }}>
+            {[["9", "Services"], ["14+", "Pays couverts"], ["500+", "Compagnies"], ["24/7", "Disponible"]].map(([val, label]) => (
+              <div key={label} style={{ textAlign: "center" }}>
+                <div style={{ color: "#f97316", fontSize: 26, fontWeight: 900, letterSpacing: -1 }}>{val}</div>
+                <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 12, fontWeight: 500 }}>{label}</div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ══════════════ GALERIE ══════════════ */}
-      <div style={{ background: "rgba(255,255,255,0.02)", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 1.5rem" }}>
+      {/* ══ CARTES DE SERVICES ══ */}
+      <section id="services-section" style={{ padding: "60px 1.5rem", background: "rgba(255,255,255,0.01)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          {/* Titre section */}
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <p style={{ color: "#f97316", fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>NOS SERVICES</p>
+            <h2 style={{ color: "#fff", fontSize: "clamp(1.6rem,3vw,2.4rem)", fontWeight: 800, letterSpacing: -0.8 }}>Choisissez votre service</h2>
+          </div>
+
+          {/* Grid des cartes */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+            {serviceCards.map((svc) => {
+              const isActive = activity === svc.key;
+              return (
+                <button
+                  key={svc.key}
+                  onClick={() => { setActivity(svc.key); document.getElementById("service-content")?.scrollIntoView({ behavior: "smooth" }); }}
+                  style={{
+                    background: isActive ? svc.bg : "rgba(255,255,255,0.03)",
+                    border: `1.5px solid ${isActive ? svc.border : "rgba(255,255,255,0.07)"}`,
+                    borderRadius: 18,
+                    padding: "24px 20px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.22s ease",
+                    transform: isActive ? "translateY(-3px)" : "translateY(0)",
+                    boxShadow: isActive ? `0 12px 40px ${svc.color}25` : "none",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; } }}
+                  onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; } }}
+                >
+                  {/* Emoji décoratif en fond */}
+                  <div style={{ position: "absolute", top: -10, right: -5, fontSize: 64, opacity: 0.08, lineHeight: 1 }}>{svc.emoji}</div>
+
+                  {/* Icône */}
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: isActive ? `${svc.color}25` : "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, color: isActive ? svc.color : "rgba(255,255,255,0.4)", transition: "all 0.22s", border: isActive ? `1px solid ${svc.color}30` : "1px solid rgba(255,255,255,0.06)" }}>
+                    {svc.icon}
+                  </div>
+
+                  <div style={{ color: isActive ? "#fff" : "rgba(255,255,255,0.75)", fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{svc.label}</div>
+                  <div style={{ color: isActive ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.3)", fontSize: 13, lineHeight: 1.4 }}>{svc.desc}</div>
+
+                  {/* Indicateur actif */}
+                  {isActive && (
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${svc.color}, transparent)`, borderRadius: "0 0 18px 18px" }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ CONTENU DU SERVICE SÉLECTIONNÉ ══ */}
+      <section id="service-content" style={{ padding: "40px 1.5rem 60px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          {/* Header du service actif */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32, padding: "16px 24px", background: `${accentMap[activity]}10`, borderRadius: 14, border: `1px solid ${accentMap[activity]}25` }}>
+            <div style={{ color: accentMap[activity], width: 40, height: 40, background: `${accentMap[activity]}20`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {activityConfig[activity].icon}
+            </div>
+            <div>
+              <div style={{ color: "#fff", fontSize: 18, fontWeight: 700 }}>{activityConfig[activity].label}</div>
+              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{activityConfig[activity].subtitle}</div>
+            </div>
+          </div>
+
+          {/* Panel transport */}
+          {activity === "transport" && (
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "28px" }}>
+              <TransportSearchPanel />
+            </div>
+          )}
+
+          <AnimatePresence mode="wait">
+            {activity !== "transport" && (
+              <motion.div key={activity} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
+                {activity === "restauration" && <RestaurantPanel />}
+                {activity === "expedition" && <ExpeditionPanel />}
+                {activity === "hotel" && <HotelPanel />}
+                {activity === "boutique" && <BoutiquePanel />}
+                {activity === "agence_voyage" && <AgenceVoyagePanel />}
+                {(activity === "loisirs" || activity === "residence_meuble" || activity === "location_vente") && (
+                  <div style={{ textAlign: "center", padding: "60px 20px", background: "rgba(255,255,255,0.02)", borderRadius: 20, border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>{serviceCards.find(s => s.key === activity)?.emoji}</div>
+                    <h3 style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginBottom: 10 }}>Bientôt disponible</h3>
+                    <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 15 }}>Ce service sera disponible très prochainement.</p>
+                    <button onClick={() => navigate("/register-company")} style={{ marginTop: 20, padding: "10px 24px", borderRadius: 10, background: "#f97316", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer" }}>Inscrire mon entreprise</button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </section>
+
+      {/* ══ GALERIE ══ */}
+      <section style={{ padding: "48px 1.5rem", background: "rgba(0,0,0,0.3)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 700, marginBottom: 24, textAlign: "center" }}>Nos partenaires en images</h2>
           <CarrouselGalerie initialFilter={activity} />
         </div>
-      </div>
+      </section>
 
-      {/* ══════════════ ACTIVITY CAROUSEL STATS ══════════════ */}
-      <div style={{ background: "rgba(255,255,255,0.015)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "32px 1.5rem" }}>
+      {/* ══ ACTIVITÉS ══ */}
+      <section style={{ padding: "48px 1.5rem" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <ActivityCarousel onActivitySelect={setActivity} />
         </div>
-      </div>
+      </section>
 
-      {/* ══════════════ BANNER AD ══════════════ */}
+      {/* ══ BANNER ══ */}
       <div style={{ background: "#000", padding: "48px 1.5rem" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <HealthcareManagementBanner />
         </div>
       </div>
 
-      {/* ══════════════ GALERIES PAR ACTIVITÉ ══════════════ */}
       <GalleriesByActivityType />
 
-      {/* ══════════════ PANNEAUX NON-TRANSPORT ══════════════ */}
-      <AnimatePresence mode="wait">
-        {activity !== "transport" && (
-          <motion.div
-            key={activity}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 1.5rem" }}
-          >
-            {activity === "restauration" && <RestaurantPanel />}
-            {activity === "expedition" && <ExpeditionPanel />}
-            {activity === "hotel" && <HotelPanel />}
-            {activity === "boutique" && <BoutiquePanel />}
-            {activity === "agence_voyage" && <AgenceVoyagePanel />}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ══════════════ RECRUTEMENT ══════════════ */}
+      {/* ══ RECRUTEMENT ══ */}
       <RecruitmentSection />
 
-      {/* ══════════════ AD CAROUSEL ══════════════ */}
+      {/* ══ AD CAROUSEL ══ */}
       <div style={{ background: "#000", padding: "48px 1.5rem" }}>
-        <div style={{ width: "80%", margin: "0 auto" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <AdCarousel />
         </div>
       </div>
 
-      {/* ══════════════ FOOTER NEXUS ══════════════ */}
-      <footer style={{ background: "#06060a", borderTop: "1px solid rgba(255,255,255,0.07)", marginTop: 0 }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 1.5rem 32px" }}>
+      {/* ══ FOOTER ══ */}
+      <footer style={{ background: "#080810", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "56px 1.5rem 32px" }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 40, marginBottom: 48 }}>
             {/* Marque */}
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg, ${accent}, ${accent}88)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ color: "#fff", fontSize: 15, fontWeight: 800 }}>N</span>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#f97316,#ea580c)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ color: "#fff", fontSize: 16, fontWeight: 900 }}>N</span>
                 </div>
                 <div>
-                  <p style={{ color: "#fff", fontWeight: 700, fontSize: 15, lineHeight: 1 }}>NEXUS</p>
-                  <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 10 }}>Multi-Services · Afrique</p>
+                  <div style={{ color: "#fff", fontWeight: 800, fontSize: 16 }}>NEXUS</div>
+                  <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 10 }}>Multi-Services · Afrique</div>
                 </div>
               </div>
-              <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, lineHeight: 1.7, marginBottom: 20 }}>
-                {t("footer", "description")}
-              </p>
+              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, lineHeight: 1.7, marginBottom: 20 }}>{t("footer", "description")}</p>
               <div style={{ display: "flex", gap: 8 }}>
                 {[Facebook, Instagram, Twitter].map((Icon, i) => (
-                  <a key={i} href="#" style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>
-                    <Icon size={14} />
+                  <a key={i} href="#" style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.4)", textDecoration: "none" }}>
+                    <Icon size={15} />
                   </a>
                 ))}
               </div>
@@ -2290,21 +2415,16 @@ export default function HubVoyage() {
 
             {/* Services */}
             <div>
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>{t("footer", "services")}</p>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { label: t("footer", "intercityTransport"), act: "transport" as ActivityType },
-                  { label: t("footer", "onlineRestaurant"), act: "restauration" as ActivityType },
-                  { label: t("footer", "parcelDelivery"), act: "expedition" as ActivityType },
-                  { label: "Commande de Gaz", act: null },
-                ].map((item, i) => (
-                  <li key={i}>
-                    <button
-                      onClick={() => item.act ? (setActivity(item.act), window.scrollTo(0,0)) : navigate("/gas-home")}
-                      style={{ color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0, transition: "color 0.2s" }}
-                      onMouseEnter={e => (e.currentTarget.style.color = accent)}
-                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
-                    >{item.label}</button>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 18 }}>Services</p>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                {serviceCards.slice(0, 5).map(svc => (
+                  <li key={svc.key}>
+                    <button onClick={() => { setActivity(svc.key); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ color: "rgba(255,255,255,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0, display: "flex", alignItems: "center", gap: 8, textAlign: "left" }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "#f97316")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+                    >
+                      <span>{svc.emoji}</span> {svc.label}
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -2312,20 +2432,14 @@ export default function HubVoyage() {
 
             {/* Liens */}
             <div>
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>{t("footer", "usefulLinks")}</p>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { label: t("footer", "companiesSpace"), path: "/register-company" },
-                  { label: t("footer", "directory"), path: "/directory" },
-                  { label: t("footer", "about"), path: "/about" },
-                  { label: t("footer", "legal"), path: "/legal" },
-                  { label: "Conditions Générales", path: "/conditions" },
-                ].map((l, i) => (
-                  <li key={i}>
-                    <button onClick={() => navigate(l.path)} style={{ color: "rgba(255,255,255,0.4)", background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0 }}
-                      onMouseEnter={e => (e.currentTarget.style.color = accent)}
-                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
-                    >{l.label}</button>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 18 }}>Liens utiles</p>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                {[{ l: "Espace compagnies", p: "/register-company" }, { l: "Annuaire", p: "/directory" }, { l: "À propos", p: "/about" }, { l: "Mentions légales", p: "/legal" }, { l: "Conditions générales", p: "/conditions" }].map(lnk => (
+                  <li key={lnk.p}>
+                    <button onClick={() => navigate(lnk.p)} style={{ color: "rgba(255,255,255,0.35)", background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: 0 }}
+                      onMouseEnter={e => (e.currentTarget.style.color = "#f97316")}
+                      onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+                    >{lnk.l}</button>
                   </li>
                 ))}
               </ul>
@@ -2333,55 +2447,53 @@ export default function HubVoyage() {
 
             {/* Contact */}
             <div>
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>{t("footer", "contact")}</p>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 18 }}>Contact</p>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 16 }}>
                 <li style={{ display: "flex", gap: 10 }}>
-                  <Phone size={15} style={{ color: accent, marginTop: 2, flexShrink: 0 }} />
+                  <Phone size={15} style={{ color: "#f97316", marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, marginBottom: 4 }}>{t("footer", "customerService")}</p>
-                    <a href="tel:+2250504921096" style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, display: "block", textDecoration: "none" }}>+225 0504921096</a>
-                    <a href="tel:+2250701578857" style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, display: "block", textDecoration: "none" }}>0701578857</a>
+                    <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginBottom: 4 }}>Service client</div>
+                    <a href="tel:+2250504921096" style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, display: "block", textDecoration: "none" }}>+225 0504921096</a>
+                    <a href="tel:+2250701578857" style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, display: "block", textDecoration: "none" }}>0701578857</a>
                   </div>
                 </li>
                 <li style={{ display: "flex", gap: 10 }}>
-                  <Mail size={15} style={{ color: accent, marginTop: 2, flexShrink: 0 }} />
+                  <Mail size={15} style={{ color: "#f97316", marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, marginBottom: 4 }}>{t("footer", "email")}</p>
-                    <a href="mailto:support@nexus.africa" style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, textDecoration: "none" }}>support@nexus.africa</a>
+                    <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginBottom: 4 }}>Email</div>
+                    <a href="mailto:support@nexus.africa" style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, textDecoration: "none" }}>support@nexus.africa</a>
                   </div>
                 </li>
                 <li style={{ display: "flex", gap: 10 }}>
-                  <MapPin size={15} style={{ color: accent, marginTop: 2, flexShrink: 0 }} />
+                  <MapPin size={15} style={{ color: "#f97316", marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 11, marginBottom: 4 }}>{t("footer", "headquarters")}</p>
-                    <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>Abidjan, Cocody Rivièra 2</p>
+                    <div style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, marginBottom: 4 }}>Siège</div>
+                    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13 }}>Abidjan, Cocody Rivièra 2</div>
                   </div>
                 </li>
               </ul>
             </div>
           </div>
 
-          {/* Copyright bar */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 24, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <p style={{ color: "rgba(255,255,255,0.25)", fontSize: 12 }}>
-              © 2026 <span
-                onClick={() => navigate("/transport/dashboard")}
-                style={{ color: accent, cursor: "pointer", fontWeight: 600 }}
-              >NEXUS</span> — Tous droits réservés
-            </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <span style={{ color: "rgba(255,255,255,0.25)", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                <Globe size={12} style={{ color: accent }} />
-                Afrique de l'Ouest{" "}
-                <span onClick={() => navigate("/csn/dashboard")} style={{ color: accent, cursor: "pointer", textDecoration: "underline dotted" }}>·</span>
+          {/* Copyright */}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 24, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>
+              © 2026{" "}
+              <span onClick={() => navigate("/transport/dashboard")} style={{ color: "#f97316", cursor: "pointer", fontWeight: 700 }}>NEXUS</span>
+              {" "}— Tous droits réservés
+            </span>
+            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                <Globe size={11} style={{ color: "#f97316" }} /> Afrique de l'Ouest
               </span>
-              <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>{t("footer", "csnPlatform")}</span>
+              <span onClick={() => navigate("/csn/dashboard")} style={{ color: "rgba(255,255,255,0.15)", fontSize: 12, cursor: "pointer" }}>
+                {t("footer", "csnPlatform")}
+              </span>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Modal admin */}
       <AdminLoginModal open={adminLoginOpen} onClose={() => setAdminLoginOpen(false)} />
     </div>
   );
