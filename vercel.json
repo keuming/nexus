@@ -30,6 +30,11 @@
       "dest": "/dist/public/$1"
     },
     {
+      "has": [{ "type": "host", "value": "admin.hubresa.com" }],
+      "src": "/(.*)",
+      "dest": "/dist/public/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/dist/public/index.html"
     }
