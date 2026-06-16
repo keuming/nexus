@@ -1,7 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers";
+import { appRouter } from "../server/routers.ts";
 import { createContext } from "../server/_core/context";
 import uploadRouter from "../server/uploadRoutes";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../shared/const";
