@@ -59,7 +59,7 @@ export function GalleryManager({ companyId }: GalleryManagerProps) {
           </Button>
         </CardTitle>
         <p className="text-xs text-gray-500">
-          Ces images seront visibles dans le répertoire public HUB_RESA.
+          Ces images seront visibles dans le répertoire public NEXUS.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

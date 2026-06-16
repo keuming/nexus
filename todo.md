@@ -1,4 +1,4 @@
-# HUB_RESA - TODO
+# NEXUS - TODO
 
 ## Phase 1 : Base de données
 - [x] Schéma complet : chambres, réservations, clients, caisse, services, housekeeping, inventaire, employés
@@ -166,7 +166,7 @@
 - [x] Audit général et correction des bugs (TypeScript, types baseConditions, imports)
 - [x] Tests et checkpoint
 
-## Migration Transport Multi-Compagnies (HUB VOYAGE)
+## Migration Transport Multi-Compagnies (NEXUS)
 - [x] Schéma BDD : 13 tables transport (companies, bus_lines, buses, trips, departures, tickets, bookings, shipments, charges, route_fares, company_billing, staff, stations)
 - [x] Migration BDD poussée (pnpm db:push)
 - [x] Backend transport-db.ts : helpers DB pour tous les modules transport
@@ -178,17 +178,17 @@
 - [x] Page CsnDashboard.tsx (dashboard CSN avec validation compagnies et facturation)
 - [x] Page TransportDashboard.tsx (dashboard compagnie multi-modules)
 - [x] Page TransportSettings.tsx (paramètres compagnie : logo, couleurs, entête)
-- [x] Page HubVoyage.tsx (interface publique unifiée : pays → compagnie → trajets → réservation)
+- [x] Page NexusHome.tsx (interface publique unifiée : pays → compagnie → trajets → réservation)
 - [x] App.tsx mis à jour avec toutes les nouvelles routes
 - [x] 0 erreur TypeScript, 19 tests passants
 
 ## Transport National/International + Multi-Activités
 - [x] Schéma BDD : champ activityType (transport/restauration/expedition) dans transport_companies
 - [x] Migration BDD
-- [x] HubVoyage.tsx : onglets National/International avec villes dynamiques par pays
-- [x] HubVoyage.tsx : section Restauration (commande en ligne)
-- [x] HubVoyage.tsx : section Expédition (formulaire + partage GPS livreur)
-- [x] HubVoyage.tsx : sélecteur type d'activité sur l'interface publique
+- [x] NexusHome.tsx : onglets National/International avec villes dynamiques par pays
+- [x] NexusHome.tsx : section Restauration (commande en ligne)
+- [x] NexusHome.tsx : section Expédition (formulaire + partage GPS livreur)
+- [x] NexusHome.tsx : sélecteur type d'activité sur l'interface publique
 - [x] RegisterCompany.tsx : champ sélection type d'activité avec icônes
 - [x] TransportDashboard.tsx : dashboard conditionnel Restauration (Commandes + Commandes en ligne)
 - [x] TransportDashboard.tsx : dashboard conditionnel Expédition (Demandes en ligne + agence)
@@ -209,10 +209,10 @@
 - [x] 0 erreur TypeScript, 19 tests passants, checkpoint sauvegardé
 
 ## Mise à jour UX + Commandes en ligne + Temps de préparation
-- [x] Réduire intensité orange de 50% dans index.css (HubVoyage hero + boutons)
+- [x] Réduire intensité orange de 50% dans index.css (NexusHome hero + boutons)
 - [x] Adapter couleurs de texte pour lisibilité sur fond atténué
-- [x] Remplacer "HUB VOYAGE" par "HUB_RESA" partout (HubVoyage.tsx, App.tsx, RegisterCompany.tsx, CsnDashboard.tsx, TransportDashboard.tsx)
-- [x] Ajouter service client : +225 0504921096 / 0566479618 et clients@hub_resa.com dans footer/header
+- [x] Remplacer "NEXUS" par "NEXUS" partout (NexusHome.tsx, App.tsx, RegisterCompany.tsx, CsnDashboard.tsx, TransportDashboard.tsx)
+- [x] Ajouter service client : +225 0504921096 / 0566479618 et clients@nexus.com dans footer/header
 - [x] Schéma BDD : table online_orders (id, companyId, items JSON, customerName, phone, address, orderType, totalAmount, prepTime, status, createdAt)
 - [x] Migration BDD
 - [x] Route tRPC menu.createOnlineOrder (public)
@@ -227,7 +227,7 @@
 - [x] TypeScript 0 erreur + tests + checkpoint
 
 ## Améliorations UX v2.1 — Notifications, Filtres, PDF, Couleurs
-- [x] Intensité orange +35% dans HubVoyage.tsx et index.css
+- [x] Intensité orange +35% dans NexusHome.tsx et index.css
 - [x] Couleur expédition (bleu) remplacée par bleu doux (sky-500/600)
 - [x] Filtres par statut dans l'onglet Commandes en ligne du dashboard restaurant
 - [x] Barre de recherche par référence ou nom client dans l'onglet Commandes en ligne
@@ -242,7 +242,7 @@
 - [x] Backend : table delivery_zones (companyId, name, extraMinutes, active)
 - [x] Backend : routes tRPC menu.listDeliveryZones, menu.upsertDeliveryZone, menu.deleteDeliveryZone
 - [x] Dashboard restaurant : section "Zones de livraison" dans l'onglet Finance
-- [x] Header HubVoyage : numéro service client visible (+225 0504921096 / 0566479618)
+- [x] Header NexusHome : numéro service client visible (+225 0504921096 / 0566479618)
 - [x] Retirer le lien "Dashboard" du header (caché)
 - [x] Footer complet : logo, description, services, liens, contact, réseaux sociaux
 - [x] Lien dashboard caché dans le "2" de "©2026" dans le footer
@@ -258,7 +258,7 @@
 
 ## Améliorations UX v2.4 — Animations, QR Code, Répertoire, Avis, CSN, Paiement mobile
 - [x] Installer dépendances : qrcode.react, framer-motion
-- [x] Animations HubVoyage : hero fade-in, cartes slide-in, onglets transition (framer-motion)
+- [x] Animations NexusHome : hero fade-in, cartes slide-in, onglets transition (framer-motion)
 - [x] Schéma DB : table company_reviews (companyId, rating, comment, authorName, activityType, createdAt)
 - [x] Schéma DB : table company_gallery (companyId, imageUrl, caption, displayOrder, createdAt)
 - [x] Migration DB
@@ -266,13 +266,13 @@
 - [x] Dashboard : onglet QR Code avec génération QR + lien copiable par compagnie
 - [x] Composant GalleryManager dans le dashboard (ajouter/supprimer images)
 - [x] Page répertoire public /directory : liste compagnies par type avec logos, notes, galerie
-- [x] Lien Répertoire dans le footer de HubVoyage
+- [x] Lien Répertoire dans le footer de NexusHome
 - [x] Route /directory dans App.tsx
 - [x] Stats CSN enrichies : commandes restaurant du jour + CA consolidé
 - [x] Paiement mobile Wave/Orange Money/MTN/Moov : composant MobilePayment dans checkout restaurant
 - [x] TypeScript 0 erreur + 19 tests passants + checkpoint
 
-## Système de Crédits HUB_RESA v2.5
+## Système de Crédits NEXUS v2.5
 - [x] Schéma DB : table company_credits (companyId, balance, currency, countryCode, createdAt, updatedAt)
 - [x] Schéma DB : table credit_transactions (companyId, type, amount, description, refType, refId, createdAt)
 - [x] Migration DB
@@ -280,8 +280,8 @@
 - [x] Routes tRPC : credits.getBalance, credits.buyCredits, credits.getHistory
 - [x] Débit automatique 1 point : billet vendu, réservation confirmée, commande restaurant, colis enregistré
 - [x] Conversion 1 point = 125 FCFA en devise locale par pays
-- [x] Page FACTURATION DES SERVICES HUB_RESA : solde, historique, achat de crédits (packs)
-- [x] Bouton "CRÉDITS HUB_RESA" dans le menu onglets du dashboard (TransportDashboard)
+- [x] Page FACTURATION DES SERVICES NEXUS : solde, historique, achat de crédits (packs)
+- [x] Bouton "CRÉDITS NEXUS" dans le menu onglets du dashboard (TransportDashboard)
 - [x] Alerte solde faible (< 10 points) dans le dashboard
 - [x] Extension pays africains subsahariens : 48 pays francophones + anglophones avec villes
 - [x] TypeScript 0 erreur + 19 tests passants + checkpoint
@@ -289,15 +289,15 @@
 ## Améliorations v2.6 — Alerte solde, CSN crédits, Facture PDF
 - [x] Alerte solde critique (< 5 points) : notifyOwner dans debitCredit côté serveur
 - [x] Backend : helper getAllCreditsStats + route tRPC transport.csn.allCredits (enrichi)
-- [x] Dashboard CSN : onglet "Crédits HUB_RESA" avec 4 KPIs + tableau compagnies (solde, achetés, dépensés, CA, dernière activité)
+- [x] Dashboard CSN : onglet "Crédits NEXUS" avec 4 KPIs + tableau compagnies (solde, achetés, dépensés, CA, dernière activité)
 - [x] Facture HTML imprimable : bouton "Facture" sur chaque achat dans l'historique CreditsHub
-- [x] Reçu : référence, date, points, montant en devise locale, contact HUB_RESA
+- [x] Reçu : référence, date, points, montant en devise locale, contact NEXUS
 - [x] TypeScript 0 erreur + 19 tests passants + checkpoint
 
 ## Améliorations v2.7 + Audit Complet
 - [x] Avis clients dans le répertoire (/directory) : formulaire notation 1-5 étoiles + commentaire sur fiche compagnie
 - [x] Rapport journalier automatique CSN : notifyOwner avec résumé ventes/commandes/crédits
-- [x] Page légale /legal : conditions d'utilisation, politique crédits, mentions légales HUB_RESA
+- [x] Page légale /legal : conditions d'utilisation, politique crédits, mentions légales NEXUS
 - [x] Lien /legal dans le footer
 - [x] AUDIT : TypeScript 0 erreur
 - [x] AUDIT : 19 tests Vitest passants
@@ -347,13 +347,13 @@
 - [x] Onglet "Équipe" dans le dashboard compagnie (TransportDashboard)
 - [x] Application mobile PWA : manifest.json avec icônes et shortcuts
 - [x] Service worker sw.js (cache-first assets, offline fallback page)
-- [x] 8 icônes PNG générées (72px → 512px) avec design HUB_RESA
+- [x] 8 icônes PNG générées (72px → 512px) avec design NEXUS
 - [x] Balises Apple/Android/OG dans index.html
 - [x] Enregistrement service worker dans main.tsx
 - [x] Table internal_messages dans le schéma DB
 - [x] Backend messagerie : sendMessageAsCompany, sendMessageAsCsn, listMessages, markRead, unreadCount
 - [x] Composant CompanyInbox : fil de discussion côté compagnie avec rafraîchissement auto
-- [x] Composant CsnMessaging : inbox multi-compagnies côté admin HUB_RESA
+- [x] Composant CsnMessaging : inbox multi-compagnies côté admin NEXUS
 - [x] Onglet "Messages CSN" dans le dashboard compagnie
 - [x] Onglet "Messagerie" dans le dashboard CSN
 - [x] Tests Vitest : 17 tests (PIN, rôles, messages, PWA manifest) — 36 tests total passent
@@ -383,7 +383,7 @@
 
 ## v3.3 — Lien footer "de" + Admins
 
-- [x] Footer HubVoyage : rendre le mot "de" de "Afrique de l'Ouest" cliquable vers le dashboard
+- [x] Footer NexusHome : rendre le mot "de" de "Afrique de l'Ouest" cliquable vers le dashboard
 - [x] SQL : UPDATE users SET role='admin' WHERE email='keuming@yahoo.fr'
 - [x] SQL : UPDATE users SET role='admin' WHERE email='anicettefd.wayou@gmail.com'
 
@@ -441,7 +441,7 @@
 - [x] Dashboard CSN : onglet "Administrateurs" (promotion/rétrogradation utilisateurs OAuth)
 - [x] Dashboard CSN : journal des connexions (email, date, heure)
 - [x] SEO : hook usePageSEO (title + meta description dynamiques)
-- [x] SEO : balises sur HubVoyage (accueil), Bibliotheque, BibliothequeCompagnie, Directory
+- [x] SEO : balises sur NexusHome (accueil), Bibliotheque, BibliothequeCompagnie, Directory
 - [x] Rapport journalier : tâche cron 20h00 WAT → notification propriétaire
 - [x] Rapport journalier : résumé ventes, nouvelles compagnies, messages non traités
 - [x] Vérifier activation carrousel galerie sur la page d'accueil
@@ -452,7 +452,7 @@
 - [x] Modifier photos.recentPublic pour inclure les compagnies "pending" en plus des "active"
 - [x] Ajouter procédure photos.companiesForCarousel (retourne compagnies active+pending avec logo/description)
 - [x] Réécrire CarrouselGalerie.tsx : fallback sur cartes compagnies si aucune photo disponible
-- [x] Carrousel affiche maintenant les logos/initiales des compagnies avec fond sombre et badge "Partenaire HUB_RESA"
+- [x] Carrousel affiche maintenant les logos/initiales des compagnies avec fond sombre et badge "Partenaire NEXUS"
 - [x] Skeleton de chargement animé pendant la requête
 - [x] 3 nouveaux tests Vitest (photos.recentPublic, photos.companiesForCarousel, photos.getBannerPhotos)
 - [x] 39 tests passants, 0 erreur TypeScript
@@ -484,7 +484,7 @@
 
 ## v4.6 — Demandes crédit compagnie + CinetPay + Historique transactions
 
-- [ ] Formulaire "Demander des crédits" dans le dashboard compagnie (onglet Crédits HUB_RESA)
+- [ ] Formulaire "Demander des crédits" dans le dashboard compagnie (onglet Crédits NEXUS)
 - [ ] Sélecteur opérateur Mobile Money (Wave, Orange Money, MTN, Moov) + champ numéro de téléphone
 - [ ] Affichage des demandes en cours dans le dashboard compagnie (statut, montant, date)
 - [ ] Intégration CinetPay API : initiation de paiement + webhook de confirmation automatique
@@ -550,17 +550,17 @@
 - [x] CsnChatbotPanel : badge "Agent humain actif" (bleu) vs "IA active" (vert)
 - [x] CsnChatbotPanel : messages CSN distingués (fond bleu, icône casque)
 - [x] CsnChatbotPanel : indicateur de mode dans la liste des sessions (icône UserCheck bleue)
-- [x] Widget client : bandeau "Un agent HUB_RESA a pris le relais" quand hasCsnMessage
-- [x] Widget client : header bascule vers "Agent HUB_RESA" / icône casque quand agent actif
+- [x] Widget client : bandeau "Un agent NEXUS a pris le relais" quand hasCsnMessage
+- [x] Widget client : header bascule vers "Agent NEXUS" / icône casque quand agent actif
 - [x] 39 tests passants, 0 erreur TypeScript
 - [x] Checkpoint et livraison
 
 ## v5.0 — Traduction multilingue FR/EN/ES (29/03/2026)
-- [x] Analyser les pages publiques (HubVoyage, ChatbotWidget, header, RegisterCompany, PublicHotel)
+- [x] Analyser les pages publiques (NexusHome, ChatbotWidget, header, RegisterCompany, PublicHotel)
 - [x] Créer client/src/lib/i18n.tsx : contexte LanguageContext + hook useI18n
 - [x] Créer client/src/lib/translations.ts : dictionnaire complet FR/EN/ES (nav, activity, hero, carousel, search, booking, register, chatbot, footer, recruit)
 - [x] Sélecteur de langue dans le header (drapeaux FR/EN/ES, persistance localStorage)
-- [x] Appliquer traductions sur HubVoyage.tsx (hero, recherche, onglets, résultats, footer, recrutement)
+- [x] Appliquer traductions sur NexusHome.tsx (hero, recherche, onglets, résultats, footer, recrutement)
 - [x] Appliquer traductions sur ChatbotWidget.tsx (messages, boutons, placeholders)
 - [x] Appliquer traductions sur RegisterCompany.tsx (formulaire, labels, boutons, statuts)
 - [x] Appliquer traductions sur CarrouselGalerie.tsx
@@ -578,7 +578,7 @@
 - [ ] CsnChatbotPanel : champ de saisie admin pour envoyer des messages directs
 - [ ] CsnChatbotPanel : badge "Agent humain actif" quand admin intervient
 - [ ] CsnChatbotPanel : historique des interventions admin (timestamps, messages)
-- [ ] ChatbotWidget : notification "Un agent HUB_RESA a pris le relais"
+- [ ] ChatbotWidget : notification "Un agent NEXUS a pris le relais"
 - [ ] ChatbotWidget : badge "Agent humain" dans le header de la conversation
 - [ ] ChatbotWidget : messages admin distingués visuellement (fond bleu, icône casque)
 - [ ] Tests Vitest pour les nouvelles procédures tRPC
@@ -665,18 +665,18 @@
 - [x] Affichage solde en temps réel : widget dans dashboard compagnie (CreditDashboard.tsx - vue compagnie)
 - [ ] Webhook Stripe : endpoint pour confirmer paiement et ajouter crédits
 - [ ] Webhook Hub2 : endpoint pour confirmer paiement et ajouter crédits
-- [x] Modal Support HUB_RESA : interface de chat avec le client depuis le chatbot (SupportCSNModal.tsx)
+- [x] Modal Support NEXUS : interface de chat avec le client depuis le chatbot (SupportCSNModal.tsx)
 - [ ] Tests Vitest pour les procédures de gestion financière
 - [ ] Checkpoint v5.8 : Module de gestion financière implémenté
 
 
-## Intégration Support HUB_RESA au Chatbot (v5.9+)
+## Intégration Support NEXUS au Chatbot (v5.9+)
 - [x] Ajouter le bouton "Parler à un humain" dans ChatbotWidget.tsx
 - [x] Intégrer SupportCSNModal dans ChatbotWidget.tsx
 - [x] Afficher le bouton seulement quand une session est active
 - [ ] Ajouter une notification quand l'admin prend le relais
 - [ ] Tests Vitest pour le bouton et l'intégration
-- [ ] Checkpoint v5.9 : Support HUB_RESA intégré au chatbot
+- [ ] Checkpoint v5.9 : Support NEXUS intégré au chatbot
 
 
 ## Intégration Module Financier au Dashboard CSN (v5.10+)
@@ -692,7 +692,7 @@
 ## Dashboard Compagnie - Gestion des Crédits (v5.11+)
 - [x] Créer la page CompanyCreditsPage.tsx pour afficher le solde et l'historique
 - [x] Créer le composant CompanyCreditsWidget pour afficher le solde principal (intégré dans CompanyCreditsPage)
-- [x] Ajouter le lien "Mes Crédits" dans la navigation du dashboard compagnie (onglet CRÉDITS HUB_RESA)
+- [x] Ajouter le lien "Mes Crédits" dans la navigation du dashboard compagnie (onglet CRÉDITS NEXUS)
 - [x] Afficher l'historique des achats avec statuts et dates
 - [ ] Ajouter un graphique de tendance des crédits (optionnel)
 - [ ] Intégrer le CreditDashboard en mode compagnie (isAdmin=false)
@@ -722,15 +722,15 @@
 
 ## Tests et Améliorations - Prise de Relais Admin (v5.15+)
 - [ ] Tester la prise de relais admin dans le navigateur
-- [x] Ajouter un indicateur visuel "Support HUB_RESA" dans le chatbot visiteur (badge "Agent en ligne")
+- [x] Ajouter un indicateur visuel "Support NEXUS" dans le chatbot visiteur (badge "Agent en ligne")
 - [x] Implémenter les notifications toast pour l'admin (messages améliorés avec descriptions)
 - [x] Implémenter les notifications toast pour le visiteur (via WebSocket onAdminIntervention)
 - [ ] Vérifier que les messages s'affichent en temps réel
 - [ ] Checkpoint v5.15 : Prise de relais admin avec indicateurs et notifications
 
 
-## Mise à Jour Dashboard Compagnie - Crédits HUB_RESA (v5.16+)
-- [x] Ajouter la section "Crédits HUB_RESA" au menu latéral du dashboard compagnie (déjà présente)
+## Mise à Jour Dashboard Compagnie - Crédits NEXUS (v5.16+)
+- [x] Ajouter la section "Crédits NEXUS" au menu latéral du dashboard compagnie (déjà présente)
 - [x] Créer une carte de solde de crédits en évidence (CompanyCreditsCard.tsx créé)
 - [x] Ajouter un graphique d'historique des crédits (7 derniers jours avec LineChart)
 - [x] Ajouter un bouton "Acheter des crédits" avec modal de sélection
@@ -738,7 +738,7 @@
 - [x] Afficher l'historique des achats de crédits avec statuts (tableau avec 5 derniers achats)
 - [x] Intégrer les données de crédits au dashboard existant (TabsContent crédits mis à jour)
 - [ ] Tests et vérification de l'intégration
-- [ ] Checkpoint v5.16 : Dashboard compagnie mis à jour avec crédits HUB_RESA
+- [ ] Checkpoint v5.16 : Dashboard compagnie mis à jour avec crédits NEXUS
 
 
 ## Correction - Intervention Admin et Menu Latéral Compagnie (v5.17+)
@@ -798,7 +798,7 @@
 
 ## Carrousel Transport/Restauration/Expédition (v5.22+)
 - [x] Créer le composant ActivityCarousel identique au carrousel de recrutement
-- [x] Intégrer le carrousel dans la page de réservation (HubVoyage.tsx)
+- [x] Intégrer le carrousel dans la page de réservation (NexusHome.tsx)
 - [x] Ajouter les traductions pour les textes du carrousel
 - [x] Tester le carrousel sur mobile et desktop
 - [x] Checkpoint v5.22 : Carrousel Transport/Restauration/Expédition ajouté
@@ -877,7 +877,7 @@
 - [ ] Ajouter la sécurité par code PIN pour l'accès à la caisse
 - [ ] Tester le flux complet d'encaissement
 
-## Bouton ENCAISSER + Génération Tickets + Départs HubVoyage
+## Bouton ENCAISSER + Génération Tickets + Départs NexusHome
 - [x] Composant CashierEncaisserModule.tsx : bouton ENCAISSER prominent dans FinanceModule
 - [x] Sélection type de transaction (billet, expédition, service, autre)
 - [x] Sélection moyen de paiement (espèces, carte, mobile money, chèque, virement)
@@ -885,7 +885,7 @@
 - [x] Composant TicketPrintModal.tsx : modal d'impression de billet style TGV
 - [x] QR code intégré dans le billet (qrcode.react installé)
 - [x] Bouton "Imprimer" dans la liste des billets (TransportDashboard)
-- [x] Section "Prochains départs disponibles" dans HubVoyage (TodayDepartures)
+- [x] Section "Prochains départs disponibles" dans NexusHome (TodayDepartures)
 - [x] Grille de cartes départs avec logo compagnie, trajet, prix, places disponibles
 - [x] Badge "Aujourd'hui" sur les départs du jour
 - [x] Rafraîchissement automatique toutes les 2 minutes
@@ -901,7 +901,7 @@
 - [x] Mettre à jour ActivityCarousel.tsx (slides Hôtellerie et Boutiques avec partenaires)
 - [x] Mettre à jour CompanyQRCode.tsx (labels hotel/boutique)
 - [x] Mettre à jour QuoteRequestModal.tsx (enum hotel/boutique)
-- [x] Mettre à jour HubVoyage.tsx (onglets + HotelPanel + BoutiquePanel)
+- [x] Mettre à jour NexusHome.tsx (onglets + HotelPanel + BoutiquePanel)
 - [x] 71 tests Vitest passants
 - [x] Checkpoint sauvegardé
 
@@ -915,7 +915,7 @@
 ## RegisterCompany : formulaire toujours visible + bouton SE CONNECTER
 - [ ] Supprimer la redirection automatique vers le dashboard dans RegisterCompany.tsx
 - [ ] Ajouter un bouton "SE CONNECTER" pour les utilisateurs qui ont déjà un compte
-- [ ] Renommer "companiesSpace" en "Espace Partenaires" dans la navbar HubVoyage
+- [ ] Renommer "companiesSpace" en "Espace Partenaires" dans la navbar NexusHome
 
 ## Corrections urgentes (01/04/2026)
 - [x] Alias /transport/register → /register-company dans App.tsx
@@ -923,7 +923,7 @@
 - [x] Corriger erreur WebSocket ChatbotWidget (ne pas connecter si sessionToken vide)
 
 ## Corrections et nouvelles activités (01/04/2026)
-- [x] Correction nom "CSN" → "HUB_RESA" dans tout le projet
+- [x] Correction nom "CSN" → "NEXUS" dans tout le projet
 - [x] Ajout type "agence_voyage" dans le schéma DB et le routeur
 - [x] Ajout "Agence Voyage" dans le formulaire RegisterCompany (6 types)
 - [x] Variables isHotel, isBoutique, isAgenceVoyage dans TransportDashboard
@@ -960,13 +960,13 @@
 
 - [x] Ajouter upload CV + lettre de motivation (S3) dans le formulaire existant
 - [x] Ajouter champs enrichis : expérience commerciale, secteur ciblé, motivation
-- [x] Configurer notification email vers recrutement@hubresa.cloud (notifyOwner)
+- [x] Configurer notification email vers recrutement@nexus.africa (notifyOwner)
 - [x] Créer page dédiée /careers/apply
 - [x] Lier le bouton "Postuler maintenant" du carousel à /careers/apply
 
 ## Indexation SEO
 
-- [x] Corriger BASE_URL dans useSEO.ts (hub-resa.manus.space → www.hubresa.cloud)
+- [x] Corriger BASE_URL dans useSEO.ts (nexus.manus.space → www.nexus.africa)
 - [x] Créer robots.txt avec sitemap URL
 - [x] Créer route serveur /sitemap.xml dynamique (toutes les pages publiques)
 - [x] Ajouter données structurées Schema.org (Organization + WebSite + Service) dans index.html
@@ -1014,13 +1014,13 @@
 
 ## Lien Espace BDev dans le header
 
-- [x] Ajouter boutons "Espace BDev" (Se connecter) et "Devenir BDev" (Créer compte) dans le carousel Recrutement en cours de HubVoyage
+- [x] Ajouter boutons "Espace BDev" (Se connecter) et "Devenir BDev" (Créer compte) dans le carousel Recrutement en cours de NexusHome
 - [x] Bouton "Espace BDev" → /bdev/login, bouton "Devenir BDev" → /bdev/register
 - [x] Design cohrent : fond blanc/10, bordure blanche, responsive mobile
 
 ## Document Conditions d'Utilisation et Rémunération BDev
 
-- [x] Créer document Markdown complet : CONDITIONS_UTILISATION_HUBRESA.md (220 lignes, 7 sections)
+- [x] Créer document Markdown complet : CONDITIONS_UTILISATION_NEXUS.md (220 lignes, 7 sections)
 - [x] Intégrer les informations essentielles dans le SYSTEM_PROMPT du chatbot
 - [x] Chatbot enrichi avec tarifs, frais, commissions, processus d'inscription
 - [x] 0 erreur TypeScript, 71 tests passants
@@ -1030,7 +1030,7 @@
 
 ## Chatbot PWA — Problème d'accessibilité (RÉSOLU)
 
-- [x] Diagnostiquer : ChatbotWidget était monté uniquement dans HubVoyage, pas visible sur autres pages
+- [x] Diagnostiquer : ChatbotWidget était monté uniquement dans NexusHome, pas visible sur autres pages
 - [x] Corriger : ChatbotWidget monté globalement dans App.tsx, visible sur toutes les pages
 - [x] Corriger le Service Worker (sw.js) : exclure les requetes WebSocket de l'interception
 - [x] Corriger le hook useWebSocket : ne pas tenter de connexion si sessionToken est vide
@@ -1093,7 +1093,7 @@
 - [x] Creer CompanyDashboard.tsx wrapper pour selectionner le bon dashboard selon activityType
 - [x] Ajouter le champ activityType a getAllCompanies() dans transport-db.ts
 - [x] Tester la selection automatique selon le type d'activite
-- [x] Corriger les caracteres speciaux dans HubVoyage.tsx
+- [x] Corriger les caracteres speciaux dans NexusHome.tsx
 
 
 ## Contrat Business Développeur — Recrutement (RESOLU)
@@ -1130,7 +1130,7 @@
 - [x] Bouton Télécharger mon Badge Personnalisé pour télécharger en PNG
 - [x] Design : dégradé orange gauche, noir droit, ligne diagonale orange
 - [x] Badge circulaire BD en haut à gauche
-- [x] Texte HUB_RESA BUSINESS DEVELOPER en blanc
+- [x] Texte NEXUS BUSINESS DEVELOPER en blanc
 - [x] ID BDev affiché en gris sur le badge
 - [x] 71 tests passants
 
@@ -1162,7 +1162,7 @@
 
 ## Correction Carrousel de Compagnies — RESOLU
 - [x] Identifier le problème : carrousel en bas au lieu d'en haut
-- [x] Analyser la structure de HubVoyage.tsx et PublicHome.tsx
+- [x] Analyser la structure de NexusHome.tsx et PublicHome.tsx
 - [x] Corriger la procédure companiesForCarousel pour retourner TOUTES les compagnies
 - [x] Modifier CarrouselGalerie pour afficher les compagnies EN PRIORITÉ
 - [x] Placer le carrousel EN HAUT de la page (avant ActivityCarousel)
@@ -1229,8 +1229,8 @@
 ## Bug: Ajout restaurant remplace un restaurant existant
 - [x] Investiguer et corriger le bug où l'ajout d'un nouveau restaurant écrase/remplace un restaurant existant
 
-## Retirer badge PARTENAIRE HUB_RESA des cartes galerie
-- [x] Supprimer le texte "PARTENAIRE HUB_RESA" en orange des cartes avec image et sans image dans CarrouselGalerie
+## Retirer badge PARTENAIRE NEXUS des cartes galerie
+- [x] Supprimer le texte "PARTENAIRE NEXUS" en orange des cartes avec image et sans image dans CarrouselGalerie
 
 ## Changer la police de la galerie
 - [x] Changer la police d'écriture des textes de la galerie pour une police plus moderne et adaptée (Poppins)
@@ -1292,7 +1292,7 @@
 - [x] Ajouter bouton "Commande de Gaz" à ActivityCarousel
 - [x] Importer icône Fuel de lucide-react
 - [x] Ajouter élément gaz avec stats (B6 & B12, livraison rapide, tarifs compétitifs)
-- [x] Réorganiser HubVoyage: ActivityCarousel juste après le menu
+- [x] Réorganiser NexusHome: ActivityCarousel juste après le menu
 - [x] Déplacer galerie après ActivityCarousel
 - [x] Bannière publicitaire reste sous la galerie
 - [x] 0 erreur TypeScript, build stable
@@ -1306,7 +1306,7 @@
 - [x] Créer page d'accueil gaz moderne avec localisation géographique
 - [x] Implémenter galerie de fournisseurs proches (1km rayon)
 - [x] Créer parcours de commande fluide avec panier
-- [x] Ajouter lien gaz sur page d'accueil principale (hubresa.cloud)
+- [x] Ajouter lien gaz sur page d'accueil principale (nexus.africa)
 - [x] Affichage des compagnies (fournisseurs) avec bouteilles disponibles
 - [x] Intégration géolocalisation client
 - [ ] Sélection mode de paiement dans le parcours
@@ -1437,8 +1437,8 @@
 - [x] Bouton "Confirmer la Commande" : fonctionne correctement et déclenche la mutation
 - [x] Modal de succès : affiche le message personnalisé avec numéro de commande et montant total
 - [ ] Mettre à jour les prix des bouteilles :
-  - B6 : 2500 FCFA (2200 fournisseur + 200 livreur + 100 HUB_RESA)
-  - B12 : 5800 FCFA (5500 fournisseur + 200 livreur + 100 HUB_RESA)
+  - B6 : 2500 FCFA (2200 fournisseur + 200 livreur + 100 NEXUS)
+  - B12 : 5800 FCFA (5500 fournisseur + 200 livreur + 100 NEXUS)
   - B25 : à définir
 
 
@@ -1458,7 +1458,7 @@
 - [ ] Tester la création de catégories
 - [ ] Tester la création de plats
 - [ ] Tester la création de zones de livraison
-- [ ] Vérifier l'affichage du menu dans HubVoyage après création
+- [ ] Vérifier l'affichage du menu dans NexusHome après création
 
 ### Phase 3 : Correction des dysfonctionnements Hôtel
 - [ ] Corriger le bouton "Réserver une chambre" (non fonctionnel)

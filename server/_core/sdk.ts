@@ -100,7 +100,7 @@ class SDKServer {
   }
 
   async createSessionToken(openId: string, options: { expiresInMs?: number; name?: string } = {}): Promise<string> {
-    return this.signSession({ openId, appId: ENV.appId || "hub_resa", name: options.name || "" }, options);
+    return this.signSession({ openId, appId: ENV.appId || "nexus", name: options.name || "" }, options);
   }
 
   async signSession(payload: SessionPayload, options: { expiresInMs?: number } = {}): Promise<string> {

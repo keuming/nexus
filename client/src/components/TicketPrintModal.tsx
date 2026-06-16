@@ -189,7 +189,7 @@ function TicketCard({
           <Bus style={{ color: "white", width: "24px", height: "24px" }} />
           <div>
             <p style={{ color: "white", fontWeight: "bold", fontSize: "16px", margin: 0 }}>
-              HUB RESA
+              NEXUS
             </p>
             <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "11px", margin: 0 }}>
               Billet de voyage officiel

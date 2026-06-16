@@ -19,7 +19,7 @@ function createAdminContext(): TrpcContext {
     user: {
       id: 1,
       openId: "admin-test",
-      email: "admin@hubresa.com",
+      email: "admin@nexus.africa",
       name: "Admin Test",
       loginMethod: "manus",
       role: "admin",

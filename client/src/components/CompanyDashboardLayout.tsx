@@ -58,7 +58,7 @@ export default function CompanyDashboardLayout({
     { label: "Finance", icon: <BarChart3 className="h-5 w-5" />, value: "finance" },
     { label: "QR Code", icon: <BookOpen className="h-5 w-5" />, value: "qrcode" },
     {
-      label: "Crédits HUB_RESA",
+      label: "Crédits NEXUS",
       icon: <Coins className="h-5 w-5" />,
       value: "credits",
       color: "text-[#E8751A]",

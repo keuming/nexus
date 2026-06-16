@@ -341,7 +341,7 @@ export type Payment = typeof payments.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// --- MODULE TRANSPORT MULTI-COMPAGNIES (HUB VOYAGE) ---------------------
+// --- MODULE TRANSPORT MULTI-COMPAGNIES (NEXUS) ---------------------
 // ═══════════════════════════════════════════════════════════════════════════
 
 // --- TRANSPORT COMPANIES -----------------------------------------------------
@@ -365,7 +365,7 @@ export const transportCompanies = pgTable("transport_companies", {
   activityType: text("activityType").default("transport").notNull(),
   status: text("status").default("pending").notNull(),
   validatedAt: timestamp("validatedAt"),
-  validatedBy: integer("validatedBy"), // HUB_RESA admin userId
+  validatedBy: integer("validatedBy"), // NEXUS admin userId
   rejectionReason: text("rejectionReason"),
   bdId: varchar("bdId", { length: 7 }), // ID du Business Developer qui a recruté cette compagnie
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -592,7 +592,7 @@ export const transportCharges = pgTable("transport_charges", {
 });
 export type TransportCharge = typeof transportCharges.$inferSelect;
 
-// --- TRANSPORT COMPANY BILLING (Facturation HUB_RESA) -----------------------------
+// --- TRANSPORT COMPANY BILLING (Facturation NEXUS) -----------------------------
 export const transportCompanyBilling = pgTable("transport_company_billing", {
   id: serial("id").primaryKey(),
   companyId: integer("companyId").notNull(),
@@ -715,7 +715,7 @@ export const companyGallery = pgTable("company_gallery", {
 export type CompanyGalleryItem = typeof companyGallery.$inferSelect;
 export type InsertCompanyGalleryItem = typeof companyGallery.$inferInsert;
 
-// --- COMPANY CREDITS (Système de facturation HUB_RESA par points) -------------
+// --- COMPANY CREDITS (Système de facturation NEXUS par points) -------------
 export const companyCredits = pgTable("company_credits", {
   id: serial("id").primaryKey(),
   companyId: integer("companyId").notNull().unique(),
@@ -767,7 +767,7 @@ export const companyMembers = pgTable("company_members", {
 export type CompanyMember = typeof companyMembers.$inferSelect;
 export type InsertCompanyMember = typeof companyMembers.$inferInsert;
 
-// --- INTERNAL MESSAGES (Messagerie interne compagnie ↔ HUB_RESA) -------------------
+// --- INTERNAL MESSAGES (Messagerie interne compagnie ↔ NEXUS) -------------------
 export const internalMessages = pgTable("internal_messages", {
   id: serial("id").primaryKey(),
   companyId: integer("companyId").notNull(),
@@ -822,14 +822,14 @@ export const commercialCandidates = pgTable("commercial_candidates", {
 export type CommercialCandidate = typeof commercialCandidates.$inferSelect;
 export type InsertCommercialCandidate = typeof commercialCandidates.$inferInsert;
 
-// --- CHATBOT SESSIONS (Chatbot IA public + réponses HUB_RESA) -----------------------
+// --- CHATBOT SESSIONS (Chatbot IA public + réponses NEXUS) -----------------------
 export const chatbotSessions = pgTable("chatbot_sessions", {
   id: serial("id").primaryKey(),
   sessionToken: varchar("sessionToken", { length: 64 }).notNull().unique(),
   visitorName: varchar("visitorName", { length: 100 }).notNull().default("Visiteur"),
   visitorEmail: varchar("visitorEmail", { length: 320 }),
   status: text("status").notNull().default("open"),
-  csnTookOver: boolean("csnTookOver").notNull().default(false), // true si un agent HUB_RESA a répondu
+  csnTookOver: boolean("csnTookOver").notNull().default(false), // true si un agent NEXUS a répondu
   humanTakeoverActive: boolean("humanTakeoverActive").notNull().default(false), // true = IA suspendue, agent humain actif
   humanTakeoverAt: timestamp("humanTakeoverAt"), // horodatage de la prise de relais
   adminInterventionActive: boolean("adminInterventionActive").notNull().default(false), // true = admin intervient
@@ -847,7 +847,7 @@ export const chatbotMessages = pgTable("chatbot_messages", {
   sessionId: integer("sessionId").notNull(),
   role: text("role").notNull(),
   content: text("content").notNull(),
-  isRead: boolean("isRead").notNull().default(false), // lu par l'agent HUB_RESA
+  isRead: boolean("isRead").notNull().default(false), // lu par l'agent NEXUS
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ChatbotMessage = typeof chatbotMessages.$inferSelect;
@@ -894,8 +894,8 @@ export const creditRequests = pgTable("credit_requests", {
   rejectionReason: varchar("rejectionReason", { length: 500 }),
   paymentConfirmedAt: timestamp("paymentConfirmedAt"),
   creditedAt: timestamp("creditedAt"),
-  validatedBy: varchar("validatedBy", { length: 100 }), // email de l'admin HUB_RESA qui a validé
-  notes: varchar("notes", { length: 500 }), // notes internes HUB_RESA
+  validatedBy: varchar("validatedBy", { length: 100 }), // email de l'admin NEXUS qui a validé
+  notes: varchar("notes", { length: 500 }), // notes internes NEXUS
   // CinetPay integration
   cinetpayTransactionId: varchar("cinetpayTransactionId", { length: 100 }), // ID unique CinetPay
   cinetpayPaymentUrl: varchar("cinetpayPaymentUrl", { length: 500 }), // URL de paiement CinetPay
@@ -937,7 +937,7 @@ export const quoteRequests = pgTable("quote_requests", {
   activityType: text("activityType").notNull(),
   message: text("message").notNull(),
   status: text("status").notNull().default("new"),
-  notes: text("notes"), // notes internes HUB_RESA
+  notes: text("notes"), // notes internes NEXUS
   contactedAt: timestamp("contactedAt"),
   closedAt: timestamp("closedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1049,7 +1049,7 @@ export const cashierTransactions = pgTable("cashier_transactions", {
 export type CashierTransaction = typeof cashierTransactions.$inferSelect;
 export type InsertCashierTransaction = typeof cashierTransactions.$inferInsert;
 
-// --- BUSINESS DEVELOPERS (Commerciaux terrain HUB_RESA) ----------------------
+// --- BUSINESS DEVELOPERS (Commerciaux terrain NEXUS) ----------------------
 export const businessDevelopers = pgTable("business_developers", {
   id: serial("id").primaryKey(),
   bdId: varchar("bdId", { length: 7 }).notNull().unique(), // ID unique 7 chars ex: BD12345

@@ -92,7 +92,7 @@ export default function BDevRegister() {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-white mb-2">Compte créé avec succès !</h2>
-              <p className="text-slate-400 text-sm">Votre demande est en attente de validation par l'administration HUB_RESA.</p>
+              <p className="text-slate-400 text-sm">Votre demande est en attente de validation par l'administration NEXUS.</p>
             </div>
             <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-6">
               <p className="text-slate-400 text-xs mb-2 uppercase tracking-wider">Votre identifiant BDev</p>
@@ -128,7 +128,7 @@ export default function BDevRegister() {
               <Briefcase className="w-6 h-6 text-white" />
             </div>
             <div className="text-left">
-              <p className="text-orange-400 text-xs font-semibold uppercase tracking-wider">HUB_RESA</p>
+              <p className="text-orange-400 text-xs font-semibold uppercase tracking-wider">NEXUS</p>
               <h1 className="text-white text-xl font-bold">Espace Business Développeur</h1>
             </div>
           </div>

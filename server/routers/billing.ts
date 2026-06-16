@@ -1,5 +1,5 @@
 /**
- * billing.ts — Gestion financière et encaissement des crédits HUB_RESA
+ * billing.ts — Gestion financière et encaissement des crédits NEXUS
  *
  * Fonctionnalités :
  *  - Créer une demande d'achat de crédits (compagnie sélectionnée, montant)
@@ -7,7 +7,7 @@
  *  - Confirmer le paiement et ajouter les crédits au compte
  *  - Consulter le solde de crédits en temps réel
  *  - Historique des transactions de crédits
- *  - Dashboard HUB_RESA : affichage du solde encaissé
+ *  - Dashboard NEXUS : affichage du solde encaissé
  */
 
 import { z } from "zod";
@@ -288,7 +288,7 @@ export const billingRouter = {
       }));
     }),
 
-  // ── ADMIN : toutes les transactions de crédits (pour le dashboard HUB_RESA) ────────
+  // ── ADMIN : toutes les transactions de crédits (pour le dashboard NEXUS) ────────
   getAllCreditTransactions: protectedProcedure
     .input(
       z.object({
@@ -353,7 +353,7 @@ export const billingRouter = {
     }));
   }),
 
-  // ── ADMIN : statistiques de crédits (pour le dashboard HUB_RESA) ───────────────────
+  // ── ADMIN : statistiques de crédits (pour le dashboard NEXUS) ───────────────────
   getCreditStats: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user.role !== "admin") {
       throw new TRPCError({ code: "FORBIDDEN" });

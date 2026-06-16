@@ -36,4 +36,4 @@ Disallow: /parametres
 Disallow: /api/
 
 # Sitemap
-Sitemap: https://www.hubresa.cloud/sitemap.xml
+Sitemap: https://www.nexus.africa/sitemap.xml

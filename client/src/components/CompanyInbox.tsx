@@ -90,8 +90,8 @@ export default function CompanyInbox() {
             <Headphones className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Support HUB_RESA HUB_RESA</h3>
-            <p className="text-xs text-gray-500">Messagerie directe avec l'équipe HUB_RESA</p>
+            <h3 className="font-semibold text-gray-900">Support NEXUS NEXUS</h3>
+            <p className="text-xs text-gray-500">Messagerie directe avec l'équipe NEXUS</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export default function CompanyInbox() {
             <MessageSquare className="h-12 w-12 text-gray-300 mb-3" />
             <p className="text-gray-500 font-medium">Aucun message pour l'instant</p>
             <p className="text-sm text-gray-400 mt-1">
-              Envoyez un message à l'équipe HUB_RESA pour toute question ou demande de support.
+              Envoyez un message à l'équipe NEXUS pour toute question ou demande de support.
             </p>
           </div>
         ) : (

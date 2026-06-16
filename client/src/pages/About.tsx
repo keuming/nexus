@@ -26,7 +26,7 @@ export default function About() {
   useSEO({
     title: "À propos de NEXUS",
     description: "Découvrez NEXUS, la plateforme multi-services qui connecte voyageurs, restaurants, hôtels et entreprises d'expédition dans 16 pays d'Afrique de l'Ouest et Centrale.",
-    keywords: "HUB RESA présentation, plateforme transport Afrique, qui sommes-nous, CSN NEXUS, mission",
+    keywords: "NEXUS présentation, plateforme transport Afrique, qui sommes-nous, CSN NEXUS, mission",
     canonicalPath: "/about",
   });
 

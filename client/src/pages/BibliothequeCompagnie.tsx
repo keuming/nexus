@@ -37,11 +37,11 @@ export default function BibliothequeCompagnie() {
   const params = useParams<{ id: string }>();
   const companyId = parseInt(params.id ?? "0", 10);
   const [lightbox, setLightbox] = useState<Photo | null>(null);
-  const [seoTitle, setSeoTitle] = useState(`Galerie compagnie — Bibliothèque HUB_RESA`);
+  const [seoTitle, setSeoTitle] = useState(`Galerie compagnie — Bibliothèque NEXUS`);
   useSEO({
     title: seoTitle,
-    description: "Découvrez la galerie photos de cette compagnie partenaire HUB_RESA. Photos officielles avec légendes.",
-    keywords: "galerie photos compagnie HUB RESA, photos transport Afrique",
+    description: "Découvrez la galerie photos de cette compagnie partenaire NEXUS. Photos officielles avec légendes.",
+    keywords: "galerie photos compagnie NEXUS, photos transport Afrique",
     canonicalPath: `/bibliotheque/${params.id}`,
   });
 
@@ -56,7 +56,7 @@ export default function BibliothequeCompagnie() {
   // Mettre à jour le titre SEO quand les données arrivent
   useEffect(() => {
     if (company?.companyName) {
-      setSeoTitle(`${company.companyName} — Galerie HUB_RESA`);
+      setSeoTitle(`${company.companyName} — Galerie NEXUS`);
     }
   }, [company?.companyName]);
 

@@ -12,20 +12,20 @@ import { Badge } from "@/components/ui/badge";
 const SCHEMA_ORG = {
   "@context": "https://schema.org",
   "@type": "Service",
-  name: "Agences de voyage à Abidjan — HUB_RESA",
+  name: "Agences de voyage à Abidjan — NEXUS",
   description:
     "Trouvez les meilleures agences de voyage à Abidjan pour vos billets d'avion, forfaits touristiques, visas et voyages organisés en Afrique et dans le monde.",
   provider: {
     "@type": "Organization",
-    name: "HUB_RESA",
-    url: "https://www.hubresa.cloud",
+    name: "NEXUS",
+    url: "https://www.nexus.africa",
   },
   areaServed: [
     { "@type": "City", name: "Abidjan" },
     { "@type": "Country", name: "Côte d'Ivoire" },
   ],
   serviceType: "Agence de voyage et tourisme",
-  url: "https://www.hubresa.cloud/agences-voyage-abidjan",
+  url: "https://www.nexus.africa/agences-voyage-abidjan",
 };
 
 const SERVICES = [
@@ -50,20 +50,20 @@ const DESTINATIONS = [
 
 const FAQS = [
   {
-    q: "Comment trouver une agence de voyage fiable à Abidjan sur HUB_RESA ?",
-    a: "HUB_RESA référence uniquement des agences de voyage officiellement enregistrées et vérifiées. Chaque agence dispose d'une fiche complète avec ses services, ses tarifs indicatifs et les avis de ses clients. Vous pouvez contacter directement l'agence via la plateforme.",
+    q: "Comment trouver une agence de voyage fiable à Abidjan sur NEXUS ?",
+    a: "NEXUS référence uniquement des agences de voyage officiellement enregistrées et vérifiées. Chaque agence dispose d'une fiche complète avec ses services, ses tarifs indicatifs et les avis de ses clients. Vous pouvez contacter directement l'agence via la plateforme.",
   },
   {
-    q: "Peut-on acheter des billets d'avion depuis Abidjan sur HUB_RESA ?",
-    a: "Oui, les agences de voyage partenaires sur HUB_RESA proposent des billets d'avion au départ d'Abidjan (Aéroport Félix Houphouët-Boigny) vers toutes les destinations mondiales. Comparez les offres de plusieurs agences et choisissez la meilleure.",
+    q: "Peut-on acheter des billets d'avion depuis Abidjan sur NEXUS ?",
+    a: "Oui, les agences de voyage partenaires sur NEXUS proposent des billets d'avion au départ d'Abidjan (Aéroport Félix Houphouët-Boigny) vers toutes les destinations mondiales. Comparez les offres de plusieurs agences et choisissez la meilleure.",
   },
   {
-    q: "Les agences de voyage sur HUB_RESA proposent-elles des forfaits Omra et Hadj ?",
+    q: "Les agences de voyage sur NEXUS proposent-elles des forfaits Omra et Hadj ?",
     a: "Oui, plusieurs agences partenaires sont spécialisées dans les voyages religieux (Omra, Hadj) depuis Abidjan. Elles proposent des forfaits complets incluant le billet d'avion, l'hébergement à La Mecque et Médine, et l'accompagnement.",
   },
   {
     q: "Comment obtenir un visa pour voyager depuis Abidjan ?",
-    a: "Les agences de voyage partenaires HUB_RESA offrent des services d'assistance visa pour les destinations Schengen (France, Espagne, Allemagne...), USA, Canada, Chine et autres. Elles vous guident dans la constitution du dossier et le dépôt de votre demande.",
+    a: "Les agences de voyage partenaires NEXUS offrent des services d'assistance visa pour les destinations Schengen (France, Espagne, Allemagne...), USA, Canada, Chine et autres. Elles vous guident dans la constitution du dossier et le dépôt de votre demande.",
   },
 ];
 
@@ -71,7 +71,7 @@ export default function AgencesVoyageAbidjan() {
   useSEO({
     title: "Agences de Voyage Abidjan — Billets Avion, Forfaits, Visa",
     description:
-      "Trouvez les meilleures agences de voyage à Abidjan : billets d'avion, forfaits touristiques, assistance visa, voyages de groupe. Agences vérifiées sur HUB_RESA.",
+      "Trouvez les meilleures agences de voyage à Abidjan : billets d'avion, forfaits touristiques, assistance visa, voyages de groupe. Agences vérifiées sur NEXUS.",
     keywords:
       "agence voyage Abidjan, billet avion Abidjan, forfait touristique Côte d'Ivoire, visa Abidjan, voyage organisé Abidjan, agence tourisme Abidjan, Omra Abidjan, voyage affaires Abidjan, tour opérateur Côte d'Ivoire",
     canonicalPath: "/agences-voyage-abidjan",
@@ -88,7 +88,7 @@ export default function AgencesVoyageAbidjan() {
       <section className="bg-gradient-to-br from-[#0f2044] to-[#1a3a6e] text-white py-16 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-2 mb-4">
-            <Link href="/" className="text-orange-300 hover:text-orange-200 text-sm">HUB_RESA</Link>
+            <Link href="/" className="text-orange-300 hover:text-orange-200 text-sm">NEXUS</Link>
             <ChevronRight className="w-4 h-4 text-gray-400" />
             <span className="text-gray-300 text-sm">Agences de voyage Abidjan</span>
           </div>
@@ -132,7 +132,7 @@ export default function AgencesVoyageAbidjan() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold mb-2">Services proposés par les agences à Abidjan</h2>
           <p className="text-muted-foreground mb-8">
-            Les agences partenaires HUB_RESA couvrent tous vos besoins de voyage.
+            Les agences partenaires NEXUS couvrent tous vos besoins de voyage.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {SERVICES.map((s) => (
@@ -173,7 +173,7 @@ export default function AgencesVoyageAbidjan() {
       <section className="py-12 px-4">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold mb-8 text-center">
-            Pourquoi passer par HUB_RESA pour votre agence de voyage ?
+            Pourquoi passer par NEXUS pour votre agence de voyage ?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
@@ -219,7 +219,7 @@ export default function AgencesVoyageAbidjan() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl font-bold mb-3">Planifiez votre voyage depuis Abidjan</h2>
           <p className="text-gray-200 mb-6">
-            Contactez une agence partenaire HUB_RESA et obtenez votre devis personnalisé.
+            Contactez une agence partenaire NEXUS et obtenez votre devis personnalisé.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link href="/directory">
@@ -238,7 +238,7 @@ export default function AgencesVoyageAbidjan() {
 
       <footer className="py-6 px-4 border-t text-center text-sm text-muted-foreground">
         <div className="flex flex-wrap justify-center gap-4">
-          <Link href="/" className="hover:text-foreground">Accueil HUB_RESA</Link>
+          <Link href="/" className="hover:text-foreground">Accueil NEXUS</Link>
           <Link href="/transport-abidjan" className="hover:text-foreground">Transport Abidjan</Link>
           <Link href="/hotels-abidjan" className="hover:text-foreground">Hôtels Abidjan</Link>
           <Link href="/boutiques-abidjan" className="hover:text-foreground">Boutiques & Restaurants</Link>

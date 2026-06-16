@@ -515,13 +515,13 @@ export default function CsnChatbotPanel() {
                     {msg.role === "csn" && (
                       <p className="text-xs font-semibold text-blue-100 mb-1 flex items-center gap-1">
                         <Headphones className="h-3 w-3" />
-                        Vous (Agent HUB_RESA)
+                        Vous (Agent NEXUS)
                       </p>
                     )}
                     {msg.role === "assistant" && (
                       <p className="text-xs font-semibold text-orange-100 mb-1 flex items-center gap-1">
                         <Bot className="h-3 w-3" />
-                        IA HUB_RESA
+                        IA NEXUS
                       </p>
                     )}
                     <p style={{ whiteSpace: "pre-wrap" }}>{msg.content}</p>

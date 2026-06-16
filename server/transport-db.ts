@@ -942,7 +942,7 @@ export async function upsertRouteFare(
   }
 }
 
-// ─── BILLING (HUB_RESA) ────────────────────────────────────────────────────────────
+// ─── BILLING (NEXUS) ────────────────────────────────────────────────────────────
 
 export async function getBillingByCompany(companyId: number) {
   const db = await getDb();
@@ -1405,7 +1405,7 @@ export async function getAllActiveCompanies() {
     .orderBy(transportCompanies.companyName);
 }
 
-// ─── CREDITS HUB_RESA ─────────────────────────────────────────────────────────
+// ─── CREDITS NEXUS ─────────────────────────────────────────────────────────
 
 // Taux de conversion : 1 point = 125 FCFA (XOF). Devise et taux par pays.
 const COUNTRY_CURRENCY: Record<string, { currency: string; rate: number; symbol: string }> = {
@@ -1523,7 +1523,7 @@ export async function debitCredit(companyId: number, description: string, refTyp
     const email = company[0]?.email ?? "non renseigné";
     notifyOwner({
       title: `⚠️ Solde critique — ${name}`,
-      content: `La compagnie **${name}** (ID: ${companyId}) ne dispose plus que de **${newBalance} crédit(s)** HUB_RESA.\n\nSi le solde atteint 0, les nouvelles transactions seront bloquées.\n\nContact : ${email}`,
+      content: `La compagnie **${name}** (ID: ${companyId}) ne dispose plus que de **${newBalance} crédit(s)** NEXUS.\n\nSi le solde atteint 0, les nouvelles transactions seront bloquées.\n\nContact : ${email}`,
     }).catch(() => {});
   }
   return { success: true, balance: newBalance, insufficient: false };
@@ -1538,7 +1538,7 @@ export async function getCreditTransactions(companyId: number, limit = 50) {
     .limit(limit);
 }
 
-// ─── CREDITS STATS (HUB_RESA) ─────────────────────────────────────────────────────
+// ─── CREDITS STATS (NEXUS) ─────────────────────────────────────────────────────
 
 export async function getAllCreditsStats() {
   const db = await getDb();
@@ -1636,7 +1636,7 @@ export async function createCreditRequest(data: {
     status: "pending",
   });
   const id = (result as any).insertId as number;
-  // Notifier HUB_RESA d'une nouvelle demande
+  // Notifier NEXUS d'une nouvelle demande
   const company = await getCompanyById(data.companyId);
   notifyOwner({
     title: `💳 Nouvelle demande de crédit — ${company?.companyName ?? `#${data.companyId}`}`,
@@ -1768,14 +1768,14 @@ export async function autoValidateMobileMoneyPayment(
 
 /**
  * Trouver une demande de crédit par sa référence d'achat Hub2 (purchaseReference)
- * Format attendu : "HUBRESA-CR-{requestId}-{timestamp}"
+ * Format attendu : "NEXUS-CR-{requestId}-{timestamp}"
  */
 export async function getCreditRequestByHub2PurchaseRef(purchaseRef: string) {
   const db = await getDb();
   if (!db) return null;
 
-  // Extraire l'ID de la demande depuis la référence (ex: "HUBRESA-CR-42-1711234567890")
-  const match = purchaseRef.match(/^HUBRESA-CR-(\d+)-/);
+  // Extraire l'ID de la demande depuis la référence (ex: "NEXUS-CR-42-1711234567890")
+  const match = purchaseRef.match(/^NEXUS-CR-(\d+)-/);
   if (!match) return null;
 
   const requestId = parseInt(match[1], 10);
@@ -1816,7 +1816,7 @@ export async function saveHub2PaymentIntent(
   return { success: true };
 }
 
-// ─── Crédit manuel par l'admin HUB_RESA ──────────────────────────────────────────
+// ─── Crédit manuel par l'admin NEXUS ──────────────────────────────────────────
 export async function adminCreditCompany(
   companyId: number,
   points: number,
@@ -1848,7 +1848,7 @@ export async function adminCreditCompany(
     type: "credit",
     points,
     amountLocal: null,
-    description: `Crédit manuel HUB_RESA — ${motif}`,
+    description: `Crédit manuel NEXUS — ${motif}`,
     refType: "manual_admin",
     refId: reference ?? null,
     balanceBefore,
@@ -1859,7 +1859,7 @@ export async function adminCreditCompany(
 
   // Notifier le propriétaire
   await notifyOwner({
-    title: `Crédit manuel HUB_RESA — ${companyName}`,
+    title: `Crédit manuel NEXUS — ${companyName}`,
     content: `L'admin ${adminEmail} a crédité ${points} point(s) à "${companyName}".\nMotif : ${motif}\nRéférence : ${reference ?? "—"}\nSolde avant : ${balanceBefore} pts → Solde après : ${newBalance} pts`,
   });
 

@@ -23,7 +23,7 @@ import Reservations from "./pages/Reservations";
 import ReservationsEnAttente from "./pages/ReservationsEnAttente";
 import Services from "./pages/Services";
 // Transport module
-import HubVoyage from "./pages/HubVoyage";
+import NexusHome from "./pages/NexusHome";
 import RegisterCompany from "./pages/RegisterCompany";
 import About from "./pages/About";
 import Directory from "./pages/Directory";
@@ -67,11 +67,11 @@ import RestaurantDashboard from "./pages/RestaurantDashboard";
 function Router() {
   const [location, navigate] = useLocation();
 
-  // Redirection automatique admin.hubresa.com → /admin-general
+  // Redirection automatique admin.nexus.africa → /admin-general
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
-      window.location.hostname === "admin.hubresa.com" &&
+      window.location.hostname === "admin.nexus.africa" &&
       location !== "/admin-general"
     ) {
       navigate("/admin-general");
@@ -80,8 +80,8 @@ function Router() {
 
   return (
     <Switch>
-      {/* ── HUB_RESA — Interface publique unifiée ── */}
-      <Route path={"/"} component={HubVoyage} />
+      {/* ── NEXUS — Interface publique unifiée ── */}
+      <Route path={"/"} component={NexusHome} />
       <Route path={"/about"} component={About} />
       <Route path={"/directory"} component={Directory} />
       <Route path={"/company/:id"} component={CompanyDetail} />

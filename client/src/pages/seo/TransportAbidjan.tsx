@@ -19,7 +19,7 @@ const SCHEMA_ORG = {
   provider: {
     "@type": "Organization",
     name: "NEXUS",
-    url: "https://www.hubresa.cloud",
+    url: "https://www.nexus.africa",
   },
   areaServed: [
     { "@type": "City", name: "Abidjan" },
@@ -30,7 +30,7 @@ const SCHEMA_ORG = {
     { "@type": "Country", name: "Cameroun" },
   ],
   serviceType: "Transport interurbain par autocar",
-  url: "https://www.hubresa.cloud/transport-abidjan",
+  url: "https://www.nexus.africa/transport-abidjan",
 };
 
 const DESTINATIONS = [

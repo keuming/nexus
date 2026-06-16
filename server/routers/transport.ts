@@ -93,10 +93,10 @@ import {
 } from "../services/hub2";
 import { notifyOwner } from "../_core/notification";
 
-// HUB_RESA admin check — the owner (OWNER_OPEN_ID) is the HUB_RESA admin
+// NEXUS admin check — the owner (OWNER_OPEN_ID) is the NEXUS admin
 const csnProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé à l'administrateur HUB_RESA" });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé à l'administrateur NEXUS" });
   }
   return next({ ctx });
 });
@@ -600,7 +600,7 @@ export const transportRouter = router({
     billing: companyProcedure.query(({ ctx }) => getBillingByCompany(ctx.company.id)),
   }),
 
-  // ─── HUB_RESA ADMIN ───────────────────────────────────────────────────────────────
+  // ─── NEXUS ADMIN ───────────────────────────────────────────────────────────────
   csn: router({
     // Global stats
     stats: csnProcedure.query(() => getCsnDashboardStats()),
@@ -675,9 +675,9 @@ export const transportRouter = router({
         })
       )
       .mutation(({ input }) => updateBillingStatus(input.billingId, input.status)),
-    // Credits overview for HUB_RESA (all companies) — enriched stats
+    // Credits overview for NEXUS (all companies) — enriched stats
     allCredits: csnProcedure.query(() => getAllCreditsStats()),
-    // Transactions d'une compagnie (pour l'historique détaillé dans le dashboard HUB_RESA)
+    // Transactions d'une compagnie (pour l'historique détaillé dans le dashboard NEXUS)
     companyTransactions: csnProcedure
       .input(z.object({ companyId: z.number(), limit: z.number().optional() }))
       .query(({ input }) => getCreditTransactions(input.companyId, input.limit ?? 100)),
@@ -687,7 +687,7 @@ export const transportRouter = router({
       .query(({ input }) => getTrendingData(input?.days ?? 30)),
     // Companies detailed stats
     companiesStats: csnProcedure.query(() => getCompaniesDetailedStats()),
-    // Rapport journalier — déclenchable manuellement depuis le dashboard HUB_RESA
+    // Rapport journalier — déclenchable manuellement depuis le dashboard NEXUS
     dailyReport: csnProcedure.mutation(async () => {
       const stats = await getCsnDashboardStats();
       const creditsStats = await getAllCreditsStats();
@@ -697,7 +697,7 @@ export const transportRouter = router({
       const totalCreditsCA = creditsStats.reduce((sum: number, c: any) => sum + (parseFloat(c.totalSpentLocal ?? "0") || 0), 0);
       const zeroBalance = creditsStats.filter((c: any) => (c.balance ?? 0) <= 0).length;
       const content = [
-        `📅 Rapport journalier HUB_RESA — ${today}`,
+        `📅 Rapport journalier NEXUS — ${today}`,
         ``,
         `🚌 Transport`,
         `  • Compagnies actives : ${s.activeCompanies ?? s.totalCompanies ?? 0}`,
@@ -708,19 +708,19 @@ export const transportRouter = router({
         `🍽️ Restauration`,
         `  • Commandes en ligne aujourd'hui : ${s.ordersToday ?? 0}`,
         ``,
-        `💳 Crédits HUB_RESA`,
+        `💳 Crédits NEXUS`,
         `  • Compagnies avec crédits : ${creditsStats.length}`,
         `  • CA crédits encaissé : ${totalCreditsCA.toLocaleString()} XOF`,
         `  • Compagnies à solde zéro : ${zeroBalance}`,
         ``,
-        `— Envoyé par HUB_RESA`,
+        `— Envoyé par NEXUS`,
       ].join("\n");
-      await notifyOwner({ title: `Rapport journalier HUB_RESA — ${today}`, content });
+      await notifyOwner({ title: `Rapport journalier NEXUS — ${today}`, content });
       return { success: true, today };
     }),
   }),
 
-  // --- CREDITS HUB_RESA -------------------------------------------------------
+  // --- CREDITS NEXUS -------------------------------------------------------
   credits: router({
     // Get current balance
     getBalance: companyProcedure.query(async ({ ctx }) => {
@@ -811,12 +811,12 @@ export const transportRouter = router({
     // Compagnie consulte ses demandes
     myRequests: companyProcedure.query(({ ctx }) => getCreditRequestsByCompany(ctx.company.id)),
 
-    // HUB_RESA — liste toutes les demandes
+    // NEXUS — liste toutes les demandes
     allRequests: csnProcedure
       .input(z.object({ status: z.string().optional() }))
       .query(({ input }) => getAllCreditRequests(input.status)),
 
-    // HUB_RESA — valider le paiement et créditer automatiquement
+    // NEXUS — valider le paiement et créditer automatiquement
     confirmPayment: csnProcedure
       .input(
         z.object({
@@ -825,10 +825,10 @@ export const transportRouter = router({
         })
       )
       .mutation(({ ctx, input }) =>
-        confirmCreditRequestPayment(input.requestId, input.validatedBy ?? ctx.user.email ?? "HUB_RESA")
+        confirmCreditRequestPayment(input.requestId, input.validatedBy ?? ctx.user.email ?? "NEXUS")
       ),
 
-    // HUB_RESA — rejeter une demande
+    // NEXUS — rejeter une demande
     rejectRequest: csnProcedure
       .input(
         z.object({
@@ -837,7 +837,7 @@ export const transportRouter = router({
         })
       )
       .mutation(({ ctx, input }) =>
-        rejectCreditRequest(input.requestId, ctx.user.email ?? "HUB_RESA", input.reason)
+        rejectCreditRequest(input.requestId, ctx.user.email ?? "NEXUS", input.reason)
       ),
 
     // Hub2 — Étape 1 : Créer une intention de paiement
@@ -896,13 +896,13 @@ export const transportRouter = router({
       )
       .mutation(async ({ input }) => {
         // Vérification de la clé secrète webhook
-        const WEBHOOK_SECRET = process.env.MOBILE_MONEY_WEBHOOK_SECRET ?? "hub_resa_mm_secret_2024";
+        const WEBHOOK_SECRET = process.env.MOBILE_MONEY_WEBHOOK_SECRET ?? "nexus_mm_secret_2024";
         if (input.secret !== WEBHOOK_SECRET) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Clé webhook invalide" });
         }
         return autoValidateMobileMoneyPayment(input.requestId, input.paymentRef, input.operator);
       }),
-    // Crédit manuel par l'admin HUB_RESA (protégé par PIN de confirmation)
+    // Crédit manuel par l'admin NEXUS (protégé par PIN de confirmation)
     adminCreditCompany: csnProcedure
       .input(
         z.object({

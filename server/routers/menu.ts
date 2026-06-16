@@ -29,7 +29,7 @@ const companyProcedure = protectedProcedure.use(async ({ ctx, next }) => {
   const company = await getCompanyByUserId(ctx.user.id);
   if (!company) throw new TRPCError({ code: "FORBIDDEN", message: "Compagnie introuvable" });
   if (company.status !== "active")
-    throw new TRPCError({ code: "FORBIDDEN", message: "Compte non validé par HUB_RESA" });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Compte non validé par NEXUS" });
   return next({ ctx: { ...ctx, company } });
 });
 

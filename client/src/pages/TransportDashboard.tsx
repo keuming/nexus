@@ -535,7 +535,7 @@ export default function TransportDashboard() {
   // Badge messages non lus + notifications push navigateur
   const { unreadCount: unreadMsgCount } = usePushNotifications({
     role: "company",
-    title: "HUB_RESA — Nouveau message HUB_RESA",
+    title: "NEXUS — Nouveau message NEXUS",
     sound: true,
     interval: 30_000,
   });
@@ -642,7 +642,7 @@ export default function TransportDashboard() {
             {isPending && (
               <>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Votre dossier d'inscription a bien été reçu et est en cours d'examen par l'équipe HUB_RESA.
+                  Votre dossier d'inscription a bien été reçu et est en cours d'examen par l'équipe NEXUS.
                   Vous recevrez une notification dès que votre compte sera validé.
                 </p>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
@@ -654,19 +654,19 @@ export default function TransportDashboard() {
             {isSuspended && (
               <>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Votre compte a été temporairement suspendu par l'administration HUB_RESA.
+                  Votre compte a été temporairement suspendu par l'administration NEXUS.
                   L'accès à votre dashboard est bloqué jusqu'à la levée de la suspension.
                 </p>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-left">
                   <p className="text-xs font-semibold text-red-800 mb-1">Que faire ?</p>
-                  <p className="text-xs text-red-700">Contactez l'équipe HUB_RESA au <strong>+225 0504921096</strong> ou par email pour connaître les raisons de la suspension et régulariser votre situation.</p>
+                  <p className="text-xs text-red-700">Contactez l'équipe NEXUS au <strong>+225 0504921096</strong> ou par email pour connaître les raisons de la suspension et régulariser votre situation.</p>
                 </div>
               </>
             )}
             {isRejected && (
               <>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Votre demande d'inscription a été refusée par l'équipe HUB_RESA.
+                  Votre demande d'inscription a été refusée par l'équipe NEXUS.
                 </p>
                 {(myCompany as any).rejectionReason && (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-left">
@@ -678,7 +678,7 @@ export default function TransportDashboard() {
               </>
             )}
             <div className="pt-2 border-t">
-              <p className="text-xs text-gray-400">HUB_RESA — Plateforme de Gestion Multi-Activités · Afrique de l'Ouest</p>
+              <p className="text-xs text-gray-400">NEXUS — Plateforme de Gestion Multi-Activités · Afrique de l'Ouest</p>
               <p className="text-xs text-gray-400">+225 0504921096 / 0701578857</p>
             </div>
           </CardContent>
@@ -740,12 +740,12 @@ export default function TransportDashboard() {
             <div>
               <h1 className="text-lg font-bold text-gray-900">{myCompany.companyName}</h1>
               <p className="text-xs text-gray-500">
-                {isAgenceVoyage ? "HUB_RESA — Agence de Voyage" :
-                 isRestaurant ? "HUB_RESA — Restauration & Livraison" :
-                 isExpedition ? "HUB_RESA — Expédition & Logistique" :
-                 isHotel ? "HUB_RESA — Hôtellerie & Services" :
-                 isBoutique ? "HUB_RESA — Commerce & Boutique" :
-                 "HUB_RESA — Transport Terrestre"}
+                {isAgenceVoyage ? "NEXUS — Agence de Voyage" :
+                 isRestaurant ? "NEXUS — Restauration & Livraison" :
+                 isExpedition ? "NEXUS — Expédition & Logistique" :
+                 isHotel ? "NEXUS — Hôtellerie & Services" :
+                 isBoutique ? "NEXUS — Commerce & Boutique" :
+                 "NEXUS — Transport Terrestre"}
               </p>
             </div>
           </div>
@@ -796,11 +796,11 @@ export default function TransportDashboard() {
             {isAgenceVoyage && <TabsTrigger value="packages" className="gap-1.5"><Package className="h-3.5 w-3.5" />Forfaits voyage</TabsTrigger>}
             <TabsTrigger value="finance" className="gap-1.5"><BarChart3 className="h-3.5 w-3.5" />Finance</TabsTrigger>
             <TabsTrigger value="qrcode" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" />QR Code</TabsTrigger>
-            <TabsTrigger value="credits" className="gap-1.5 text-[#E8751A] font-semibold"><Coins className="h-3.5 w-3.5" />CRÉDITS HUB_RESA</TabsTrigger>
+            <TabsTrigger value="credits" className="gap-1.5 text-[#E8751A] font-semibold"><Coins className="h-3.5 w-3.5" />CRÉDITS NEXUS</TabsTrigger>
             <TabsTrigger value="team" className="gap-1.5"><Users className="h-3.5 w-3.5" />Équipe</TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5 relative">
               <MessageSquare className="h-3.5 w-3.5" />
-              Messages HUB_RESA
+              Messages NEXUS
               {unreadMsgCount > 0 && (
                 <span className="ml-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
                   {unreadMsgCount > 99 ? "99+" : unreadMsgCount}
@@ -1445,7 +1445,7 @@ export default function TransportDashboard() {
                                 const itemsArr: any[] = (() => { try { return JSON.parse(order.itemsJson); } catch { return []; } })();
                                 const dateStr = order.createdAt instanceof Date ? order.createdAt.toLocaleString("fr-FR") : new Date(order.createdAt).toLocaleString("fr-FR");
                                 const rows = itemsArr.map((it: any) => `<tr><td style="padding:4px 8px;border-bottom:1px solid #eee">${it.qty}× ${it.name}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right">${(it.priceXOF * it.qty).toLocaleString()} FCFA</td></tr>`).join("");
-                                const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bon de commande ${order.orderRef}</title><style>body{font-family:Arial,sans-serif;max-width:400px;margin:20px auto;padding:20px;font-size:13px}h2{text-align:center;color:#E8751A;margin:0 0 4px}p{margin:2px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#f5f5f5;padding:6px 8px;text-align:left;font-size:12px}td{font-size:12px}.total{font-weight:bold;font-size:15px;text-align:right;padding:8px 0;border-top:2px solid #E8751A}.footer{text-align:center;font-size:11px;color:#888;margin-top:16px;border-top:1px dashed #ccc;padding-top:8px}@media print{button{display:none}}</style></head><body><h2>HUB_RESA</h2><p style="text-align:center;color:#888;font-size:11px">Bon de commande</p><hr style="margin:10px 0"><p><strong>Référence :</strong> ${order.orderRef}</p><p><strong>Client :</strong> ${order.customerName}</p><p><strong>Téléphone :</strong> ${order.customerPhone}</p>${order.deliveryAddress ? `<p><strong>Adresse :</strong> ${order.deliveryAddress}</p>` : ""}<p><strong>Type :</strong> ${order.deliveryType === "livraison" ? "Livraison" : "Sur place"}</p><p><strong>Date :</strong> ${dateStr}</p><table><thead><tr><th>Article</th><th style="text-align:right">Prix</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total : ${Number(order.totalXOF).toLocaleString()} FCFA</div>${order.estimatedPrepTime ? `<p style="color:#888;font-size:11px">⏱ Temps de préparation estimé : ${order.estimatedPrepTime} min</p>` : ""}${order.notes ? `<p style="color:#888;font-size:11px;font-style:italic">Note : ${order.notes}</p>` : ""}<div class="footer">HUB_RESA &mdash; clients@hub_resa.com<br>+225 0504921096 / 0701578857</div></body></html>`;
+                                const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bon de commande ${order.orderRef}</title><style>body{font-family:Arial,sans-serif;max-width:400px;margin:20px auto;padding:20px;font-size:13px}h2{text-align:center;color:#E8751A;margin:0 0 4px}p{margin:2px 0}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#f5f5f5;padding:6px 8px;text-align:left;font-size:12px}td{font-size:12px}.total{font-weight:bold;font-size:15px;text-align:right;padding:8px 0;border-top:2px solid #E8751A}.footer{text-align:center;font-size:11px;color:#888;margin-top:16px;border-top:1px dashed #ccc;padding-top:8px}@media print{button{display:none}}</style></head><body><h2>NEXUS</h2><p style="text-align:center;color:#888;font-size:11px">Bon de commande</p><hr style="margin:10px 0"><p><strong>Référence :</strong> ${order.orderRef}</p><p><strong>Client :</strong> ${order.customerName}</p><p><strong>Téléphone :</strong> ${order.customerPhone}</p>${order.deliveryAddress ? `<p><strong>Adresse :</strong> ${order.deliveryAddress}</p>` : ""}<p><strong>Type :</strong> ${order.deliveryType === "livraison" ? "Livraison" : "Sur place"}</p><p><strong>Date :</strong> ${dateStr}</p><table><thead><tr><th>Article</th><th style="text-align:right">Prix</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total : ${Number(order.totalXOF).toLocaleString()} FCFA</div>${order.estimatedPrepTime ? `<p style="color:#888;font-size:11px">⏱ Temps de préparation estimé : ${order.estimatedPrepTime} min</p>` : ""}${order.notes ? `<p style="color:#888;font-size:11px;font-style:italic">Note : ${order.notes}</p>` : ""}<div class="footer">NEXUS &mdash; clients@nexus.com<br>+225 0504921096 / 0701578857</div></body></html>`;
                                 const w = window.open("", "_blank", "width=500,height=700");
                                 if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 300); }
                               }}>
@@ -1545,7 +1545,7 @@ export default function TransportDashboard() {
                 </CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle className="text-base">Frais HUB_RESA</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base">Frais NEXUS</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-600 space-y-2">
                     {myCompany?.activityType === "transport" && (
@@ -1557,7 +1557,7 @@ export default function TransportDashboard() {
                     {myCompany?.activityType === "expedition" && (
                       <p>• <strong>100 FCFA</strong> par expédition encaissée</p>
                     )}
-                    <p className="text-xs text-gray-400 mt-2">Facturation mensuelle générée par l'équipe HUB_RESA</p>
+                    <p className="text-xs text-gray-400 mt-2">Facturation mensuelle générée par l'équipe NEXUS</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1633,7 +1633,7 @@ export default function TransportDashboard() {
             </div>
           </TabsContent>
 
-          {/* ─── CREDITS HUB_RESA */}
+          {/* ─── CREDITS NEXUS */}
           <TabsContent value="credits">
             {myCompany && (
               <div className="space-y-6">
@@ -1647,7 +1647,7 @@ export default function TransportDashboard() {
             <TeamManager />
           </TabsContent>
 
-          {/* ─── MESSAGES HUB_RESA */}
+          {/* ─── MESSAGES NEXUS */}
           <TabsContent value="messages">
             <CompanyInbox />
           </TabsContent>

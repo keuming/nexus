@@ -56,7 +56,7 @@ function showNotification(title: string, body: string, count: number) {
       body,
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-72x72.png",
-      tag: "hub-resa-messages", // Remplace la précédente pour éviter le spam
+      tag: "nexus-messages", // Remplace la précédente pour éviter le spam
       requireInteraction: false,
     });
     // Fermer automatiquement après 6 s
@@ -68,7 +68,7 @@ function showNotification(title: string, body: string, count: number) {
 
 export function usePushNotifications({
   role,
-  title = "HUB_RESA — Nouveau message",
+  title = "NEXUS — Nouveau message",
   sound = true,
   interval = 30_000,
 }: UsePushNotificationsOptions) {

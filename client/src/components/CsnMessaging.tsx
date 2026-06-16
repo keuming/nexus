@@ -250,7 +250,7 @@ export default function CsnMessaging() {
                         </div>
                         <p className={`text-[10px] text-gray-400 mt-1 ${isFromCsn ? "text-right" : "text-left"}`}>
                           {format(new Date(msg.createdAt), "dd/MM/yyyy HH:mm", { locale: fr })}
-                          {isFromCsn && " · Support HUB_RESA"}
+                          {isFromCsn && " · Support NEXUS"}
                         </p>
                       </div>
                     </div>
@@ -282,7 +282,7 @@ export default function CsnMessaging() {
               <div className="flex items-center gap-1.5 mt-1">
                 <Headphones className="h-3 w-3 text-[#E8751A]" />
                 <p className="text-[10px] text-gray-400">
-                  Vous répondez en tant que <strong>Support HUB_RESA HUB_RESA</strong>
+                  Vous répondez en tant que <strong>Support NEXUS NEXUS</strong>
                 </p>
               </div>
             </div>

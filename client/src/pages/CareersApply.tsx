@@ -21,9 +21,9 @@ import { Link } from "wouter";
 export default function CareersApply() {
   const [formOpen, setFormOpen] = useState(false);
   useSEO({
-    title: "Recrutement Business Développeur — HUB_RESA",
-    description: "Rejoignez HUB_RESA en tant que Business Développeur. Commission attractive, réseau panafricain dans 16 pays. Postulez en ligne avec votre CV et lettre de motivation.",
-    keywords: "recrutement HUB RESA, business développeur Afrique, emploi commercial Côte d'Ivoire, offre emploi transport Afrique",
+    title: "Recrutement Business Développeur — NEXUS",
+    description: "Rejoignez NEXUS en tant que Business Développeur. Commission attractive, réseau panafricain dans 16 pays. Postulez en ligne avec votre CV et lettre de motivation.",
+    keywords: "recrutement NEXUS, business développeur Afrique, emploi commercial Côte d'Ivoire, offre emploi transport Afrique",
     canonicalPath: "/careers/apply",
   });
 
@@ -41,11 +41,11 @@ export default function CareersApply() {
           <div className="flex items-center gap-3">
             <img 
               src="https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663089638801/kNLObPsoKvcDcLQI.png" 
-              alt="HUB_RESA" 
+              alt="NEXUS" 
               className="h-10 w-auto"
             />
             <div>
-              <h1 className="text-xl font-bold text-gray-900">HUB_RESA</h1>
+              <h1 className="text-xl font-bold text-gray-900">NEXUS</h1>
               <p className="text-xs text-gray-500">Carrières & Recrutement</p>
             </div>
           </div>
@@ -63,7 +63,7 @@ export default function CareersApply() {
             Business Développeur
           </h1>
           <p className="text-xl text-white/90 mb-2">
-            Rejoignez l'équipe HUB_RESA et développez notre réseau panafricain
+            Rejoignez l'équipe NEXUS et développez notre réseau panafricain
           </p>
           <p className="text-white/80 max-w-2xl mx-auto mb-8">
             Nous recherchons des commerciaux motivés pour accompagner notre expansion dans 16 pays d'Afrique de l'Ouest et Centrale
@@ -97,7 +97,7 @@ export default function CareersApply() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-5 w-5 text-[#E8751A] mt-0.5 flex-shrink-0" />
-                  <span>Présenter la plateforme HUB_RESA et démontrer sa valeur ajoutée</span>
+                  <span>Présenter la plateforme NEXUS et démontrer sa valeur ajoutée</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-5 w-5 text-[#E8751A] mt-0.5 flex-shrink-0" />
@@ -236,7 +236,7 @@ export default function CareersApply() {
       <section className="py-16 bg-gradient-to-r from-[#1a237e] to-[#283593]">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
-            Prêt à rejoindre l'aventure HUB_RESA ?
+            Prêt à rejoindre l'aventure NEXUS ?
           </h2>
           <p className="text-white/90 mb-8 max-w-2xl mx-auto">
             Postulez dès maintenant et devenez acteur de la transformation digitale du secteur tertiaire en Afrique
@@ -256,10 +256,10 @@ export default function CareersApply() {
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-sm text-gray-600">
-            Des questions ? Contactez-nous : <a href="mailto:recrutement@hubresa.cloud" className="text-[#E8751A] font-medium hover:underline">recrutement@hubresa.cloud</a>
+            Des questions ? Contactez-nous : <a href="mailto:recrutement@nexus.africa" className="text-[#E8751A] font-medium hover:underline">recrutement@nexus.africa</a>
           </p>
           <p className="text-xs text-gray-500 mt-2">
-            © 2026 HUB_RESA — Tous droits réservés
+            © 2026 NEXUS — Tous droits réservés
           </p>
         </div>
       </footer>

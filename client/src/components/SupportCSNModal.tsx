@@ -1,6 +1,6 @@
 /**
- * SupportCSNModal — Interface de support HUB_RESA pour le chatbot
- * Permet à l'admin HUB_RESA de prendre le relais du chatbot IA et converser directement avec le client
+ * SupportCSNModal — Interface de support NEXUS pour le chatbot
+ * Permet à l'admin NEXUS de prendre le relais du chatbot IA et converser directement avec le client
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -104,7 +104,7 @@ export default function SupportCSNModal({
                 <Headphones className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <DialogTitle className="text-base">Support HUB_RESA — {visitorName}</DialogTitle>
+                <DialogTitle className="text-base">Support NEXUS — {visitorName}</DialogTitle>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Session: {sessionToken}
                 </p>
@@ -152,7 +152,7 @@ export default function SupportCSNModal({
                     : "bg-[#E8751A] text-white rounded-tr-sm"
                 }`}>
                   {msg.role === "csn" && (
-                    <p className="text-xs font-semibold text-purple-100 mb-1">Support HUB_RESA</p>
+                    <p className="text-xs font-semibold text-purple-100 mb-1">Support NEXUS</p>
                   )}
                   {msg.role === "assistant" && (
                     <p className="text-xs font-semibold text-orange-100 mb-1">Assistant IA</p>

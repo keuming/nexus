@@ -5,8 +5,8 @@
  * - Bouton flottant en bas à droite (orange, icône robot)
  * - Sur mobile/PWA : fenêtre plein écran (100dvh) pour éviter tout débordement
  * - Sur desktop : fenêtre 360×520px ancrée en bas à droite
- * - Si un agent HUB_RESA prend la main, affichage "Agent HUB_RESA" en badge
- * - Polling toutes les 5s pour les réponses HUB_RESA
+ * - Si un agent NEXUS prend la main, affichage "Agent NEXUS" en badge
+ * - Polling toutes les 5s pour les réponses NEXUS
  * - Session stockée en localStorage pour persistance
  * - z-index 9999 pour passer au-dessus de tout élément PWA
  */
@@ -31,7 +31,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const SESSION_KEY = "hubresa_chat_token";
+const SESSION_KEY = "nexus_chat_token";
 
 interface Message {
   id: number;
@@ -107,7 +107,7 @@ export default function ChatbotWidget() {
     onAdminIntervention: (data) => {
       playSound("admin");
       refetch();
-      toast.info("Un agent HUB_RESA a pris le relais", {
+      toast.info("Un agent NEXUS a pris le relais", {
         description: (data.reason as string) || "Intervention en cours...",
         duration: 5000,
       });
@@ -301,7 +301,7 @@ export default function ChatbotWidget() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 <p className="text-white font-semibold text-sm">
-                  {hasAdminIntervention ? "Support HUB_RESA" : t("chatbot", "title")}
+                  {hasAdminIntervention ? "Support NEXUS" : t("chatbot", "title")}
                 </p>
                 {hasAdminIntervention && (
                   <span className="bg-purple-400 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
@@ -315,7 +315,7 @@ export default function ChatbotWidget() {
                 }`} />
                 <p className="text-white/80 text-xs">
                   {hasAdminIntervention
-                    ? "Un agent HUB_RESA vous aide"
+                    ? "Un agent NEXUS vous aide"
                     : hasCsnMessage
                     ? t("chatbot", "humanTakeover")
                     : t("chatbot", "available")}
@@ -355,7 +355,7 @@ export default function ChatbotWidget() {
                   </div>
                   <div className="text-center">
                     <h3 className="font-bold text-gray-900 mb-1">
-                      {t("chatbot", "greeting")} — HUB_RESA !
+                      {t("chatbot", "greeting")} — NEXUS !
                     </h3>
                     <p className="text-gray-500 text-sm">{t("chatbot", "enterName")}</p>
                   </div>
@@ -548,7 +548,7 @@ export default function ChatbotWidget() {
         </div>
       )}
 
-      {/* Modal Support HUB_RESA */}
+      {/* Modal Support NEXUS */}
       {sessionToken && visitorName && (
         <SupportCSNModal
           isOpen={showSupportModal}

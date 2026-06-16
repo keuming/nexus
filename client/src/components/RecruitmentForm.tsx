@@ -1,5 +1,5 @@
 /**
- * RecruitmentForm — Formulaire de candidature enrichi pour le programme BD HUB_RESA
+ * RecruitmentForm — Formulaire de candidature enrichi pour le programme BD NEXUS
  * Champs : identité, contact, localisation, formation, expérience, secteur cible,
  *          motivation, upload CV (PDF/Word), upload lettre de motivation (PDF/Word)
  */
@@ -209,11 +209,11 @@ export default function RecruitmentForm({ open, onClose }: Props) {
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Candidature envoyée !</h2>
             <p className="text-gray-600 max-w-md mx-auto">
-              Merci pour votre intérêt à rejoindre l'équipe HUB_RESA. Notre équipe examinera
+              Merci pour votre intérêt à rejoindre l'équipe NEXUS. Notre équipe examinera
               votre candidature et vous contactera dans les meilleurs délais (48–72h ouvrées).
             </p>
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-sm text-orange-800 max-w-sm mx-auto">
-              <strong>Prochaine étape :</strong> Un agent HUB_RESA vous contactera par téléphone ou email
+              <strong>Prochaine étape :</strong> Un agent NEXUS vous contactera par téléphone ou email
               pour un entretien de présélection.
             </div>
             <Button className="bg-[#E8751A] hover:bg-[#D06015] text-white px-8" onClick={handleClose}>
@@ -229,7 +229,7 @@ export default function RecruitmentForm({ open, onClose }: Props) {
                 </div>
                 <div>
                   <DialogTitle className="text-xl font-bold text-gray-900">
-                    Rejoindre l'équipe commerciale HUB_RESA
+                    Rejoindre l'équipe commerciale NEXUS
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-500">
                     Devenez Business Développeur partenaire et développez notre réseau en Afrique
@@ -384,7 +384,7 @@ export default function RecruitmentForm({ open, onClose }: Props) {
                 <Textarea
                   value={form.motivation}
                   onChange={(e) => setForm({ ...form, motivation: e.target.value })}
-                  placeholder="Décrivez en quelques lignes pourquoi vous souhaitez rejoindre l'équipe HUB_RESA et ce qui vous qualifie pour ce poste..."
+                  placeholder="Décrivez en quelques lignes pourquoi vous souhaitez rejoindre l'équipe NEXUS et ce qui vous qualifie pour ce poste..."
                   rows={3}
                   maxLength={2000}
                   className="resize-none"

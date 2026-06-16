@@ -121,7 +121,7 @@ export default function PublicHotel() {
             <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center">
               <Building2 className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>HUB_RESA</span>
+            <span className="font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>NEXUS</span>
           </div>
         </div>
       </header>
@@ -159,7 +159,7 @@ export default function PublicHotel() {
                   {/* Share button */}
                   <ShareButton
                     title={hotel.hotelName}
-                    description={hotel.description || `Découvrez ${hotel.hotelName} sur HUB_RESA`}
+                    description={hotel.description || `Découvrez ${hotel.hotelName} sur NEXUS`}
                     variant="ghost"
                     size="sm"
                     className="text-white/60 hover:text-white hover:bg-white/10 border border-white/20"

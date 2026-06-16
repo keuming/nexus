@@ -1,12 +1,12 @@
 /**
- * chatbot.ts — Chatbot IA public + prise en main par l'agent HUB_RESA
+ * chatbot.ts — Chatbot IA public + prise en main par l'agent NEXUS
  *
  * Flux :
  *  1. Visiteur démarre une session (startSession) → token unique
  *  2. Visiteur envoie un message (sendMessage) → réponse IA automatique via invokeLLM
  *  3. Si csnTookOver = true, les messages suivants sont marqués "pending_csn"
- *  4. Agent HUB_RESA voit les sessions ouvertes (listSessions) et répond (replyAsCSN)
- *  5. Agent HUB_RESA peut fermer la session (markClosed)
+ *  4. Agent NEXUS voit les sessions ouvertes (listSessions) et répond (replyAsCSN)
+ *  5. Agent NEXUS peut fermer la session (markClosed)
  */
 import { z } from "zod";
 import { publicProcedure, protectedProcedure } from "../_core/trpc";
@@ -81,7 +81,7 @@ export const chatbotRouter = {
         await db.insert(chatbotMessages).values({
           sessionId: session.id,
           role: "assistant",
-          content: `Bonjour ${input.visitorName} ! 👋 Je suis l'agent virtuel de **HUB_RESA**. Comment puis-je vous aider aujourd'hui ? Vous pouvez me poser des questions sur nos services de transport, d'expédition, de restauration, ou sur comment rejoindre notre réseau de compagnies partenaires.`,
+          content: `Bonjour ${input.visitorName} ! 👋 Je suis l'agent virtuel de **NEXUS**. Comment puis-je vous aider aujourd'hui ? Vous pouvez me poser des questions sur nos services de transport, d'expédition, de restauration, ou sur comment rejoindre notre réseau de compagnies partenaires.`,
           isRead: true,
         });
       }
@@ -245,7 +245,7 @@ export const chatbotRouter = {
         .orderBy(chatbotMessages.createdAt);
     }),
 
-  // ── ADMIN : répondre en tant qu'agent HUB_RESA ──────────────────────────────────
+  // ── ADMIN : répondre en tant qu'agent NEXUS ──────────────────────────────────
   replyAsCSN: protectedProcedure
     .input(z.object({
       sessionId: z.number(),
@@ -256,7 +256,7 @@ export const chatbotRouter = {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      // Marquer que HUB_RESA a pris en charge
+      // Marquer que NEXUS a pris en charge
       await db
         .update(chatbotSessions)
         .set({ csnTookOver: true, status: "open", updatedAt: new Date() })
@@ -293,7 +293,7 @@ export const chatbotRouter = {
       await db.insert(chatbotMessages).values({
         sessionId: input.sessionId,
         role: "csn",
-        content: "Un agent HUB_RESA a pris le relais. Vous etes maintenant en conversation directe avec notre equipe.",
+        content: "Un agent NEXUS a pris le relais. Vous etes maintenant en conversation directe avec notre equipe.",
         isRead: true,
       });
       return { success: true };
@@ -316,7 +316,7 @@ export const chatbotRouter = {
       await db.insert(chatbotMessages).values({
         sessionId: input.sessionId,
         role: "assistant",
-        content: "L'assistant IA HUB_RESA reprend la conversation. Comment puis-je vous aider ?",
+        content: "L'assistant IA NEXUS reprend la conversation. Comment puis-je vous aider ?",
         isRead: true,
       });
       return { success: true };
@@ -418,7 +418,7 @@ export const chatbotRouter = {
       await db.insert(chatbotMessages).values({
         sessionId: input.sessionId,
         role: "csn",
-        content: `Un agent HUB_RESA spécialisé a pris le relais pour mieux vous aider. Motif : ${input.reason}. Merci de votre patience.`,
+        content: `Un agent NEXUS spécialisé a pris le relais pour mieux vous aider. Motif : ${input.reason}. Merci de votre patience.`,
         isRead: true,
       });
 
@@ -477,7 +477,7 @@ export const chatbotRouter = {
         sessionId: session.id,
         role: input.senderRole,
         content: input.message,
-        isRead: input.senderRole === "csn", // Les messages HUB_RESA sont lus
+        isRead: input.senderRole === "csn", // Les messages NEXUS sont lus
       }).$returningId();
 
       return {

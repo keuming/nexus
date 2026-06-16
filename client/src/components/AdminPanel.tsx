@@ -1,6 +1,6 @@
 /**
  * AdminPanel.tsx
- * Panneau de gestion des admins dans le dashboard HUB_RESA :
+ * Panneau de gestion des admins dans le dashboard NEXUS :
  * - Onglet "Accès Admin" : profils admin par mot de passe (CRUD + toggle + journal)
  * - Onglet "Administrateurs" : utilisateurs OAuth (promotion/rétrogradation)
  */

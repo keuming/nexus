@@ -1888,7 +1888,7 @@ function RecruitmentSection() {
             </div>
             <h2 className="text-3xl lg:text-4xl font-extrabold text-white mb-4 leading-tight">
               {t("recruit", "title")}
-              <span className="text-[#6F4E37]"> HUB_RESA</span>
+              <span className="text-[#6F4E37]"> NEXUS</span>
             </h2>
             <p className="text-gray-300 text-lg mb-6 max-w-xl">
               {t("recruit", "description")}
@@ -1961,7 +1961,7 @@ function RecruitmentSection() {
 }
 
 // --- MAIN PAGE ----------------------------------------------------------------
-export default function HubVoyage() {
+export default function NexusHome() {
   const [, navigate] = useLocation();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { t } = useI18n();
@@ -1969,7 +1969,7 @@ export default function HubVoyage() {
   // Optimize SEO: Set title and description
   useEffect(() => {
     // Set title (30-60 characters)
-    document.title = "HUB_RESA - Transport & Services";
+    document.title = "NEXUS - Transport & Services";
     
     // Update meta description (50-160 characters)
     const metaDescription = document.querySelector('meta[name="description"]');
@@ -1979,9 +1979,9 @@ export default function HubVoyage() {
   }, []);
   
   useSEO({
-    title: "HUB_RESA — Réservation Transport, Restauration & Expédition",
-    description: "HUB_RESA : Réservez vos billets de bus, commandez vos repas et gérez vos expéditions en Afrique de l'Ouest. Plateforme officielle des compagnies partenaires HUB_RESA.",
-    keywords: "réservation bus Afrique, billets transport Afrique Ouest, expédition colis, restauration en ligne, HUB_RESA",
+    title: "NEXUS — Réservation Transport, Restauration & Expédition",
+    description: "NEXUS : Réservez vos billets de bus, commandez vos repas et gérez vos expéditions en Afrique de l'Ouest. Plateforme officielle des compagnies partenaires NEXUS.",
+    keywords: "réservation bus Afrique, billets transport Afrique Ouest, expédition colis, restauration en ligne, NEXUS",
     canonicalPath: "/",
   });
   const [activity, setActivity] = useState<ActivityType>("transport");

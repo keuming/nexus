@@ -83,7 +83,7 @@ export default function PublicHome() {
             </div>
             <div>
               <span className="text-lg font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
-                HUB_RESA
+                NEXUS
               </span>
               <p className="text-xs text-white/50 leading-none">Plateforme hôtelière</p>
             </div>
@@ -317,7 +317,7 @@ export default function PublicHome() {
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-8 text-center text-white/30 text-sm">
-        <p>© 2026 HUB_RESA — Plateforme de gestion hôtelière</p>
+        <p>© 2026 NEXUS — Plateforme de gestion hôtelière</p>
       </footer>
     </div>
   );
@@ -413,7 +413,7 @@ function HotelCard({ hotel, onClick }: { hotel: any; onClick: () => void }) {
           </Button>
           <ShareButton
             title={hotel.hotelName}
-            description={hotel.description || `Découvrez ${hotel.hotelName} sur HUB_RESA`}
+            description={hotel.description || `Découvrez ${hotel.hotelName} sur NEXUS`}
             url={typeof window !== 'undefined' ? `${window.location.origin}/hotel/${hotel.id}` : ''}
             variant="ghost"
             size="sm"

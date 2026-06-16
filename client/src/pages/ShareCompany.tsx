@@ -29,8 +29,8 @@ export default function ShareCompany() {
     if (!company) return;
 
     const imageUrl = (company as any).galleryImageUrl || company.logoUrl || "";
-    const title = `${company.companyName} - HUB_RESA Partner`;
-    const description = `Découvrez ${company.companyName} sur HUB_RESA - Plateforme de réservation Transport, Restauration & Expédition en Afrique`;
+    const title = `${company.companyName} - NEXUS Partner`;
+    const description = `Découvrez ${company.companyName} sur NEXUS - Plateforme de réservation Transport, Restauration & Expédition en Afrique`;
 
     // Mettre à jour le titre
     document.title = title;
@@ -164,15 +164,15 @@ export default function ShareCompany() {
           </a>
         </div>
 
-        {/* Badge HUB_RESA */}
+        {/* Badge NEXUS */}
         <div className="mt-8 text-center">
           <p className="text-gray-500 text-sm">
             Découvrez {company.companyName} et d'autres partenaires sur{" "}
             <a
-              href="https://www.hubresa.cloud"
+              href="https://www.nexus.africa"
               className="text-[#E8751A] font-semibold hover:underline"
             >
-              HUB_RESA
+              NEXUS
             </a>
           </p>
         </div>

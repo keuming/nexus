@@ -1,6 +1,6 @@
 /**
  * RecruitmentMonitor — Interface de monitoring des candidats commerciaux
- * Intégré dans le dashboard HUB_RESA (admin)
+ * Intégré dans le dashboard NEXUS (admin)
  *
  * Fonctionnalités :
  * - Liste des candidats avec filtres par statut et recherche
@@ -119,15 +119,15 @@ export default function RecruitmentMonitor() {
   });
 
   const handleEmail = (email: string, name: string) => {
-    window.open(`mailto:${email}?subject=Programme Commercial HUB_RESA - ${name}&body=Bonjour ${name},%0D%0A%0D%0ANous avons bien reçu votre candidature pour le programme de recrutement des commerciaux HUB_RESA.%0D%0A%0D%0ACordialement,%0D%0AL'équipe HUB_RESA`, "_blank");
+    window.open(`mailto:${email}?subject=Programme Commercial NEXUS - ${name}&body=Bonjour ${name},%0D%0A%0D%0ANous avons bien reçu votre candidature pour le programme de recrutement des commerciaux NEXUS.%0D%0A%0D%0ACordialement,%0D%0AL'équipe NEXUS`, "_blank");
   };
 
   const handleSMS = (phone: string) => {
-    window.open(`sms:${phone}?body=Bonjour, nous avons bien reçu votre candidature HUB_RESA. L'équipe HUB_RESA vous contactera prochainement.`, "_blank");
+    window.open(`sms:${phone}?body=Bonjour, nous avons bien reçu votre candidature NEXUS. L'équipe NEXUS vous contactera prochainement.`, "_blank");
   };
 
   const handleWhatsApp = (phone: string, name: string) => {
-    const msg = encodeURIComponent(`Bonjour ${name}, nous avons bien reçu votre candidature pour le programme commercial HUB_RESA. L'équipe HUB_RESA vous contactera prochainement pour la suite du processus.`);
+    const msg = encodeURIComponent(`Bonjour ${name}, nous avons bien reçu votre candidature pour le programme commercial NEXUS. L'équipe NEXUS vous contactera prochainement pour la suite du processus.`);
     window.open(`https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${msg}`, "_blank");
   };
 

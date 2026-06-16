@@ -130,11 +130,11 @@ export const translations = {
   carousel: {
     title: { fr: "Nos compagnies en images", en: "Our companies in pictures", es: "Nuestras empresas en imágenes" },
     subtitle: {
-      fr: "Découvrez les compagnies partenaires qui font confiance à HUB_RESA",
-      en: "Discover the partner companies that trust HUB_RESA",
-      es: "Descubra las empresas asociadas que confían en HUB_RESA",
+      fr: "Découvrez les compagnies partenaires qui font confiance à NEXUS",
+      en: "Discover the partner companies that trust NEXUS",
+      es: "Descubra las empresas asociadas que confían en NEXUS",
     },
-    partnerBadge: { fr: "PARTENAIRE HUB_RESA", en: "HUB_RESA PARTNER", es: "SOCIO HUB_RESA" },
+    partnerBadge: { fr: "PARTENAIRE NEXUS", en: "NEXUS PARTNER", es: "SOCIO NEXUS" },
     noPartners: {
       fr: "Nos partenaires arrivent bientôt",
       en: "Our partners are coming soon",
@@ -156,13 +156,13 @@ export const translations = {
 
   // ── Chatbot Widget ───────────────────────────────────────────────────────
   chatbot: {
-    title: { fr: "Assistant HUB_RESA", en: "HUB_RESA Assistant", es: "Asistente HUB_RESA" },
+    title: { fr: "Assistant NEXUS", en: "NEXUS Assistant", es: "Asistente NEXUS" },
     available: { fr: "IA disponible 24h/24", en: "AI available 24/7", es: "IA disponible 24/7" },
-    humanAgent: { fr: "Agent HUB_RESA", en: "HUB_RESA Agent", es: "Agente HUB_RESA" },
+    humanAgent: { fr: "Agent NEXUS", en: "NEXUS Agent", es: "Agente NEXUS" },
     humanTakeover: {
-      fr: "Un agent HUB_RESA a pris le relais",
-      en: "A HUB_RESA agent has taken over",
-      es: "Un agente HUB_RESA ha tomado el relevo",
+      fr: "Un agent NEXUS a pris le relais",
+      en: "A NEXUS agent has taken over",
+      es: "Un agente NEXUS ha tomado el relevo",
     },
     humanTakeoverSub: {
       fr: "Vous êtes maintenant en conversation avec un conseiller humain",
@@ -183,30 +183,30 @@ export const translations = {
       en: "Enter your first name to start",
       es: "Ingrese su nombre para comenzar",
     },
-    poweredBy: { fr: "Propulsé par HUB_RESA IA", en: "Powered by HUB_RESA AI", es: "Impulsado por HUB_RESA IA" },
+    poweredBy: { fr: "Propulsé par NEXUS IA", en: "Powered by NEXUS AI", es: "Impulsado por NEXUS IA" },
   },
 
   // ── Register Company ─────────────────────────────────────────────────────
   register: {
-    title: { fr: "Rejoindre HUB_RESA", en: "Join HUB_RESA", es: "Únase a HUB_RESA" },
+    title: { fr: "Rejoindre NEXUS", en: "Join NEXUS", es: "Únase a NEXUS" },
     subtitle: {
       fr: "Connectez-vous avec votre compte Google pour créer votre espace compagnie",
       en: "Log in with your Google account to create your company space",
       es: "Inicie sesión con su cuenta de Google para crear su espacio de empresa",
     },
     formSubtitle: {
-      fr: "Remplissez ce formulaire pour soumettre votre demande d'adhésion à la plateforme HUB_RESA",
-      en: "Fill in this form to submit your membership request to the HUB_RESA platform",
-      es: "Complete este formulario para enviar su solicitud de membresía a la plataforma HUB_RESA",
+      fr: "Remplissez ce formulaire pour soumettre votre demande d'adhésion à la plateforme NEXUS",
+      en: "Fill in this form to submit your membership request to the NEXUS platform",
+      es: "Complete este formulario para enviar su solicitud de membresía a la plataforma NEXUS",
     },
     formTitle: { fr: "Informations de votre compagnie", en: "Your company information", es: "Información de su empresa" },
     formDesc: {
-      fr: "Ces informations seront examinées par l'équipe HUB_RESA avant validation de votre compte.",
-      en: "This information will be reviewed by the HUB_RESA team before your account is validated.",
-      es: "Esta información será revisada por el equipo HUB_RESA antes de validar su cuenta.",
+      fr: "Ces informations seront examinées par l'équipe NEXUS avant validation de votre compte.",
+      en: "This information will be reviewed by the NEXUS team before your account is validated.",
+      es: "Esta información será revisada por el equipo NEXUS antes de validar su cuenta.",
     },
     step1: { fr: "Inscription", en: "Registration", es: "Registro" },
-    step2: { fr: "Validation HUB_RESA", en: "HUB_RESA Validation", es: "Validación HUB_RESA" },
+    step2: { fr: "Validation NEXUS", en: "NEXUS Validation", es: "Validación NEXUS" },
     step3: { fr: "Accès Dashboard", en: "Dashboard Access", es: "Acceso al Dashboard" },
     companyName: { fr: "Nom de la compagnie", en: "Company name", es: "Nombre de la empresa" },
     managerName: { fr: "Nom du directeur", en: "Manager name", es: "Nombre del director" },
@@ -225,9 +225,9 @@ export const translations = {
     },
     pendingTitle: { fr: "Demande en cours de validation", en: "Request under review", es: "Solicitud en revisión" },
     pendingDesc: {
-      fr: "Votre demande d'adhésion a bien été reçue. L'équipe HUB_RESA va examiner votre dossier et vous contacter sous 24-48h.",
-      en: "Your membership request has been received. The HUB_RESA team will review your file and contact you within 24-48h.",
-      es: "Su solicitud de membresía ha sido recibida. El equipo HUB_RESA revisará su expediente y le contactará en 24-48h.",
+      fr: "Votre demande d'adhésion a bien été reçue. L'équipe NEXUS va examiner votre dossier et vous contacter sous 24-48h.",
+      en: "Your membership request has been received. The NEXUS team will review your file and contact you within 24-48h.",
+      es: "Su solicitud de membresía ha sido recibida. El equipo NEXUS revisará su expediente y le contactará en 24-48h.",
     },
     activeTitle: { fr: "Compte validé !", en: "Account validated!", es: "¡Cuenta validada!" },
     activeDesc: {
@@ -239,7 +239,7 @@ export const translations = {
     rejectedTitle: { fr: "Demande refusée", en: "Request rejected", es: "Solicitud rechazada" },
     rejectionReason: { fr: "Motif", en: "Reason", es: "Motivo" },
     suspendedTitle: { fr: "Compte suspendu", en: "Account suspended", es: "Cuenta suspendida" },
-    contactCSN: { fr: "Contactez l'équipe HUB_RESA pour plus d'informations.", en: "Contact the HUB_RESA team for more information.", es: "Contacte al equipo HUB_RESA para más información." },
+    contactCSN: { fr: "Contactez l'équipe NEXUS pour plus d'informations.", en: "Contact the NEXUS team for more information.", es: "Contacte al equipo NEXUS para más información." },
     alreadyHaveAccount: { fr: "Déjà un compte ?", en: "Already have an account?", es: "¿Ya tiene una cuenta?" },
     login: { fr: "Se connecter", en: "Log in", es: "Iniciar sesión" },
   },
@@ -257,7 +257,7 @@ export const translations = {
     partnerNetwork: { fr: "Réseau partenaires", en: "Partner network", es: "Red de socios" },
     quickLinks: { fr: "Liens rapides", en: "Quick links", es: "Enlaces rápidos" },
     followUs: { fr: "Suivez-nous", en: "Follow us", es: "Síguenos" },
-    platform: { fr: "Plateforme HUB_RESA — Afrique de l'Ouest", en: "HUB_RESA Platform — West Africa", es: "Plataforma HUB_RESA — África Occidental" },
+    platform: { fr: "Plateforme NEXUS — Afrique de l'Ouest", en: "NEXUS Platform — West Africa", es: "Plataforma NEXUS — África Occidental" },
     description: { fr: "La plateforme de référence pour le transport, la restauration et l'expédition en Afrique de l'Ouest.", en: "The reference platform for transport, catering and delivery in West Africa.", es: "La plataforma de referencia para el transporte, la restauración y la entrega en África Occidental." },
     services: { fr: "Nos services", en: "Our services", es: "Nuestros servicios" },
     intercityTransport: { fr: "Transport interurbain", en: "Intercity transport", es: "Transporte interurbano" },
@@ -275,7 +275,7 @@ export const translations = {
     headquarters: { fr: "Siège", en: "Headquarters", es: "Sede" },
     allRights: { fr: "Tous droits réservés", en: "All rights reserved", es: "Todos los derechos reservados" },
     westAfrica: { fr: "Afrique de l'Ouest", en: "West Africa", es: "África Occidental" },
-    csnPlatform: { fr: "Plateforme HUB_RESA agréée", en: "Approved HUB_RESA platform", es: "Plataforma HUB_RESA aprobada" },
+    csnPlatform: { fr: "Plateforme NEXUS agréée", en: "Approved NEXUS platform", es: "Plataforma NEXUS aprobada" },
   },
 
   // ── Recruitment ──────────────────────────────────────────────────────────

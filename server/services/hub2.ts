@@ -51,7 +51,7 @@ export interface CreatePaymentIntentParams {
   amount: number;
   currency: string;
   customerReference: string; // ID compagnie
-  purchaseReference: string; // ID unique de la demande (ex: "HUBRESA-CR-123")
+  purchaseReference: string; // ID unique de la demande (ex: "NEXUS-CR-123")
 }
 
 export interface AttemptPaymentParams {
@@ -233,11 +233,11 @@ export function verifyHub2WebhookSignature(
 
 /**
  * Générer une référence d'achat unique pour Hub2
- * Format : HUBRESA-CR-{requestId}-{timestamp}
+ * Format : NEXUS-CR-{requestId}-{timestamp}
  * Seuls les caractères A-Za-z0-9-_. sont autorisés
  */
 export function generateHub2PurchaseRef(requestId: number): string {
-  return `HUBRESA-CR-${requestId}-${Date.now()}`;
+  return `NEXUS-CR-${requestId}-${Date.now()}`;
 }
 
 /**

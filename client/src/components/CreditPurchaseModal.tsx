@@ -1,6 +1,6 @@
 /**
- * CreditPurchaseModal — Interface d'encaissement des crédits HUB_RESA
- * Permet à l'admin HUB_RESA de :
+ * CreditPurchaseModal — Interface d'encaissement des crédits NEXUS
+ * Permet à l'admin NEXUS de :
  *  - Sélectionner une compagnie
  *  - Saisir le montant en FCFA
  *  - Choisir la méthode de paiement
@@ -99,7 +99,7 @@ export default function CreditPurchaseModal({ isOpen, onClose, onSuccess }: Cred
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span>💳 Encaissement de Crédits HUB_RESA</span>
+            <span>💳 Encaissement de Crédits NEXUS</span>
           </DialogTitle>
           <DialogDescription>
             Créez une demande d'achat de crédits pour une compagnie

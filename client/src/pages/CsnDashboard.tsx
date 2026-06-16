@@ -351,7 +351,7 @@ function CreditRequestsPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Demandes de Crédits</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Gestion des demandes d'achat de points HUB_RESA</p>
+          <p className="text-sm text-gray-500 mt-0.5">Gestion des demandes d'achat de points NEXUS</p>
         </div>
         <div className="flex items-center gap-2">
           {pendingCount > 0 && (
@@ -948,7 +948,7 @@ export default function CsnDashboard() {
 
   const { unreadCount: csnUnreadCount } = usePushNotifications({
     role: "csn",
-    title: "HUB_RESA — Nouveau message compagnie",
+    title: "NEXUS — Nouveau message compagnie",
     sound: true,
     interval: 30_000,
   });
@@ -1013,7 +1013,7 @@ export default function CsnDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center p-8">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900">Accès réservé à l'administrateur HUB_RESA</h2>
+          <h2 className="text-xl font-bold text-gray-900">Accès réservé à l'administrateur NEXUS</h2>
           <Button className="mt-4" onClick={() => navigate("/")}>Retour à l'accueil</Button>
         </div>
       </div>
@@ -1047,7 +1047,7 @@ export default function CsnDashboard() {
 
   const groups = [
     { key: "principal", label: "Principal" },
-    { key: "credits", label: "Crédits HUB_RESA" },
+    { key: "credits", label: "Crédits NEXUS" },
     { key: "outils", label: "Outils" },
   ];
 
@@ -1061,8 +1061,8 @@ export default function CsnDashboard() {
               <Truck className="h-4.5 w-4.5 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-gray-900 leading-tight">Dashboard HUB_RESA</h1>
-              <p className="text-[11px] text-gray-500">Centre de Supervision National — HUB_RESA</p>
+              <h1 className="text-base font-bold text-gray-900 leading-tight">Dashboard NEXUS</h1>
+              <p className="text-[11px] text-gray-500">Centre de Supervision National — NEXUS</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

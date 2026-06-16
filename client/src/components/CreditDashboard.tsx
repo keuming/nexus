@@ -1,6 +1,6 @@
 /**
  * CreditDashboard — Affichage du solde des crédits en temps réel
- * Visible par l'admin HUB_RESA et par chaque compagnie
+ * Visible par l'admin NEXUS et par chaque compagnie
  */
 
 import { useState } from "react";
@@ -179,7 +179,7 @@ export default function CreditDashboard({ isAdmin = false, companyId }: CreditDa
       <div className="space-y-6">
         {/* En-tête */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mes Crédits HUB_RESA</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Mes Crédits NEXUS</h2>
           <p className="text-sm text-gray-600 mt-1">Suivi de votre solde de crédits</p>
         </div>
 
@@ -253,7 +253,7 @@ export default function CreditDashboard({ isAdmin = false, companyId }: CreditDa
           <Card className="bg-blue-50 border-blue-200">
             <CardContent className="pt-6">
               <p className="text-sm text-blue-900 text-center">
-                Aucun achat de crédits pour le moment. Contactez l'admin HUB_RESA pour en acheter.
+                Aucun achat de crédits pour le moment. Contactez l'admin NEXUS pour en acheter.
               </p>
             </CardContent>
           </Card>

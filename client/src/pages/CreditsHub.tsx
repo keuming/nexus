@@ -249,7 +249,7 @@ export default function CreditsHub() {
     const sym = balance?.symbol ?? "FCFA";
     const amountStr = tx.amountLocal ? `${Number(tx.amountLocal).toLocaleString()} ${sym}` : `${tx.points * 125} FCFA`;
     const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/>
-<title>Facture HUB_RESA — ${ref}</title>
+<title>Facture NEXUS — ${ref}</title>
 <style>
   body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; color: #1a1a1a; }
   .header { background: #E8751A; color: white; padding: 24px 32px; border-radius: 8px 8px 0 0; }
@@ -267,7 +267,7 @@ export default function CreditsHub() {
   @media print { body { margin: 0; } }
 </style></head><body>
 <div class="header">
-  <h1>HUB_RESA</h1>
+  <h1>NEXUS</h1>
   <p>Facture d'achat de crédits</p>
 </div>
 <div class="body">
@@ -283,7 +283,7 @@ export default function CreditsHub() {
     <div style="font-size:11px;color:#9ca3af;margin-top:4px;">1 point = 125 FCFA (ou équivalent en devise locale)</div>
   </div>
   <div class="footer">
-    HUB_RESA &mdash; Service client : +225 0504921096 / 0701578857 &mdash; clients@hub_resa.com<br/>
+    NEXUS &mdash; Service client : +225 0504921096 / 0701578857 &mdash; clients@nexus.com<br/>
     Ce document tient lieu de facture. Les points ne sont pas remboursables.
   </div>
 </div>
@@ -312,9 +312,9 @@ export default function CreditsHub() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">FACTURATION DES SERVICES HUB_RESA</h1>
+          <h1 className="text-2xl font-bold text-foreground">FACTURATION DES SERVICES NEXUS</h1>
           <p className="text-muted-foreground mt-1">
-            Gérez vos crédits pour accéder aux services HUB_RESA. 1 point = {pointPrice.toLocaleString()} {symbol}
+            Gérez vos crédits pour accéder aux services NEXUS. 1 point = {pointPrice.toLocaleString()} {symbol}
           </p>
         </div>
         <Button
@@ -337,7 +337,7 @@ export default function CreditsHub() {
           <div>
             <p className="font-semibold text-red-700 dark:text-red-400">Solde insuffisant</p>
             <p className="text-sm text-red-600 dark:text-red-500">
-              Votre solde est inférieur à 10 points. Rechargez pour continuer à utiliser les services HUB_RESA.
+              Votre solde est inférieur à 10 points. Rechargez pour continuer à utiliser les services NEXUS.
             </p>
           </div>
           <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
@@ -437,7 +437,7 @@ export default function CreditsHub() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Coins className="w-5 h-5 text-[#E8751A]" />
-                Acheter des crédits HUB_RESA
+                Acheter des crédits NEXUS
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 pt-2">
@@ -820,7 +820,7 @@ export default function CreditsHub() {
             <div className="text-center py-12 text-muted-foreground">
               <Coins className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Aucune transaction pour le moment.</p>
-              <p className="text-sm">Achetez des crédits pour commencer à utiliser les services HUB_RESA.</p>
+              <p className="text-sm">Achetez des crédits pour commencer à utiliser les services NEXUS.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">

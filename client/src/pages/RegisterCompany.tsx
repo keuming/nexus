@@ -19,9 +19,9 @@ export default function RegisterCompany() {
   const { t } = useI18n();
   const { user, loading } = useAuth();
   useSEO({
-    title: "Inscrire ma compagnie sur HUB_RESA",
-    description: "Inscrivez votre compagnie de transport, restaurant, hôtel, boutique ou agence d'expédition sur HUB_RESA. Accédez à des milliers de clients en Afrique de l'Ouest et Centrale.",
-    keywords: "inscription compagnie HUB RESA, partenaire transport Afrique, rejoindre plateforme, enregistrement compagnie",
+    title: "Inscrire ma compagnie sur NEXUS",
+    description: "Inscrivez votre compagnie de transport, restaurant, hôtel, boutique ou agence d'expédition sur NEXUS. Accédez à des milliers de clients en Afrique de l'Ouest et Centrale.",
+    keywords: "inscription compagnie NEXUS, partenaire transport Afrique, rejoindre plateforme, enregistrement compagnie",
     canonicalPath: "/register-company",
   });
   const [, navigate] = useLocation();
@@ -621,7 +621,7 @@ export default function RegisterCompany() {
                     />
                   </div>
                   <p className="text-xs text-gray-500">
-                    Si vous avez été recruté par un Business Développeur HUB_RESA, saisissez son identifiant unique pour lui attribuer votre inscription.
+                    Si vous avez été recruté par un Business Développeur NEXUS, saisissez son identifiant unique pour lui attribuer votre inscription.
                   </p>
                 </div>
               </div>

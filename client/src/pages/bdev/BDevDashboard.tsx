@@ -153,7 +153,7 @@ export default function BDevDashboard() {
             <div>
               <p className="text-yellow-400 font-medium text-sm">Compte en attente de validation</p>
               <p className="text-yellow-400/70 text-xs mt-0.5">
-                Votre compte est en cours de validation par l'administration HUB_RESA. Vous pourrez recruter des compagnies une fois votre compte activé.
+                Votre compte est en cours de validation par l'administration NEXUS. Vous pourrez recruter des compagnies une fois votre compte activé.
               </p>
             </div>
           </div>
@@ -275,7 +275,7 @@ export default function BDevDashboard() {
                     <p className="text-slate-400 text-xs">Taux de commission</p>
                   </div>
                   <p className="text-4xl font-black text-green-400">{stats.commissionRate ?? 5}%</p>
-                  <p className="text-slate-500 text-xs mt-1">Défini par l'administration HUB_RESA</p>
+                  <p className="text-slate-500 text-xs mt-1">Défini par l'administration NEXUS</p>
                 </div>
               </div>
             </CardContent>
@@ -328,7 +328,7 @@ export default function BDevDashboard() {
               <div className="bg-slate-700/30 rounded-lg p-4">
                 <h4 className="text-white font-semibold text-sm mb-2">Frais de Mise en Service</h4>
                 <p className="text-slate-300 text-sm mb-2">100 000 FCFA (frais uniques)</p>
-                <p className="text-slate-500 text-xs">Répartition : 75% HUB_RESA, 25% (25 000 FCFA) pour vous</p>
+                <p className="text-slate-500 text-xs">Répartition : 75% NEXUS, 25% (25 000 FCFA) pour vous</p>
               </div>
 
               <div className="bg-slate-700/30 rounded-lg p-4">
@@ -425,7 +425,7 @@ export default function BDevDashboard() {
         <div className="text-center pb-4">
           <Link href="/">
             <Button variant="ghost" className="text-slate-500 hover:text-slate-300 text-sm">
-              ← Retour à l'accueil HUB_RESA
+              ← Retour à l'accueil NEXUS
             </Button>
           </Link>
         </div>

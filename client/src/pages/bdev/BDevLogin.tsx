@@ -79,7 +79,7 @@ export default function BDevLogin() {
               <Briefcase className="w-6 h-6 text-white" />
             </div>
             <div className="text-left">
-              <p className="text-orange-400 text-xs font-semibold uppercase tracking-wider">HUB_RESA</p>
+              <p className="text-orange-400 text-xs font-semibold uppercase tracking-wider">NEXUS</p>
               <h1 className="text-white text-xl font-bold">Espace Business Développeur</h1>
             </div>
           </div>

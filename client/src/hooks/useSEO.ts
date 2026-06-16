@@ -15,11 +15,11 @@ interface SEOProps {
 }
 
 const BASE_TITLE = "NEXUS";
-const BASE_URL = "https://www.hubresa.cloud";
+const BASE_URL = "https://www.nexus.africa";
 const DEFAULT_DESCRIPTION =
   "NEXUS est la plateforme multi-services leader en Afrique de l'Ouest et Centrale : réservez vos billets de bus, commandez en restaurant, expédiez vos colis et trouvez un hôtel dans 16 pays africains.";
 const DEFAULT_KEYWORDS =
-  "réservation transport Afrique, billets bus Côte d'Ivoire, expédition colis Afrique, restaurant en ligne Abidjan, hôtel Afrique Ouest, HUB RESA, transport interurbain, compagnies bus Sénégal Mali Ghana Cameroun";
+  "réservation transport Afrique, billets bus Côte d'Ivoire, expédition colis Afrique, restaurant en ligne Abidjan, hôtel Afrique Ouest, NEXUS, transport interurbain, compagnies bus Sénégal Mali Ghana Cameroun";
 
 function setMeta(name: string, content: string, property = false) {
   const attr = property ? "property" : "name";
@@ -46,7 +46,7 @@ export function useSEO({
   title,
   description = DEFAULT_DESCRIPTION,
   keywords = DEFAULT_KEYWORDS,
-  ogImage = "https://d2xsxph8kpxj0f.cloudfront.net/310519663089638801/krJWDH8mB9j4aJHR7zvPat/og-image-hubresa-Tf5C9LTtnEiyapgmECVixj.png",
+  ogImage = "https://d2xsxph8kpxj0f.cloudfront.net/310519663089638801/krJWDH8mB9j4aJHR7zvPat/og-image-nexus-Tf5C9LTtnEiyapgmECVixj.png",
   ogType = "website",
   canonicalPath,
 }: SEOProps) {

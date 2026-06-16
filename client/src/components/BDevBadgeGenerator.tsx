@@ -75,12 +75,12 @@ export function BDevBadgeGenerator({ bdevId, bdevName, bdevPhone }: BDevBadgeGen
     ctx.textBaseline = "middle";
     ctx.fillText("BD", circleX, circleY);
 
-    // Texte "HUB_RESA" (côté gauche, blanc)
+    // Texte "NEXUS" (côté gauche, blanc)
     ctx.fillStyle = "white";
     ctx.font = "bold 72px Arial";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
-    ctx.fillText("HUB_RESA", 180, 140);
+    ctx.fillText("NEXUS", 180, 140);
 
     // Texte "BUSINESS DEVELOPER" (côté gauche, blanc)
     ctx.fillStyle = "white";
@@ -125,7 +125,7 @@ export function BDevBadgeGenerator({ bdevId, bdevName, bdevPhone }: BDevBadgeGen
     try {
       const link = document.createElement("a");
       link.href = canvasRef.current.toDataURL("image/png");
-      link.download = `HUB_RESA_Badge_${bdevId}_${bdevName?.replace(/\s+/g, "_") || "BD"}.png`;
+      link.download = `NEXUS_Badge_${bdevId}_${bdevName?.replace(/\s+/g, "_") || "BD"}.png`;
       link.click();
     } finally {
       setIsGenerating(false);

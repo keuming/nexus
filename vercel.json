@@ -30,7 +30,7 @@
       "dest": "/dist/public/$1"
     },
     {
-      "has": [{ "type": "host", "value": "admin.hubresa.com" }],
+      "has": [{ "type": "host", "value": "admin.nexus.africa" }],
       "src": "/(.*)",
       "dest": "/dist/public/index.html"
     },

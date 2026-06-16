@@ -167,7 +167,7 @@ function ProfilHotelContent() {
             Profil de l'établissement
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Ces informations sont visibles sur l'interface publique HUB_RESA
+            Ces informations sont visibles sur l'interface publique NEXUS
           </p>
         </div>
         {profile && (

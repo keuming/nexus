@@ -110,8 +110,8 @@ describe("Internal messaging validation", () => {
 // ─── PWA manifest validation ──────────────────────────────────────────────────
 describe("PWA manifest structure", () => {
   const manifest = {
-    name: "HUB_RESA — Plateforme HUB_RESA Afrique",
-    short_name: "HUB_RESA",
+    name: "NEXUS — Plateforme NEXUS Afrique",
+    short_name: "NEXUS",
     display: "standalone",
     theme_color: "#E8751A",
     background_color: "#ffffff",

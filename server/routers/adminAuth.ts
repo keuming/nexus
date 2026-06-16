@@ -260,7 +260,7 @@ export const adminAuthRouter = router({
     .input(z.object({ email: z.string().email(), bootstrapSecret: z.string() }))
     .mutation(async ({ input }) => {
       // Vérifier le secret de bootstrap
-      const bootstrapSecret = process.env.BOOTSTRAP_SECRET || "hub-resa-bootstrap-2026";
+      const bootstrapSecret = process.env.BOOTSTRAP_SECRET || "nexus-bootstrap-2026";
       if (input.bootstrapSecret !== bootstrapSecret) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Secret de bootstrap invalide" });
       }

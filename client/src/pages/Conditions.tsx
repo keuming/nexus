@@ -58,7 +58,7 @@ export default function Conditions() {
                     <p><strong>Capital Social :</strong> 10 000 000 FCFA</p>
                     <p><strong>Immatriculation :</strong> CI-ABJ-03-2022-B12-04961</p>
                     <p><strong>Téléphone :</strong> +225 27 22 53 55 44 / +225 07 07 40 07 16 / +225 05 04 92 10 96</p>
-                    <p><strong>Email :</strong> support@hubresa.cloud</p>
+                    <p><strong>Email :</strong> support@nexus.africa</p>
                   </div>
                 </section>
 
@@ -413,7 +413,7 @@ export default function Conditions() {
                       Pour toute question ou assistance, veuillez contacter :
                     </p>
                     <div className="space-y-2 text-sm">
-                      <p><strong>Email :</strong> support@hubresa.cloud</p>
+                      <p><strong>Email :</strong> support@nexus.africa</p>
                       <p><strong>Téléphone :</strong> +225 0504921096</p>
                       <p><strong>WhatsApp :</strong> +225 0504921096</p>
                     </div>

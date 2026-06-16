@@ -18,7 +18,7 @@ const SCHEMA_ORG = {
   provider: {
     "@type": "Organization",
     name: "NEXUS",
-    url: "https://www.hubresa.cloud",
+    url: "https://www.nexus.africa",
   },
   areaServed: [
     { "@type": "City", name: "Abidjan" },
@@ -27,7 +27,7 @@ const SCHEMA_ORG = {
     { "@type": "Country", name: "Côte d'Ivoire" },
   ],
   serviceType: "Réservation hôtelière en ligne",
-  url: "https://www.hubresa.cloud/hotels-abidjan",
+  url: "https://www.nexus.africa/hotels-abidjan",
 };
 
 const QUARTIERS = [

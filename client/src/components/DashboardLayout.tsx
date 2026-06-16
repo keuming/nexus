@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-2 mb-2">
               <Building2 className="h-8 w-8 text-amber-500" />
               <span className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-                HUB_RESA
+                NEXUS
               </span>
             </div>
             <div className="flex gap-0.5">
@@ -212,7 +212,7 @@ function DashboardLayoutContent({
                       className="font-bold text-sidebar-foreground text-sm truncate"
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
-                      {hotelProfile?.hotelName ?? hotelSettings?.name ?? "HUB_RESA"}
+                      {hotelProfile?.hotelName ?? hotelSettings?.name ?? "NEXUS"}
                     </span>
                     <div className="flex gap-0.5 mt-0.5">
                       {Array.from({ length: hotelProfile?.stars ?? hotelSettings?.stars ?? 4 }).map((_, i) => (

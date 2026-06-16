@@ -36,7 +36,7 @@ export default function AdminLoginModal({ open, onClose }: AdminLoginModalProps)
     onSuccess: (data) => {
       toast.success(`Bienvenue, ${data.admin.displayName} !`);
       onClose();
-      // Rediriger vers le dashboard HUB_RESA (dashboard général)
+      // Rediriger vers le dashboard NEXUS (dashboard général)
       navigate("/csn/dashboard");
     },
     onError: (err) => {
@@ -74,7 +74,7 @@ export default function AdminLoginModal({ open, onClose }: AdminLoginModalProps)
             Espace Administrateur
           </DialogTitle>
           <DialogDescription className="text-center text-gray-400 text-sm">
-            Accès réservé à l'équipe HUB_RESA — HUB_RESA
+            Accès réservé à l'équipe NEXUS — NEXUS
           </DialogDescription>
         </DialogHeader>
 
@@ -154,7 +154,7 @@ export default function AdminLoginModal({ open, onClose }: AdminLoginModalProps)
         {/* Séparateur discret */}
         <div className="mt-4 pt-4 border-t border-white/5">
           <p className="text-center text-xs text-gray-600">
-            Accès sécurisé — HUB_RESA © 2026 HUB_RESA Afrique{" "}
+            Accès sécurisé — NEXUS © 2026 NEXUS Afrique{" "}
             <a href="/csn-dashboard" className="text-orange-500 hover:text-orange-600 underline">
               de
             </a>

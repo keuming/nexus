@@ -12,20 +12,20 @@ import { Badge } from "@/components/ui/badge";
 const SCHEMA_ORG = {
   "@context": "https://schema.org",
   "@type": "Service",
-  name: "Boutiques et Restaurants en ligne à Abidjan — HUB_RESA",
+  name: "Boutiques et Restaurants en ligne à Abidjan — NEXUS",
   description:
     "Commandez en ligne dans les meilleurs restaurants et boutiques d'Abidjan. Livraison à domicile, paiement Mobile Money. Restauration rapide, cuisine africaine, pizzerias et plus.",
   provider: {
     "@type": "Organization",
-    name: "HUB_RESA",
-    url: "https://www.hubresa.cloud",
+    name: "NEXUS",
+    url: "https://www.nexus.africa",
   },
   areaServed: [
     { "@type": "City", name: "Abidjan" },
     { "@type": "Country", name: "Côte d'Ivoire" },
   ],
   serviceType: "Commande en ligne et livraison à domicile",
-  url: "https://www.hubresa.cloud/boutiques-abidjan",
+  url: "https://www.nexus.africa/boutiques-abidjan",
 };
 
 const CATEGORIES_RESTO = [
@@ -60,24 +60,24 @@ const QUARTIERS = [
 
 const FAQS = [
   {
-    q: "Comment commander un repas en ligne depuis Abidjan sur HUB_RESA ?",
-    a: "Accédez à la section Restauration sur HUB_RESA, choisissez votre restaurant parmi les établissements partenaires, parcourez la carte, ajoutez vos plats au panier et validez votre commande. Vous pouvez choisir entre la livraison à domicile ou le retrait sur place.",
+    q: "Comment commander un repas en ligne depuis Abidjan sur NEXUS ?",
+    a: "Accédez à la section Restauration sur NEXUS, choisissez votre restaurant parmi les établissements partenaires, parcourez la carte, ajoutez vos plats au panier et validez votre commande. Vous pouvez choisir entre la livraison à domicile ou le retrait sur place.",
   },
   {
     q: "Quels modes de paiement sont acceptés pour les commandes en ligne ?",
-    a: "HUB_RESA accepte Orange Money, MTN MoMo, Wave, les cartes bancaires Visa/Mastercard et le paiement en espèces à la livraison. Tous les paiements sont sécurisés.",
+    a: "NEXUS accepte Orange Money, MTN MoMo, Wave, les cartes bancaires Visa/Mastercard et le paiement en espèces à la livraison. Tous les paiements sont sécurisés.",
   },
   {
     q: "Dans quels quartiers d'Abidjan la livraison est-elle disponible ?",
     a: "La livraison est disponible dans tous les quartiers d'Abidjan : Plateau, Cocody, Marcory, Yopougon, Treichville, Adjamé, Abobo, Port-Bouët, Koumassi et Bingerville. Les délais varient selon la distance.",
   },
   {
-    q: "Comment inscrire mon restaurant ou ma boutique sur HUB_RESA ?",
-    a: "Rendez-vous sur la page d'inscription entreprise de HUB_RESA, sélectionnez le type d'activité (Restauration ou Boutique), remplissez le formulaire avec vos informations et votre menu ou catalogue. Notre équipe valide votre dossier sous 48 heures.",
+    q: "Comment inscrire mon restaurant ou ma boutique sur NEXUS ?",
+    a: "Rendez-vous sur la page d'inscription entreprise de NEXUS, sélectionnez le type d'activité (Restauration ou Boutique), remplissez le formulaire avec vos informations et votre menu ou catalogue. Notre équipe valide votre dossier sous 48 heures.",
   },
   {
-    q: "Peut-on suivre sa commande en temps réel sur HUB_RESA ?",
-    a: "Oui, après validation de votre commande, vous recevez un numéro de suivi. Vous pouvez suivre l'état de votre commande (en préparation, en livraison, livré) directement depuis l'application HUB_RESA.",
+    q: "Peut-on suivre sa commande en temps réel sur NEXUS ?",
+    a: "Oui, après validation de votre commande, vous recevez un numéro de suivi. Vous pouvez suivre l'état de votre commande (en préparation, en livraison, livré) directement depuis l'application NEXUS.",
   },
 ];
 
@@ -85,7 +85,7 @@ export default function BoutiquesAbidjan() {
   useSEO({
     title: "Boutiques & Restaurants en ligne Abidjan — Livraison à domicile",
     description:
-      "Commandez en ligne dans les meilleurs restaurants et boutiques d'Abidjan. Livraison à domicile rapide, paiement Mobile Money. Cuisine africaine, fast-food, mode, cosmétiques. HUB_RESA.",
+      "Commandez en ligne dans les meilleurs restaurants et boutiques d'Abidjan. Livraison à domicile rapide, paiement Mobile Money. Cuisine africaine, fast-food, mode, cosmétiques. NEXUS.",
     keywords:
       "restaurant en ligne Abidjan, livraison repas Abidjan, commande en ligne Abidjan, boutique en ligne Côte d'Ivoire, livraison à domicile Abidjan, cuisine africaine Abidjan, fast food Abidjan, Orange Money livraison, MTN MoMo commande, restauration Abidjan",
     canonicalPath: "/boutiques-abidjan",
@@ -102,7 +102,7 @@ export default function BoutiquesAbidjan() {
       <section className="bg-gradient-to-br from-[#0f2044] to-[#1a3a6e] text-white py-16 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center gap-2 mb-4">
-            <Link href="/" className="text-orange-300 hover:text-orange-200 text-sm">HUB_RESA</Link>
+            <Link href="/" className="text-orange-300 hover:text-orange-200 text-sm">NEXUS</Link>
             <ChevronRight className="w-4 h-4 text-gray-400" />
             <span className="text-gray-300 text-sm">Boutiques & Restaurants Abidjan</span>
           </div>
@@ -173,7 +173,7 @@ export default function BoutiquesAbidjan() {
             <h2 className="text-2xl font-bold">Boutiques en ligne à Abidjan</h2>
           </div>
           <p className="text-muted-foreground mb-8">
-            Faites vos achats en ligne auprès des boutiques partenaires HUB_RESA.
+            Faites vos achats en ligne auprès des boutiques partenaires NEXUS.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {CATEGORIES_BOUTIQUE.map((c) => (
@@ -193,7 +193,7 @@ export default function BoutiquesAbidjan() {
       <section className="py-12 px-4">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold mb-8 text-center">
-            Les avantages de commander sur HUB_RESA à Abidjan
+            Les avantages de commander sur NEXUS à Abidjan
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {AVANTAGES.map(({ icon: Icon, title, desc }) => (
@@ -253,7 +253,7 @@ export default function BoutiquesAbidjan() {
             Commandez maintenant depuis Abidjan
           </h2>
           <p className="text-gray-200 mb-6">
-            Restaurants, boutiques, livraison rapide — tout est disponible sur HUB_RESA.
+            Restaurants, boutiques, livraison rapide — tout est disponible sur NEXUS.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link href="/">
@@ -272,7 +272,7 @@ export default function BoutiquesAbidjan() {
 
       <footer className="py-6 px-4 border-t text-center text-sm text-muted-foreground">
         <div className="flex flex-wrap justify-center gap-4">
-          <Link href="/" className="hover:text-foreground">Accueil HUB_RESA</Link>
+          <Link href="/" className="hover:text-foreground">Accueil NEXUS</Link>
           <Link href="/transport-abidjan" className="hover:text-foreground">Transport Abidjan</Link>
           <Link href="/hotels-abidjan" className="hover:text-foreground">Hôtels Abidjan</Link>
           <Link href="/agences-voyage-abidjan" className="hover:text-foreground">Agences de voyage</Link>

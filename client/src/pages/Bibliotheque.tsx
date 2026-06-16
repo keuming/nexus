@@ -67,9 +67,9 @@ type Company = {
 
 export default function Bibliotheque() {
   useSEO({
-    title: "Bibliothèque des compagnies — HUB_RESA",
-    description: "Découvrez les photos et galeries des compagnies partenaires HUB_RESA en Afrique de l'Ouest : transport, restauration et expédition.",
-    keywords: "galerie photos compagnies Afrique, bibliothèque HUB RESA, compagnies transport restauration",
+    title: "Bibliothèque des compagnies — NEXUS",
+    description: "Découvrez les photos et galeries des compagnies partenaires NEXUS en Afrique de l'Ouest : transport, restauration et expédition.",
+    keywords: "galerie photos compagnies Afrique, bibliothèque NEXUS, compagnies transport restauration",
     canonicalPath: "/bibliotheque",
   });
   const [search, setSearch] = useState("");
@@ -99,7 +99,7 @@ export default function Bibliotheque() {
             <div>
               <h1 className="text-2xl font-bold">Bibliothèque des compagnies</h1>
               <p className="text-gray-400 text-sm mt-0.5">
-                Découvrez les photos et la vitrine de chaque compagnie partenaire HUB_RESA
+                Découvrez les photos et la vitrine de chaque compagnie partenaire NEXUS
               </p>
             </div>
           </div>

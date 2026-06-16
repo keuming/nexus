@@ -346,9 +346,9 @@ function CompanyCard({ company }: { company: any }) {
 
 export default function Directory() {
   useSEO({
-    title: "Répertoire des compagnies — HUB_RESA",
-    description: "Trouvez toutes les compagnies partenaires HUB_RESA en Afrique de l'Ouest : transport, restauration et expédition. Horaires, tarifs et contacts.",
-    keywords: "répertoire compagnies transport Afrique, annuaire compagnies bus, HUB RESA partenaires",
+    title: "Répertoire des compagnies — NEXUS",
+    description: "Trouvez toutes les compagnies partenaires NEXUS en Afrique de l'Ouest : transport, restauration et expédition. Horaires, tarifs et contacts.",
+    keywords: "répertoire compagnies transport Afrique, annuaire compagnies bus, NEXUS partenaires",
     canonicalPath: "/directory",
   });
   const [, navigate] = useLocation();
@@ -385,7 +385,7 @@ export default function Directory() {
           </Button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-gray-900">Répertoire des compagnies</h1>
-            <p className="text-xs text-gray-500">{companies.length} compagnies partenaires HUB_RESA</p>
+            <p className="text-xs text-gray-500">{companies.length} compagnies partenaires NEXUS</p>
           </div>
         </div>
       </div>

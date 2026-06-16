@@ -140,7 +140,7 @@ export default function RegisterHotel() {
             <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center">
               <Building2 className="h-4 w-4 text-white" />
             </div>
-            <span className="font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>HUB_RESA</span>
+            <span className="font-bold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>NEXUS</span>
           </div>
         </div>
       </header>
@@ -157,7 +157,7 @@ export default function RegisterHotel() {
               Établissement enregistré !
             </h2>
             <p className="text-white/60 mb-8">
-              Votre établissement est maintenant visible sur HUB_RESA. Accédez à votre tableau de bord pour gérer vos chambres et réservations.
+              Votre établissement est maintenant visible sur NEXUS. Accédez à votre tableau de bord pour gérer vos chambres et réservations.
             </p>
             <div className="flex gap-4 justify-center">
               <Button variant="outline" className="border-white/20 text-white hover:bg-white/10" onClick={() => setLocation("/")}>
@@ -175,7 +175,7 @@ export default function RegisterHotel() {
                 Inscrire mon établissement
               </h1>
               <p className="text-white/50">
-                {user ? "Complétez le formulaire pour rejoindre HUB_RESA" : "Connectez-vous pour inscrire votre établissement"}
+                {user ? "Complétez le formulaire pour rejoindre NEXUS" : "Connectez-vous pour inscrire votre établissement"}
               </p>
             </div>
 
@@ -184,7 +184,7 @@ export default function RegisterHotel() {
                 <CardContent className="p-8 text-center">
                   <Building2 className="h-12 w-12 text-amber-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-white mb-2">Connexion requise</h3>
-                  <p className="text-white/50 mb-6 text-sm">Vous devez être connecté pour inscrire votre établissement sur HUB_RESA.</p>
+                  <p className="text-white/50 mb-6 text-sm">Vous devez être connecté pour inscrire votre établissement sur NEXUS.</p>
                   <Button
                     className="bg-amber-500 hover:bg-amber-600 text-white"
                     onClick={() => { window.location.href = getLoginUrl(); }}

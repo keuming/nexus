@@ -51,7 +51,7 @@ export default function ManifesteModule({ companyId, departures }: ManifesteModu
     try {
       generateManifestPDF({
         company: {
-          name: manifestForPrint.data.company || "HUB RESA",
+          name: manifestForPrint.data.company || "NEXUS",
         },
         departure: {
           departureCity: manifestForPrint.data.departure.departureCity,

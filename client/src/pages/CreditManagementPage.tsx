@@ -1,5 +1,5 @@
 /**
- * CreditManagementPage — Page de gestion des crédits HUB_RESA
+ * CreditManagementPage — Page de gestion des crédits NEXUS
  * Affiche le dashboard de gestion financière avec :
  * - Statistiques globales des encaissements
  * - Bouton pour créer une nouvelle demande d'encaissement
@@ -28,7 +28,7 @@ export default function CreditManagementPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Crédits HUB_RESA</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Gestion des Crédits NEXUS</h1>
           <p className="text-gray-600 mt-1">Suivi des encaissements et distribution des crédits aux compagnies</p>
         </div>
         <div className="flex gap-2">

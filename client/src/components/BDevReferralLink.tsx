@@ -13,7 +13,7 @@ interface BDevReferralLinkProps {
   domain?: string;
 }
 
-export function BDevReferralLink({ bdevId, domain = "https://hubresa.cloud" }: BDevReferralLinkProps) {
+export function BDevReferralLink({ bdevId, domain = "https://nexus.africa" }: BDevReferralLinkProps) {
   const [copied, setCopied] = useState(false);
 
   const referralLink = `${domain}/register?bdev=${bdevId}`;
@@ -27,14 +27,14 @@ export function BDevReferralLink({ bdevId, domain = "https://hubresa.cloud" }: B
 
   const shareOnWhatsApp = () => {
     const message = encodeURIComponent(
-      `Rejoins HUB_RESA et bénéficie de ma commission ! 🚀\n\n${referralLink}\n\nID Parrain: ${bdevId}`
+      `Rejoins NEXUS et bénéficie de ma commission ! 🚀\n\n${referralLink}\n\nID Parrain: ${bdevId}`
     );
     window.open(`https://wa.me/?text=${message}`, "_blank");
   };
 
   const shareOnLinkedIn = () => {
     const message = encodeURIComponent(
-      `Rejoins le réseau HUB_RESA et commence à générer des revenus ! ${referralLink}`
+      `Rejoins le réseau NEXUS et commence à générer des revenus ! ${referralLink}`
     );
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`, "_blank");
   };

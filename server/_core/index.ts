@@ -133,7 +133,7 @@ async function startServer() {
 
   // ─── SEO — Sitemap.xml dynamique ────────────────────────────────────────────
   app.get("/sitemap.xml", (_req, res) => {
-    const BASE = "https://www.hubresa.cloud";
+    const BASE = "https://www.nexus.africa";
     const now = new Date().toISOString().split("T")[0];
     const pages = [
       { url: "/",                priority: "1.0", changefreq: "daily"   },

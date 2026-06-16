@@ -99,7 +99,7 @@ const companyProcedure = protectedProcedure.use(async ({ ctx, next }) => {
 
 const csnProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé à l'administrateur HUB_RESA" });
+    throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé à l'administrateur NEXUS" });
   }
   return next({ ctx });
 });
@@ -276,7 +276,7 @@ export const teamRouter = router({
       return { success: true };
     }),
 
-  // Send a message (HUB_RESA side)
+  // Send a message (NEXUS side)
   sendMessageAsCsn: csnProcedure
     .input(z.object({ companyId: z.number(), content: z.string().min(1).max(2000) }))
     .mutation(async ({ ctx, input }) => {
@@ -286,7 +286,7 @@ export const teamRouter = router({
         companyId: input.companyId,
         senderType: "csn",
         senderId: ctx.user.id,
-        senderName: "Support HUB_RESA HUB_RESA",
+        senderName: "Support NEXUS NEXUS",
         content: input.content,
         isRead: false,
       });
@@ -299,14 +299,14 @@ export const teamRouter = router({
     return messages;
   }),
 
-  // List messages for a company (HUB_RESA side)
+  // List messages for a company (NEXUS side)
   listMessagesForCsn: csnProcedure
     .input(z.object({ companyId: z.number() }))
     .query(async ({ input }) => {
       return getMessagesByCompany(input.companyId);
     }),
 
-  // Mark messages as read (company marks HUB_RESA messages as read)
+  // Mark messages as read (company marks NEXUS messages as read)
   markReadAsCompany: companyProcedure.mutation(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -323,7 +323,7 @@ export const teamRouter = router({
     return { success: true };
   }),
 
-  // Mark messages as read (HUB_RESA marks company messages as read)
+  // Mark messages as read (NEXUS marks company messages as read)
   markReadAsCsn: csnProcedure
     .input(z.object({ companyId: z.number() }))
     .mutation(async ({ input }) => {
@@ -342,17 +342,17 @@ export const teamRouter = router({
       return { success: true };
     }),
 
-  // Get unread count for company (messages from HUB_RESA not yet read)
+  // Get unread count for company (messages from NEXUS not yet read)
   unreadCountForCompany: companyProcedure.query(async ({ ctx }) => {
     return getUnreadCountForCompany(ctx.company.id, "company");
   }),
 
-  // Get total unread count for HUB_RESA (messages from all companies)
+  // Get total unread count for NEXUS (messages from all companies)
   totalUnreadForCsn: csnProcedure.query(async () => {
     return getTotalUnreadForCsn();
   }),
 
-  // Get list of companies with message count (for HUB_RESA inbox)
+  // Get list of companies with message count (for NEXUS inbox)
   companiesWithMessages: csnProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];

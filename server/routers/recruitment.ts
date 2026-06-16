@@ -63,7 +63,7 @@ export const recruitmentRouter = {
         status: "nouveau",
       });
 
-      // Notification au propriétaire HUB_RESA
+      // Notification au propriétaire NEXUS
       try {
         const { notifyOwner } = await import("../_core/notification");
         await notifyOwner({
