@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "module": "NodeNext", "moduleResolution": "NodeNext", "noEmit": false, "outDir": ".build-check", "rootDir": ".", "jsx": "preserve", "types": ["node"], "lib": ["ES2023"] },
+  "include": ["server", "shared", "api"]
+}
