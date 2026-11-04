@@ -16,7 +16,7 @@ export function PaymentPanel({ paymentId, onClose, onPaid }: { paymentId: string
   useEffect(() => { if (p?.status === 'paid') onPaid?.(); }, [p?.status]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-black/80 p-4 sm:items-center" onClick={(e) => e.stopPropagation()}>
-      <div role="dialog" aria-modal="true" aria-label="Paiement" className="card w-full max-w-md space-y-4 text-center">
+      <div role="dialog" aria-modal="true" aria-label="Paiement" className="card max-h-[calc(100dvh-2rem)] w-full max-w-md space-y-4 overflow-y-auto overscroll-contain text-center">
         <Err e={q.error} />
         {!p ? <p className="text-zinc-400">Chargement…</p> : p.status === 'pending' ? (
           <>

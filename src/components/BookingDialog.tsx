@@ -33,7 +33,7 @@ export function BookingDialog({ offer, onClose }: { offer: OfferView; onClose: (
   });
   return (
     <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/70 p-4 sm:items-center" onClick={onClose}>
-      <form role="dialog" aria-modal="true" aria-label="Réserver" className="card w-full max-w-md space-y-4"
+      <form role="dialog" aria-modal="true" aria-label="Réserver" className="card max-h-[calc(100dvh-2rem)] w-full max-w-md space-y-4 overflow-y-auto overscroll-contain"
         onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
         {offer.photoCount > 0 && (
           <div className="space-y-2">

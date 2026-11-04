@@ -1,6 +1,8 @@
 import { useId, useState } from 'react';
 import { COUNTRIES as COUNTRIES_LIST, citiesOf } from '../../shared/geo';
 
+const SORTED = [...COUNTRIES_LIST].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
 /** Saisie d'une liste de lieux (villes de service, arrêts) : ajout par Entrée ou bouton, suggestions facultatives. */
 export function ChipInput({ label, hint, values, onChange, suggestions = [], max = 20, placeholder }: {
   label: string; hint?: string; values: string[]; onChange: (v: string[]) => void; suggestions?: string[]; max?: number; placeholder?: string;
@@ -59,7 +61,7 @@ export function CountrySelect({ value, onChange, allowAll, id }: { value: string
   return (
     <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
       {allowAll && <option value="">Tous les pays</option>}
-      {COUNTRIES_LIST.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+      {SORTED.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
     </select>
   );
 }
