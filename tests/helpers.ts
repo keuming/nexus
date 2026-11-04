@@ -9,6 +9,8 @@ import type { Db } from '../server/db/client.js';
 
 process.env.JWT_SECRET = 'test-secret-test-secret-test-secret-123';
 process.env.DATABASE_URL = 'postgres://unused';
+process.env.CLOUDINARY_CLOUD_NAME = 'demo';
+process.env.CLOUDINARY_UPLOAD_PRESET = 'nexus_offers';
 
 /** Base PGlite créée à partir du db/schema.sql livré : le test valide le vrai script. */
 /** Faux ORZAYAH : états pilotés par le test, mêmes règles d'idempotence que l'API réelle. */

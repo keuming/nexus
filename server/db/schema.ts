@@ -98,5 +98,6 @@ export const payments = pgTable('payments', {
 export const offerPhotos = pgTable('offer_photos', {
   offerId: uuid('offer_id').notNull().references(() => offers.id, { onDelete: 'cascade' }),
   position: smallint('position').notNull(),
-  data: text('data').notNull(),
+  data: text('data'),
+  url: text('url'),
 }, (t) => [primaryKey({ columns: [t.offerId, t.position] })]);

@@ -73,10 +73,12 @@ export const catalogRoutes = new Hono<Env>()
   /** Photo d'une offre visible au public (image JPEG, cache navigateur 1 jour). */
   .get('/:id/photos/:pos', v('param', z.object({ id: z.string().uuid(), pos: z.coerce.number().int().min(0).max(3) })), async (c) => {
     const { id, pos } = c.req.valid('param');
-    const [row] = await c.get('db').select({ data: offerPhotos.data }).from(offerPhotos)
+    const [row] = await c.get('db').select({ data: offerPhotos.data, url: offerPhotos.url }).from(offerPhotos)
       .innerJoin(offers, eq(offers.id, offerPhotos.offerId))
       .innerJoin(companies, eq(companies.id, offers.companyId))
       .where(and(eq(offerPhotos.offerId, id), eq(offerPhotos.position, pos), eq(offers.active, true), eq(companies.status, 'active'))).limit(1);
     if (!row) throw notFound('Photo');
-    return new Response(Buffer.from(row.data, 'base64'), { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
+    // Cloudinary : redirection vers une version optimisée (format et qualité automatiques, 900 px de large).
+    if (row.url) { c.header('cache-control', 'public, max-age=3600'); return c.redirect(row.url.replace('/image/upload/', '/image/upload/f_auto,q_auto,w_900,c_limit/'), 302); }
+    return new Response(Buffer.from(row.data!, 'base64'), { headers: { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' } });
   });

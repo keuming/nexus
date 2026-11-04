@@ -101,3 +101,6 @@ Paiement mobile money (webhook → `credit_ledger`) · notifications e-mail/SMS 
 **Robustesse** : toute erreur ORZAYAH incertaine (réseau, 429, 5xx) laisse le paiement `pending` et la même clé est rejouée → pas de double débit. Erreurs 400/401/403 = définitives → annulation. Nettoyage des paiements expirés « paresseux » (catalogue, réservation, suivi), sans cron. Max 3 paiements en attente par client.
 
 **Limites connues** : Mobile Money uniquement ; les frais ORZAYAH (`fee_centimes`) sont enregistrés mais leur prise en charge reste à décider ; reversements et remboursements `needs_refund` sont manuels ; un paiement `paid` n'est plus relu (un remboursement fait côté ORZAYAH n'est pas répercuté automatiquement) ; non testé contre le vrai ORZAYAH (faux serveur conforme à la documentation).
+
+## Photos des offres
+4 photos max par offre. Avec `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_UPLOAD_PRESET` (preset non signé) le navigateur envoie directement chaque photo à Cloudinary ; seule l'URL est enregistrée (`offer_photos.url`). Le serveur n'accepte que des URL `https://res.cloudinary.com/<notre compte>/image/upload/…`. `GET /api/offers/:id/photos/:n` redirige vers une version optimisée (`f_auto,q_auto,w_900`). Sans ces variables : repli JPEG en base64 dans Neon (`offer_photos.data`). Limite connue : pas de modification des photos après publication.

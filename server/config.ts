@@ -4,6 +4,9 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET doit faire au moins 32 caractères'),
   NODE_ENV: z.string().default('development'),
+  // Photos des offres : Cloudinary (envoi direct depuis le navigateur, preset non signé). Sans ces variables : repli base64 en base.
+  CLOUDINARY_CLOUD_NAME: z.string().regex(/^[a-z0-9_-]+$/i).optional(),
+  CLOUDINARY_UPLOAD_PRESET: z.string().min(1).optional(),
   // Paiement ORZAYAH : facultatif (sans clé, seules les offres gratuites peuvent être réservées).
   ORZAYAH_API_KEY: z.string().optional(),
   ORZAYAH_API_URL: z.string().url().default('https://api.orzayah.com/api/public/v1'),

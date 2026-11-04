@@ -463,4 +463,18 @@ describe('photos des offres', () => {
     expect((await ctx.app.request(`http://localhost/api/offers/${r.json.offer.id}/photos/0`)).status).toBe(404); // hors catalogue
     expect((await owner.get('/company/offers')).json.offers.find((o: any) => o.id === r.json.offer.id).photoCount).toBe(4);
   });
+
+  it('accepte uniquement les URL Cloudinary de notre compte et redirige vers une version optimisée', async () => {
+    const { owner } = await setup(5, 5, 0);
+    expect((await owner.get('/company/upload-config')).json.cloudinary).toEqual({ cloudName: 'demo', preset: 'nexus_offers' });
+    const base = { title: 'Cloud', country: 'CI', city: 'Abidjan', priceFcfa: 0, capacity: 5, startsAt: future() };
+    for (const bad of ['https://evil.test/demo/image/upload/a.jpg', 'https://res.cloudinary.com/autre/image/upload/v1/a.jpg', 'https://res.cloudinary.com/demo/raw/upload/a.js', 'http://res.cloudinary.com/demo/image/upload/a.jpg', 'https://u:p@res.cloudinary.com/demo/image/upload/a.jpg'])
+      expect((await owner.post('/company/offers', { ...base, photos: [bad] })).status).toBe(400);
+    const url = 'https://res.cloudinary.com/demo/image/upload/v1/nexus/offers/a.jpg';
+    const r = await owner.post('/company/offers', { ...base, photos: [url + '?x=1'] });
+    expect(r.status).toBe(201);
+    const res = await ctx.app.request(`http://localhost/api/offers/${r.json.offer.id}/photos/0`);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_900,c_limit/v1/nexus/offers/a.jpg');
+  });
 });

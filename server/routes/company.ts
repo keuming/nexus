@@ -5,8 +5,24 @@ import { and, desc, eq, getTableColumns, sql } from 'drizzle-orm';
 import { bookings, companies, creditLedger, offerPhotos, offers, payments, users } from '../db/schema.js';
 import { AppError, conflict, notFound } from '../lib/errors.js';
 import { requireRole, type Env } from '../middleware/auth.js';
+import { config } from '../config.js';
 import { cityName, companyInput, countryCode, placeList } from '../lib/schemas.js';
 import type { Db } from '../db/client.js';
+
+/** Valide une photo : URL Cloudinary de NOTRE compte (jamais une URL arbitraire) ou JPEG en base64. */
+function parsePhoto(p: string): { url: string; data: null } | { data: string; url: null } {
+  if (p.startsWith('https://')) {
+    const cloud = config().CLOUDINARY_CLOUD_NAME;
+    let u: URL | null = null;
+    try { u = new URL(p); } catch { /* invalide */ }
+    if (!cloud || !u || u.protocol !== 'https:' || u.hostname !== 'res.cloudinary.com' || !u.pathname.startsWith(`/${cloud}/image/upload/`) || p.length > 400 || u.username || u.password)
+      throw new AppError(400, 'invalid', 'Photo invalide');
+    return { url: u.origin + u.pathname, data: null };
+  }
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(p);
+  if (!m || !Buffer.from(m[1].slice(0, 8), 'base64').subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) throw new AppError(400, 'invalid', 'Photo invalide (JPEG attendu)');
+  return { data: m[1], url: null };
+}
 
 async function myCompany(db: Db, ownerId: string) {
   const [co] = await db.select().from(companies).where(eq(companies.ownerId, ownerId)).limit(1);
@@ -37,6 +53,11 @@ export const companyRoutes = new Hono<Env>()
     const [row] = await c.get('db').update(companies).set({ serviceCities: c.req.valid('json').serviceCities }).where(eq(companies.id, co.id)).returning();
     return c.json({ company: row });
   })
+  /** Paramètres d'envoi direct des photos (publics par nature : nom du compte et preset non signé). */
+  .get('/upload-config', (c) => {
+    const { CLOUDINARY_CLOUD_NAME: cloudName, CLOUDINARY_UPLOAD_PRESET: preset } = config();
+    return c.json({ cloudinary: cloudName && preset ? { cloudName, preset } : null });
+  })
   .get('/offers', async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     return c.json({ offers: await c.get('db').select({ ...getTableColumns(offers), photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`.as('photo_count') }).from(offers).where(eq(offers.companyId, co.id)).orderBy(desc(offers.startsAt)).limit(200) });
@@ -50,19 +71,18 @@ export const companyRoutes = new Hono<Env>()
     priceFcfa: z.number().int().min(0).max(100_000_000),
     capacity: z.number().int().min(1).max(10_000),
     startsAt: z.string().datetime().transform((x) => new Date(x)).refine((d) => d.getTime() > Date.now(), 'La date doit être dans le futur'),
-    // Photos : data URL JPEG (compressée par le navigateur), 4 max, ~375 Ko chacune.
-    photos: z.array(z.string().max(520_000).regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/, 'Photo invalide (JPEG attendu)')).max(4).default([]),
+    // Photos : URL Cloudinary (envoi direct du navigateur) ou, sans Cloudinary configuré, data URL JPEG (≈375 Ko max).
+    photos: z.array(z.string().max(520_000)).max(4).default([]),
   })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const { photos, ...input } = c.req.valid('json');
-    const bufs = photos.map((p) => p.slice('data:image/jpeg;base64,'.length));
-    if (bufs.some((b) => !Buffer.from(b.slice(0, 8), 'base64').subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])))) throw new AppError(400, 'invalid', 'Photo invalide (JPEG attendu)');
+    const rows = photos.map((p) => parsePhoto(p));
     const o = await c.get('db').transaction(async (tx) => {
       const [row] = await tx.insert(offers).values({ ...input, companyId: co.id }).returning();
-      if (bufs.length) await tx.insert(offerPhotos).values(bufs.map((data, position) => ({ offerId: row.id, position, data })));
+      if (rows.length) await tx.insert(offerPhotos).values(rows.map((r, position) => ({ offerId: row.id, position, ...r })));
       return row;
     });
-    return c.json({ offer: { ...o, photoCount: bufs.length } }, 201);
+    return c.json({ offer: { ...o, photoCount: rows.length } }, 201);
   })
   .patch('/offers/:id', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ active: z.boolean() })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);

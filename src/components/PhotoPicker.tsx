@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api, unwrap } from '../lib/api';
 
 const MAX_SIDE = 1280;
 const MAX_CHARS = 500_000; // limite serveur ≈ 375 Ko par photo
@@ -20,18 +22,29 @@ async function compress(file: File): Promise<string> {
   throw new Error('Photo trop lourde, choisissez-en une plus légère');
 }
 
-/** Jusqu'à 4 photos (data URL JPEG) avec aperçu et suppression. */
+/** Envoi direct vers Cloudinary (preset non signé) ; renvoie l'URL sécurisée de l'image. */
+async function upload(cfg: { cloudName: string; preset: string }, dataUrl: string): Promise<string> {
+  const form = new FormData();
+  form.append('file', await (await fetch(dataUrl)).blob());
+  form.append('upload_preset', cfg.preset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, { method: 'POST', body: form });
+  const json: any = await res.json().catch(() => null);
+  if (!res.ok || typeof json?.secure_url !== 'string') throw new Error(json?.error?.message ?? "Échec de l'envoi de la photo");
+  return json.secure_url;
+}
+
+/** Jusqu'à 4 photos avec aperçu et suppression. Envoyées à Cloudinary si configuré, sinon gardées en JPEG (data URL). */
 export function PhotoPicker({ value, onChange, max = 4 }: { value: string[]; onChange: (v: string[]) => void; max?: number }) {
   const ref = useRef<HTMLInputElement>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const cfg = useQuery({ queryKey: ['upload-config'], queryFn: () => unwrap(api.company['upload-config'].$get()), staleTime: Infinity });
   const add = async (files: FileList | null) => {
     if (!files) return;
     setErr(''); setBusy(true);
     try {
       const out = [...value];
-      for (const f of Array.from(files)) { if (out.length >= max) break; out.push(await compress(f)); }
-      onChange(out);
+      for (const f of Array.from(files)) { if (out.length >= max) break; const d = await compress(f); out.push(cfg.data?.cloudinary ? await upload(cfg.data.cloudinary, d) : d); onChange([...out]); }
     } catch (e) { setErr(e instanceof Error ? e.message : 'Erreur'); }
     setBusy(false); if (ref.current) ref.current.value = '';
   };
@@ -47,7 +60,7 @@ export function PhotoPicker({ value, onChange, max = 4 }: { value: string[]; onC
           </div>
         ))}
         {value.length < max && (
-          <button type="button" disabled={busy} onClick={() => ref.current?.click()}
+          <button type="button" disabled={busy || cfg.isLoading} onClick={() => ref.current?.click()}
             className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-white/25 text-2xl text-zinc-400 hover:bg-white/5">{busy ? '…' : '+'}</button>
         )}
       </div>

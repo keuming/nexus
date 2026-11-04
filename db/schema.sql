@@ -93,13 +93,18 @@ create table if not exists credit_ledger (
 );
 create index if not exists ledger_company_idx on credit_ledger (company_id, created_at desc);
 
--- Photos des offres (4 max), JPEG compressé côté navigateur, stocké en base64.
+-- Photos des offres (4 max) : URL Cloudinary (`url`) ou, à défaut, JPEG en base64 (`data`).
 create table if not exists offer_photos (
   offer_id uuid not null references offers(id) on delete cascade,
   position smallint not null check (position between 0 and 3),
-  data     text not null,
-  primary key (offer_id, position)
+  data     text,
+  url      text,
+  primary key (offer_id, position),
+  check (data is not null or url is not null)
 );
+-- Mise à niveau si la table existait déjà (v6)
+alter table offer_photos add column if not exists url text;
+alter table offer_photos alter column data drop not null;
 
 -- Paiements des réservations via l'API ORZAYAH (dépôt Mobile Money).
 create table if not exists payments (
