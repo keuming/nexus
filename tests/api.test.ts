@@ -591,3 +591,16 @@ describe('gestion des offres (modifier, dupliquer, désactiver, supprimer)', () 
   });
 });
 
+describe('référentiel pays et villes', () => {
+  it('couvre les pays demandés avec leurs principales villes', async () => {
+    const { COUNTRIES, citiesOf, countryName } = await import('../shared/geo.js');
+    for (const [code, ville] of [['CI', 'Abidjan'], ['GN', 'Conakry'], ['ML', 'Bamako'], ['BF', 'Ouagadougou'], ['TG', 'Lomé'], ['NE', 'Niamey'], ['BJ', 'Cotonou'], ['TD', "N'Djamena"], ['GH', 'Accra'], ['LR', 'Monrovia'], ['SN', 'Dakar']])
+      expect(citiesOf(code)[0], code).toBe(ville);
+    expect(countryName('GN')).toBe('Guinée-Conakry');
+    for (const c of COUNTRIES) expect(new Set(c.cities).size, c.code).toBe(c.cities.length); // pas de doublons
+    const owner = await register('owner', 'o@x.test');
+    const r = await owner.post('/company', { name: 'Taxi Monrovia', activity: 'transport', country: 'LR', city: 'Monrovia', phone: '+231 77 000 0000', ...geo });
+    expect(r.status).toBe(201); // Liberia accepté par l'API
+  });
+});
+

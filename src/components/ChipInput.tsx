@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { COUNTRIES as COUNTRIES_LIST } from '../../shared/geo';
+import { COUNTRIES as COUNTRIES_LIST, citiesOf } from '../../shared/geo';
 
 /** Saisie d'une liste de lieux (villes de service, arrêts) : ajout par Entrée ou bouton, suggestions facultatives. */
 export function ChipInput({ label, hint, values, onChange, suggestions = [], max = 20, placeholder }: {
@@ -33,6 +33,24 @@ export function ChipInput({ label, hint, values, onChange, suggestions = [], max
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Liste déroulante des villes d'un pays, avec « Autre ville… » pour saisir une ville absente de la liste. */
+export function CitySelect({ id, country, value, onChange, extra = [], required }: { id?: string; country: string; value: string; onChange: (v: string) => void; extra?: string[]; required?: boolean }) {
+  const options = [...new Set([...citiesOf(country), ...extra.filter(Boolean)])];
+  const [other, setOther] = useState(false);
+  const custom = other || (value !== '' && !options.includes(value));
+  return (
+    <div className="space-y-2">
+      <select id={id} className="input" required={required} value={custom ? '__other' : value}
+        onChange={(e) => { if (e.target.value === '__other') { setOther(true); onChange(''); } else { setOther(false); onChange(e.target.value); } }}>
+        <option value="">Choisir une ville…</option>
+        {options.map((c) => <option key={c} value={c}>{c}</option>)}
+        <option value="__other">Autre ville…</option>
+      </select>
+      {custom && <input className="input" required={required} autoFocus={other && value === ''} maxLength={80} placeholder="Nom de la ville" aria-label="Autre ville" value={value} onChange={(e) => onChange(e.target.value)} />}
     </div>
   );
 }

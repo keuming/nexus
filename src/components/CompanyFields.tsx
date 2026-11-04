@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChipInput, CountrySelect } from './ChipInput';
+import { ChipInput, CitySelect, CountrySelect } from './ChipInput';
 import { ACTIVITIES } from '../../shared/constants';
 import { citiesOf } from '../../shared/geo';
 import { ACTIVITY_LABEL } from '../pages/Home';
@@ -60,8 +60,8 @@ export const coordsOk = (d: CompanyDraft) => validCoords(d.latitude, d.longitude
 
 /** Champs « entreprise » partagés entre la souscription et la correction d'une demande. */
 export function CompanyFields({ value: f, onChange }: { value: CompanyDraft; onChange: (d: CompanyDraft) => void }) {
-  const set = <K extends keyof CompanyDraft>(k: K, v: CompanyDraft[K]) => onChange({ ...f, [k]: v });
   const suggestions = citiesOf(f.country);
+  const set = <K extends keyof CompanyDraft>(k: K, v: CompanyDraft[K]) => onChange({ ...f, [k]: v });
   return (
     <div className="space-y-4">
       <div className="space-y-1"><label htmlFor="c-name" className="text-sm font-medium">Raison sociale / nom commercial</label>
@@ -74,8 +74,7 @@ export function CompanyFields({ value: f, onChange }: { value: CompanyDraft; onC
         <div className="space-y-1"><label htmlFor="c-country" className="text-sm font-medium">Pays</label>
           <CountrySelect id="c-country" value={f.country} onChange={(v) => onChange({ ...f, country: v, city: '' })} /></div>
         <div className="space-y-1"><label htmlFor="c-city" className="text-sm font-medium">Ville</label>
-          <input id="c-city" className="input" required list="c-cities" value={f.city} onChange={(e) => set('city', e.target.value)} />
-          <datalist id="c-cities">{suggestions.map((s) => <option key={s} value={s} />)}</datalist></div>
+          <CitySelect key={f.country} id="c-city" required country={f.country} value={f.city} onChange={(v) => set('city', v)} /></div>
       </div>
       <div className="space-y-1"><label htmlFor="c-addr" className="text-sm font-medium">Adresse (quartier, rue, repère)</label>
         <input id="c-addr" className="input" required minLength={3} maxLength={200} value={f.address} onChange={(e) => set('address', e.target.value)} /></div>

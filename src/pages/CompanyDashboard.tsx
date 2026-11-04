@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, dateFr, fcfa, unwrap } from '../lib/api';
 import { Err } from '../components/Layout';
 import { PhotoPicker } from '../components/PhotoPicker';
-import { ChipInput, CountrySelect } from '../components/ChipInput';
+import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
 import { CompanyFields, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
 import { ACTIVITIES } from '../../shared/constants';
@@ -177,7 +177,6 @@ function Offers({ company }: { company: { country: string; city: string; activit
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }); // eslint-disable-line react-hooks/exhaustive-deps
-  const cityOptions = [...new Set([company.city, ...company.serviceCities, ...citiesOf(f.country)])];
   const submit = (e: FormEvent) => { e.preventDefault(); save.mutate(); };
   return (
     <section className="space-y-4">
@@ -216,10 +215,9 @@ function Offers({ company }: { company: { country: string; city: string; activit
             <div className="space-y-1 sm:col-span-2"><label htmlFor="o-title" className="text-sm font-medium">Titre</label>
               <input id="o-title" className="input" required autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div className="space-y-1"><label htmlFor="o-country" className="text-sm font-medium">{isTransport ? 'Pays de destination' : 'Pays du service'}</label>
-              <CountrySelect id="o-country" value={f.country} onChange={(v) => setF({ ...f, country: v })} /></div>
+              <CountrySelect id="o-country" value={f.country} onChange={(v) => setF({ ...f, country: v, city: v === company.country ? company.city : '' })} /></div>
             <div className="space-y-1"><label htmlFor="o-city" className="text-sm font-medium">{isTransport ? 'Ville de départ' : 'Ville du service'}</label>
-              <input id="o-city" className="input" required list="o-cities" value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} />
-              <datalist id="o-cities">{cityOptions.map((c) => <option key={c} value={c} />)}</datalist></div>
+              <CitySelect key={`${open}-${editing}-${f.country}`} id="o-city" required country={f.country} value={f.city} extra={f.country === company.country ? [company.city, ...company.serviceCities] : []} onChange={(v) => setF({ ...f, city: v })} /></div>
             <div className="sm:col-span-2">
               <ChipInput label={isTransport ? 'Arrêts (villes ou lieux indiqués)' : 'Lieux / points de rendez-vous (facultatif)'}
                 hint="Le client choisira l’un de ces arrêts en réservant." values={stops} onChange={setStops} max={20} placeholder="Ex. Gare de Ouaga Nord" />

@@ -47,7 +47,14 @@ export function Home() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-city" className="text-xs text-zinc-400">Ville ou arrêt</label>
-            <input id="f-city" className="input" list="f-cities" placeholder="Ex. Bouaké, gare nord…" value={city} onChange={(e) => setCity(e.target.value)} />
+            {country ? (
+              <select id="f-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
+                <option value="">Toutes les villes</option>
+                {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            ) : (
+              <input id="f-city" className="input" list="f-cities" placeholder="Ex. Bouaké, gare nord…" value={city} onChange={(e) => setCity(e.target.value)} />
+            )}
             <datalist id="f-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
           </div>
           <div className="space-y-1">

@@ -113,3 +113,6 @@ Chaque ligne de « Mes offres » : Modifier (formulaire prérempli, photos conse
 
 ## Tableau de bord partenaire
 Indicateurs (crédits, réservations confirmées, en attente de paiement, offres en ligne) puis 3 onglets : « Réservations clients » (par défaut, tableau filtrable par statut), « Mes offres » (liste à la demande ; « + Ajouter » ouvre le formulaire dans une fenêtre, « Publier l'offre » valide), « Paramètres » (villes de service).
+
+## Pays et villes
+`shared/geo.ts` : 18 pays, villes principales classées par population (recensements/estimations nationales et ONU via Worldometers, nov. 2026). Choix du pays → liste déroulante de ses villes (souscription entreprise, formulaire d'offre) avec « Autre ville… » pour une saisie libre ; catalogue : liste des villes une fois un pays choisi. Ajouter un pays = une ligne dans `COUNTRIES`.
