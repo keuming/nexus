@@ -58,4 +58,5 @@ export class Client {
   get = (p: string) => this.call('GET', p);
   post = (p: string, b?: unknown) => this.call('POST', p, b ?? {});
   patch = (p: string, b: unknown) => this.call('PATCH', p, b);
+  delete = (p: string) => this.call('DELETE', p);
 }

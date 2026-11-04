@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, dateFr, fcfa, unwrap } from '../lib/api';
 import { Err } from '../components/Layout';
@@ -89,6 +89,17 @@ function ServiceCities({ country, cities }: { country: string; cities: string[] 
   );
 }
 
+/** Vocabulaire par type d'activité (même logique de gestion pour tous). */
+const NOUN: Record<string, { a: string; the: string }> = {
+  transport: { a: 'un trajet', the: 'le trajet' }, restauration: { a: 'un plat', the: 'le plat' },
+  expedition: { a: 'une expédition', the: "l'expédition" }, hotel: { a: 'une chambre', the: 'la chambre' },
+  boutique: { a: 'un article', the: "l'article" }, agence_voyage: { a: 'un voyage', the: 'le voyage' },
+  residence_meuble: { a: 'un logement', the: 'le logement' }, loisirs: { a: 'une activité', the: "l'activité" },
+  location_vente: { a: 'un bien', the: 'le bien' },
+};
+const toLocalInput = (iso: string) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+const OWN_PHOTO = '/api/company/offers/';
+
 function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[] } }) {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['company-offers'], queryFn: () => unwrap(api.company.offers.$get()) });
@@ -96,21 +107,45 @@ function Offers({ company }: { company: { country: string; city: string; activit
   const [f, setF] = useState(blank);
   const [stops, setStops] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const form = useRef<HTMLFormElement>(null);
   const isTransport = company.activity === 'transport';
-  const add = useMutation({
-    mutationFn: () => unwrap(api.company.offers.$post({ json: { ...f, stops, photos, startsAt: new Date(f.startsAt).toISOString() } })),
-    onSuccess: () => { setF(blank); setStops([]); setPhotos([]); qc.invalidateQueries({ queryKey: ['company-offers'] }); },
+  const noun = NOUN[company.activity] ?? { a: 'une offre', the: "l'offre" };
+  const reset = () => { setF(blank); setStops([]); setPhotos([]); setEditing(null); };
+  const refresh = () => qc.invalidateQueries({ queryKey: ['company-offers'] });
+  const save = useMutation({
+    mutationFn: () => {
+      const json = { ...f, stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
+      return editing ? unwrap(api.company.offers[':id'].$patch({ param: { id: editing }, json })) : unwrap(api.company.offers.$post({ json }));
+    },
+    onSuccess: () => { reset(); refresh(); },
   });
   const toggle = useMutation({
     mutationFn: (o: { id: string; active: boolean }) => unwrap(api.company.offers[':id'].$patch({ param: { id: o.id }, json: { active: o.active } })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['company-offers'] }),
+    onSuccess: refresh,
   });
+  const remove = useMutation({
+    mutationFn: (id: string) => unwrap(api.company.offers[':id'].$delete({ param: { id } })),
+    onSuccess: (_r, id) => { if (editing === id) reset(); refresh(); },
+  });
+  type Row = NonNullable<typeof list.data>['offers'][number];
+  const load = (o: Row, copy: boolean) => {
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy ? '' : toLocalInput(o.startsAt) });
+    setStops(o.stops);
+    setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
+    setEditing(copy ? null : o.id);
+    form.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const cityOptions = [...new Set([company.city, ...company.serviceCities, ...citiesOf(f.country)])];
-  const submit = (e: FormEvent) => { e.preventDefault(); add.mutate(); };
+  const submit = (e: FormEvent) => { e.preventDefault(); save.mutate(); };
   return (
     <section className="space-y-4">
       <h2 className="text-center text-lg font-semibold">Mes offres</h2>
-      <form onSubmit={submit} className="card grid gap-3 sm:grid-cols-2">
+      <form ref={form} onSubmit={submit} className="card grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-2 sm:col-span-2">
+          <h3 className="font-semibold">{editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`}</h3>
+          {editing && <button type="button" className="btn-ghost" onClick={reset}>Annuler la modification</button>}
+        </div>
         <div className="space-y-1 sm:col-span-2"><label htmlFor="o-title" className="text-sm font-medium">Titre</label>
           <input id="o-title" className="input" required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
         <div className="space-y-1"><label htmlFor="o-country" className="text-sm font-medium">{isTransport ? 'Pays de destination' : 'Pays du service'}</label>
@@ -131,17 +166,22 @@ function Offers({ company }: { company: { country: string; city: string; activit
         <div className="space-y-1 sm:col-span-2"><label htmlFor="o-desc" className="text-sm font-medium">Description</label>
           <textarea id="o-desc" className="input" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
         <div className="sm:col-span-2"><PhotoPicker value={photos} onChange={setPhotos} /></div>
-        <div className="sm:col-span-2"><Err e={add.error ?? toggle.error} /></div>
-        <button className="btn sm:col-span-2" disabled={add.isPending}>Publier l'offre</button>
+        <div className="sm:col-span-2"><Err e={save.error ?? toggle.error ?? remove.error} /></div>
+        <button className="btn sm:col-span-2" disabled={save.isPending}>{editing ? 'Enregistrer les modifications' : "Publier l'offre"}</button>
       </form>
       <ul className="space-y-2">
         {list.data?.offers.map((o) => (
-          <li key={o.id} className="card flex items-center justify-between gap-3 !py-3">
-            {o.photoCount > 0 && <img src={`/api/offers/${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
-            <div className="min-w-0 flex-1"><p className="font-medium">{o.title}</p>
+          <li key={o.id} className={`card flex flex-wrap items-center justify-between gap-3 !py-3 ${editing === o.id ? 'border-brand' : ''} ${o.active ? '' : 'opacity-70'}`}>
+            {o.photoCount > 0 && <img src={`${OWN_PHOTO}${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
+            <div className="min-w-0 flex-1"><p className="font-medium">{o.title} {!o.active && <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">Désactivé</span>}</p>
               <p className="text-sm text-zinc-400">{o.city ? `${o.city} → ` : ''}{countryName(o.country)} · {dateFr(o.startsAt)} · {fcfa(o.priceFcfa)} · {o.booked}/{o.capacity}</p>
               {o.stops.length > 0 && <p className="text-xs text-zinc-500">Arrêts : {o.stops.join(' · ')}</p>}</div>
-            <button className="btn-ghost" onClick={() => toggle.mutate({ id: o.id, active: !o.active })}>{o.active ? 'Désactiver' : 'Activer'}</button>
+            <div className="flex flex-wrap gap-2" role="group" aria-label={`Actions pour ${o.title}`}>
+              <button className="btn-ghost" onClick={() => load(o, false)}>Modifier</button>
+              <button className="btn-ghost" onClick={() => load(o, true)}>Dupliquer</button>
+              <button className="btn-ghost" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: o.id, active: !o.active })}>{o.active ? 'Désactiver' : 'Activer'}</button>
+              <button className="btn-ghost text-red-300" disabled={remove.isPending} onClick={() => confirm(`Supprimer « ${o.title} » définitivement ?`) && remove.mutate(o.id)}>Supprimer</button>
+            </div>
           </li>
         ))}
       </ul>
