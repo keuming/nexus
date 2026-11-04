@@ -110,3 +110,6 @@ Table `notifications` (cloche dans l'en-tête pour fournisseurs et admins, relec
 
 ## Gestion des offres (tous types d'activité)
 Chaque ligne de « Mes offres » : Modifier (formulaire prérempli, photos conservées/remplacées via `keep:N`), Dupliquer (nouvelle offre préremplie, date à choisir), Désactiver/Activer (disparaît du catalogue, réservations existantes conservées), Supprimer (refusé dès qu'une réservation existe, même annulée : on désactive pour garder l'historique). Capacité jamais inférieure aux places déjà réservées ; la date doit rester future si elle change. Libellés adaptés au type d'activité (plat, trajet, chambre…).
+
+## Tableau de bord partenaire
+Indicateurs (crédits, réservations confirmées, en attente de paiement, offres en ligne) puis 3 onglets : « Réservations clients » (par défaut, tableau filtrable par statut), « Mes offres » (liste à la demande ; « + Ajouter » ouvre le formulaire dans une fenêtre, « Publier l'offre » valide), « Paramètres » (villes de service).
