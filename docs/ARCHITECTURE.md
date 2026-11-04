@@ -104,3 +104,6 @@ Paiement mobile money (webhook → `credit_ledger`) · notifications e-mail/SMS 
 
 ## Photos des offres
 4 photos max par offre. Avec `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_UPLOAD_PRESET` (preset non signé) le navigateur envoie directement chaque photo à Cloudinary ; seule l'URL est enregistrée (`offer_photos.url`). Le serveur n'accepte que des URL `https://res.cloudinary.com/<notre compte>/image/upload/…`. `GET /api/offers/:id/photos/:n` redirige vers une version optimisée (`f_auto,q_auto,w_900`). Sans ces variables : repli JPEG en base64 dans Neon (`offer_photos.data`). Limite connue : pas de modification des photos après publication.
+
+## Alertes
+Table `notifications` (cloche dans l'en-tête pour fournisseurs et admins, relecture toutes les 20 s). Événements : réservation confirmée (gratuite : immédiate ; payante : à réception du paiement, une seule alerte grâce à l'index unique user+type+objet), annulation par le client, nouvelle demande partenaire (admins), paiement reçu après expiration à rembourser (admins). E-mail optionnel via Resend (`RESEND_API_KEY` + `MAIL_FROM`), texte brut, échec silencieux. Limite : pas de notification push hors application (à ajouter via Web Push si besoin).

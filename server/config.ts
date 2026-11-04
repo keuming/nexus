@@ -4,6 +4,9 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET doit faire au moins 32 caractères'),
   NODE_ENV: z.string().default('development'),
+  // E-mail d'alerte (Resend) : facultatif. Sans clé, seules les alertes dans l'application sont créées.
+  RESEND_API_KEY: z.string().optional(),
+  MAIL_FROM: z.string().max(200).optional(),
   // Photos des offres : Cloudinary (envoi direct depuis le navigateur, preset non signé). Sans ces variables : repli base64 en base.
   CLOUDINARY_CLOUD_NAME: z.string().regex(/^[a-z0-9_-]+$/i).optional(),
   CLOUDINARY_UPLOAD_PRESET: z.string().min(1).optional(),

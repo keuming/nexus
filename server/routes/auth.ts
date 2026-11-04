@@ -1,3 +1,4 @@
+import { notifyAdmins } from '../lib/notify.js';
 import { Hono } from 'hono';
 import { setCookie, deleteCookie } from 'hono/cookie';
 import { v } from '../lib/validate.js';
@@ -59,9 +60,10 @@ export const authRoutes = new Hono<Env>()
         const exists = await tx.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${manager.email}`).limit(1);
         if (exists.length) throw conflict('email_taken', 'Cet email est déjà utilisé');
         const [u] = await tx.insert(users).values({ email: manager.email, name: manager.name, phone: manager.phone, role: 'owner', passwordHash: await hashPassword(manager.password) }).returning();
-        await tx.insert(companies).values({ ...company, managerTitle: manager.title, ownerId: u.id });
-        return u;
+        const [co] = await tx.insert(companies).values({ ...company, managerTitle: manager.title, ownerId: u.id }).returning({ id: companies.id });
+        return { ...u, companyId: co.id };
       });
+      await notifyAdmins(c.get('db'), { kind: 'company_request', refId: user.companyId, title: `Nouvelle demande partenaire : ${company.name}`, body: `${manager.name} (${manager.title}) · ${company.city}`, link: '/admin' });
       setCookie(c, COOKIE_NAME, await signSession({ id: user.id, role: user.role }), cookieOpts());
       return c.json({ user: publicUser(user) }, 201);
     },

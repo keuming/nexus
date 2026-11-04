@@ -478,3 +478,58 @@ describe('photos des offres', () => {
     expect(res.headers.get('location')).toBe('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_900,c_limit/v1/nexus/offers/a.jpg');
   });
 });
+
+describe('alertes', () => {
+  it('alerte le fournisseur et le back-office à la réservation (gratuite) et à l\'annulation', async () => {
+    const { owner, adm, offer } = await setup(5, 5, 0);
+    const cust = await register('customer', 'c@x.test');
+    const r = await cust.post('/bookings', { offerId: offer.id, seats: 2 });
+    const o = (await owner.get('/notifications')).json;
+    expect(o.unread).toBe(1);
+    expect(o.notifications[0]).toMatchObject({ kind: 'booking', title: expect.stringContaining('Nouvelle réservation'), link: '/company' });
+    expect(o.notifications[0].body).toContain('2 place(s)');
+    const a = (await adm.get('/notifications')).json;
+    expect(a.notifications.some((n: any) => n.kind === 'booking')).toBe(true);
+    expect((await cust.get('/notifications')).json.notifications).toHaveLength(0); // le client n'est pas alerté de sa propre réservation
+    await cust.post(`/bookings/${r.json.booking.id}/cancel`);
+    expect((await owner.get('/notifications')).json.notifications.map((n: any) => n.kind)).toContain('booking_cancelled');
+    // marquer comme lu
+    expect((await owner.post('/notifications/read', {})).status).toBe(200);
+    expect((await owner.get('/notifications')).json.unread).toBe(0);
+    expect((await new Client(ctx.app).get('/notifications')).status).toBe(401);
+  });
+
+  it('réservation payante : alerte seulement une fois le paiement reçu, une seule fois', async () => {
+    const orz = new FakeOrz(); ctx = await makeApp(orz);
+    const { owner, offer } = await setup(5, 5, 5000);
+    const cust = await register('customer', 'c@x.test');
+    const r = await cust.post('/bookings', { offerId: offer.id, payment: { operator: 'ORANGE', accountNumber: '0707070707' } });
+    expect((await owner.get('/notifications')).json.notifications.filter((n: any) => n.kind === 'booking')).toHaveLength(0);
+    orz.set(`nx-${r.json.payment.id}`, 'SUCCESS');
+    for (let i = 0; i < 2; i++) { await ctx.db.update(payments).set({ lastCheckedAt: null }); await cust.get(`/payments/${r.json.payment.id}`); }
+    const n = (await owner.get('/notifications')).json.notifications.filter((x: any) => x.kind === 'booking');
+    expect(n).toHaveLength(1);
+    expect(n[0].body).toContain('payé');
+  });
+
+  it('chaque utilisateur ne voit que ses alertes', async () => {
+    const { adm, offer } = await setup(5, 5, 0);
+    const cust = await register('customer', 'c@x.test');
+    await cust.post('/bookings', { offerId: offer.id });
+    const other = await register('owner', 'o2@x.test');
+    expect((await other.get('/notifications')).json.notifications).toHaveLength(0);
+    expect((await adm.get('/notifications')).json.unread).toBeGreaterThan(0);
+  });
+
+  it('alerte le back-office à chaque nouvelle demande partenaire', async () => {
+    const adm = await admin();
+    const c = new Client(ctx.app);
+    const r = await c.post('/auth/register-company', {
+      manager: { email: 'g@x.test', password: 'password123', name: 'Awa Traoré', title: 'Gérante', phone: '+225 07 00 00 00 00' },
+      company: { name: 'Chez Awa', activity: 'restauration', country: 'CI', city: 'Abidjan', phone: '+225 07 00 00 00 00', ...geo },
+    });
+    expect(r.status).toBe(201);
+    const n = (await adm.get('/notifications')).json.notifications;
+    expect(n[0]).toMatchObject({ kind: 'company_request', title: expect.stringContaining('Chez Awa'), link: '/admin' });
+  });
+});

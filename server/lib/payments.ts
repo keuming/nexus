@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, lt, or, gt, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { bookings, companies, creditLedger, offers, payments } from '../db/schema.js';
+import { notifyAdmins, notifyBookingConfirmed } from './notify.js';
 import { OrzayahError, type OrzayahClient, type OrzOp } from './orzayah.js';
 
 export type PaymentRow = typeof payments.$inferSelect;
@@ -52,9 +53,11 @@ async function reinstate(tx: Tx, p: PaymentRow, meta: Partial<PaymentRow>) {
 
 /** Applique l'état renvoyé par ORZAYAH. Idempotent : rejouer le même état ne change rien. */
 export async function applyOrzOp(db: Db, paymentId: string, op: OrzOp): Promise<void> {
+  let before = '';
   await db.transaction(async (tx) => {
     const [p] = await tx.select().from(payments).where(eq(payments.id, paymentId)).for('update');
     if (!p) return;
+    before = p.status;
     const meta = { orzRef: op.id || p.orzRef, orzStatus: op.status, nextAction: op.nextAction, feeCentimes: op.feeAmount == null ? p.feeCentimes : Number(op.feeAmount), lastCheckedAt: new Date() };
     const set = (v: Partial<PaymentRow>) => tx.update(payments).set({ ...meta, ...v }).where(eq(payments.id, p.id));
 
@@ -74,6 +77,12 @@ export async function applyOrzOp(db: Db, paymentId: string, op: OrzOp): Promise<
     }
     await set({});
   });
+  // Alertes après validation de la transaction (idempotentes : une seule alerte par réservation).
+  if (before === 'pending' || before === 'expired') {
+    const [after] = await db.select({ status: payments.status, bookingId: payments.bookingId, amount: payments.amountFcfa }).from(payments).where(eq(payments.id, paymentId)).limit(1);
+    if (after?.status === 'paid') await notifyBookingConfirmed(db, after.bookingId);
+    else if (after?.status === 'needs_refund') await notifyAdmins(db, { kind: 'needs_refund', refId: paymentId, title: 'Remboursement à effectuer', body: `Paiement de ${new Intl.NumberFormat('fr-FR').format(after.amount)} FCFA reçu après expiration, places indisponibles.`, link: '/admin' });
+  }
 }
 
 /** Abandon définitif (refus de la requête par ORZAYAH) ou local (délai dépassé / jamais initié). */

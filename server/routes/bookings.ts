@@ -8,6 +8,7 @@ import { AppError, conflict, notFound } from '../lib/errors.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { OrzayahError } from '../lib/orzayah.js';
+import { notify, notifyBookingConfirmed } from '../lib/notify.js';
 import { applyOrzOp, closePayment, publicPayment, sweepExpired } from '../lib/payments.js';
 
 const id = z.object({ id: z.string().uuid() });
@@ -89,7 +90,7 @@ export const bookingRoutes = new Hono<Env>()
       }
       return b;
     });
-    if (!paid) return c.json({ booking, payment: null }, 201);
+    if (!paid) { await notifyBookingConfirmed(db, booking.id); return c.json({ booking, payment: null }, 201); }
 
     // Demande de débit Mobile Money : le client confirme ensuite sur son téléphone.
     try {
@@ -122,7 +123,7 @@ export const bookingRoutes = new Hono<Env>()
   /** Annulation par le client (réservations confirmées gratuites) : libère les places et rembourse le crédit. */
   .post('/:id/cancel', v('param', id), async (c) => {
     const user = c.get('user')!;
-    await c.get('db').transaction(async (tx) => {
+    const cancelled = await c.get('db').transaction(async (tx) => {
       const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.userId, user.id), eq(bookings.status, 'confirmed'))).for('update');
       if (!b) throw notFound('Réservation');
       const [pay] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.bookingId, b.id)).limit(1);
@@ -131,6 +132,9 @@ export const bookingRoutes = new Hono<Env>()
       await tx.update(offers).set({ booked: sql`${offers.booked} - ${b.seats}` }).where(eq(offers.id, b.offerId));
       await tx.update(companies).set({ credits: sql`${companies.credits} + 1` }).where(eq(companies.id, b.companyId));
       await tx.insert(creditLedger).values({ companyId: b.companyId, delta: 1, reason: 'refund', bookingId: b.id });
+      const [info] = await tx.select({ ownerId: companies.ownerId, offerTitle: offers.title }).from(companies).innerJoin(offers, eq(offers.id, b.offerId)).where(eq(companies.id, b.companyId));
+      return { b, info };
     });
+    await notify(c.get('db'), [{ userId: cancelled.info.ownerId, kind: 'booking_cancelled', refId: cancelled.b.id, title: `Réservation annulée : ${cancelled.info.offerTitle}`, body: `Le client a annulé ${cancelled.b.seats} place(s).`, link: '/company' }]);
     return c.json({ ok: true });
   });

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, unwrap } from '../lib/api';
 import { useAuth, type User } from '../lib/auth';
 import { InstallButton } from '../lib/pwa';
+import { NotificationBell } from './NotificationBell';
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -24,6 +25,7 @@ export function Layout() {
           {user ? (
             <div className="flex items-center gap-3">
               <InstallButton />
+              {(user.role === 'owner' || user.role === 'admin') && <NotificationBell />}
               <span className="hidden text-sm text-zinc-400 sm:inline">{user.name}</span>
               <button className="btn-ghost" onClick={logout}>Déconnexion</button>
             </div>

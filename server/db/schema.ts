@@ -101,3 +101,15 @@ export const offerPhotos = pgTable('offer_photos', {
   data: text('data'),
   url: text('url'),
 }, (t) => [primaryKey({ columns: [t.offerId, t.position] })]);
+
+export const notifications = pgTable('notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull().default(''),
+  link: text('link'),
+  refId: uuid('ref_id'),
+  readAt: timestamp('read_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

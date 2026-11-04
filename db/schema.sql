@@ -93,6 +93,21 @@ create table if not exists credit_ledger (
 );
 create index if not exists ledger_company_idx on credit_ledger (company_id, created_at desc);
 
+-- Alertes (cloche + e-mail optionnel) : nouvelles réservations, nouvelles demandes partenaires, remboursements à faire.
+create table if not exists notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references users(id) on delete cascade,
+  kind       text not null,
+  title      text not null,
+  body       text not null default '',
+  link       text,
+  ref_id     uuid,                                   -- objet concerné (réservation, entreprise, paiement) : évite les doublons
+  read_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists notifications_user_idx on notifications (user_id, created_at desc);
+create unique index if not exists notifications_dedupe on notifications (user_id, kind, ref_id) where ref_id is not null;
+
 -- Photos des offres (4 max) : URL Cloudinary (`url`) ou, à défaut, JPEG en base64 (`data`).
 create table if not exists offer_photos (
   offer_id uuid not null references offers(id) on delete cascade,

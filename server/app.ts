@@ -12,6 +12,7 @@ import { bookingRoutes } from './routes/bookings.js';
 import { companyRoutes } from './routes/company.js';
 import { adminRoutes } from './routes/admin.js';
 import { paymentRoutes } from './routes/payments.js';
+import { notificationRoutes } from './routes/notifications.js';
 import { defaultOrzayah, type OrzayahClient } from './lib/orzayah.js';
 
 /** `getDb` est injecté : pg Pool en production, PGlite dans les tests. */
@@ -49,6 +50,7 @@ export function createApp(getDb: () => Db, deps: { orzayah?: OrzayahClient | nul
     .route('/offers', catalogRoutes)
     .route('/bookings', bookingRoutes)
     .route('/payments', paymentRoutes)
+    .route('/notifications', notificationRoutes)
     .route('/company', companyRoutes)
     .route('/admin', adminRoutes);
 }
