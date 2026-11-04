@@ -1,5 +1,5 @@
 // Service worker NEXUS : coquille d'application hors ligne. Jamais de cache sur /api.
-const VERSION = 'nexus-v2';
+const VERSION = 'nexus-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

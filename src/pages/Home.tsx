@@ -66,7 +66,7 @@ export function Home() {
       </section>
 
       <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[13rem_1fr]">
-        <aside className="card h-fit" aria-label="Types d'activité">
+        <aside className="card self-start lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto" aria-label="Types d'activité">
           <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
           <div className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
             {['', ...ACTIVITIES].map((a) => (
