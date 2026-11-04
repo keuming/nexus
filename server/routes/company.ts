@@ -150,7 +150,7 @@ export const companyRoutes = new Hono<Env>()
   .get('/bookings', async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const rows = await c.get('db')
-      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, customerName: users.name, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, customerName: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, reference: bookings.reference, contactPhone: bookings.contactPhone, guests: bookings.guests, note: bookings.note, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(users, eq(users.id, bookings.userId))

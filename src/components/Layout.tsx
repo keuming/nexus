@@ -12,7 +12,7 @@ export function Layout() {
   const link = ({ isActive }: { isActive: boolean }) => `text-sm ${isActive ? 'text-brand' : 'text-zinc-300 hover:text-white'}`;
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-ink/80 backdrop-blur">
+      <header className="sticky top-0 z-10 print:hidden border-b border-white/10 bg-ink/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Link to="/" className="text-lg font-extrabold tracking-tight">NEX<span className="text-brand">US</span></Link>
           <nav className="order-last flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-1 sm:order-none sm:w-auto">

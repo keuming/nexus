@@ -250,7 +250,7 @@ const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
 };
 const FILTERS = [{ id: '', label: 'Toutes' }, { id: 'confirmed', label: 'Confirmées' }, { id: 'pending_payment', label: 'En attente' }, { id: 'cancelled', label: 'Annulées' }];
 
-function Bookings({ q }: { q: { data?: { bookings: { id: string; seats: number; stop: string | null; status: string; createdAt: string; offerTitle: string; customerName: string; paymentStatus: string | null; amountFcfa: number | null }[] }; isLoading: boolean; error: unknown } }) {
+function Bookings({ q }: { q: { data?: { bookings: { id: string; seats: number; stop: string | null; status: string; createdAt: string; offerTitle: string; customerName: string; reference: string; contactPhone: string | null; guests: string[]; note: string; paymentStatus: string | null; amountFcfa: number | null }[] }; isLoading: boolean; error: unknown } }) {
   const [filter, setFilter] = useState('');
   const rows = (q.data?.bookings ?? []).filter((b) => !filter || b.status === filter);
   return (
@@ -271,7 +271,7 @@ function Bookings({ q }: { q: { data?: { bookings: { id: string; seats: number; 
         <div className="card overflow-x-auto !p-0">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-500">
-              <tr><th className="px-4 py-3 font-medium">Date</th><th className="px-4 py-3 font-medium">Client</th><th className="px-4 py-3 font-medium">Offre</th><th className="px-4 py-3 font-medium">Places</th><th className="px-4 py-3 font-medium">Montant</th><th className="px-4 py-3 font-medium">Statut</th></tr>
+              <tr><th className="px-4 py-3 font-medium">Date</th><th className="px-4 py-3 font-medium">Réf.</th><th className="px-4 py-3 font-medium">Client</th><th className="px-4 py-3 font-medium">Offre</th><th className="px-4 py-3 font-medium">Places</th><th className="px-4 py-3 font-medium">Montant</th><th className="px-4 py-3 font-medium">Statut</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {rows.map((b) => {
@@ -279,7 +279,8 @@ function Bookings({ q }: { q: { data?: { bookings: { id: string; seats: number; 
                 return (
                   <tr key={b.id}>
                     <td className="whitespace-nowrap px-4 py-3 text-zinc-400">{dateFr(b.createdAt)}</td>
-                    <td className="px-4 py-3 font-medium">{b.customerName}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{b.reference}</td>
+                    <td className="px-4 py-3 font-medium">{b.customerName}{b.contactPhone && <span className="block text-xs font-normal text-zinc-400">{b.contactPhone}</span>}{b.guests.length > 0 && <span className="block text-xs font-normal text-zinc-500">{b.guests.join(', ')}</span>}{b.note && <span className="block text-xs font-normal italic text-zinc-500">« {b.note} »</span>}</td>
                     <td className="px-4 py-3">{b.offerTitle}{b.stop && <span className="block text-xs text-zinc-500">Arrêt : {b.stop}</span>}</td>
                     <td className="px-4 py-3">{b.seats}</td>
                     <td className="whitespace-nowrap px-4 py-3">{b.amountFcfa ? fcfa(b.amountFcfa) : <span className="text-zinc-500">Gratuit</span>}</td>

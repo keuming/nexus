@@ -76,7 +76,14 @@ create table if not exists bookings (
   seats       integer not null default 1 check (seats > 0),
   stop        text,                              -- arrêt choisi par le client
   status      booking_status not null default 'confirmed',
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  reference     text not null default ('NX-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))),  -- n° de réservation présenté au fournisseur
+  contact_name  text,                              -- personne qui réserve (peut différer du titulaire du compte)
+  contact_phone text,
+  contact_email text,
+  guests        text[] not null default '{}',      -- noms des passagers / participants
+  note          text not null default '',          -- demande particulière
+  terms_accepted_at timestamptz
 );
 create index if not exists bookings_user_idx on bookings (user_id, created_at desc);
 create index if not exists bookings_company_idx on bookings (company_id, created_at desc);
@@ -170,3 +177,13 @@ alter table bookings  add column if not exists stop text;
 create index if not exists offers_geo_idx on offers (country, city) where active;
 
 commit;
+
+-- v13 : parcours de réservation (référence, contact, passagers, note, acceptation des conditions)
+alter table bookings add column if not exists reference text not null default ('NX-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)));
+alter table bookings add column if not exists contact_name text;
+alter table bookings add column if not exists contact_phone text;
+alter table bookings add column if not exists contact_email text;
+alter table bookings add column if not exists guests text[] not null default '{}';
+alter table bookings add column if not exists note text not null default '';
+alter table bookings add column if not exists terms_accepted_at timestamptz;
+create unique index if not exists bookings_reference_uq on bookings (reference);

@@ -11,6 +11,9 @@ import { Subscribe } from './pages/Subscribe';
 import { Account } from './pages/Account';
 import { CompanyDashboard } from './pages/CompanyDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { Checkout } from './pages/Checkout';
+import { Confirmation } from './pages/Confirmation';
+import { Conditions } from './pages/Conditions';
 import { registerServiceWorker } from './lib/pwa';
 
 registerServiceWorker();
@@ -28,6 +31,9 @@ createRoot(document.getElementById('root')!).render(
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="souscription" element={<Subscribe />} />
+              <Route path="reserver/:offerId" element={<Checkout />} />
+              <Route path="reservation/:id" element={<Guard roles={['customer', 'owner', 'admin']}><Confirmation /></Guard>} />
+              <Route path="conditions" element={<Conditions />} />
               <Route path="account" element={<Guard roles={['customer']}><Account /></Guard>} />
               <Route path="company" element={<Guard roles={['owner']}><CompanyDashboard /></Guard>} />
               <Route path="admin" element={<Guard roles={['admin']}><AdminDashboard /></Guard>} />

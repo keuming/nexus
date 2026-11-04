@@ -5,10 +5,13 @@ import { v } from '../lib/validate.js';
 import { payments } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
 import { publicPayment, sweepExpired, syncPayment } from '../lib/payments.js';
+import { PAYMENT_METHODS } from '../../shared/constants.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 
 export const paymentRoutes = new Hono<Env>()
   .use(requireRole('customer', 'owner', 'admin'))
+  /** Moyens de paiement proposés au client (ceux d'ORZAYAH) et disponibilité du service. */
+  .get('/methods', (c) => c.json({ methods: PAYMENT_METHODS, available: c.get('orz') !== null }))
   /** Suivi d'un paiement : relit l'état chez ORZAYAH (pas de webhook) puis renvoie la vue publique. */
   .get('/:id', v('param', z.object({ id: z.string().uuid() })), async (c) => {
     const user = c.get('user')!;

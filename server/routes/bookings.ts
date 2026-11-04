@@ -9,6 +9,8 @@ import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { OrzayahError } from '../lib/orzayah.js';
 import { notify, notifyBookingConfirmed } from '../lib/notify.js';
+import { PAYMENT_OPERATORS } from '../../shared/constants.js';
+import { phoneField } from '../lib/schemas.js';
 import { applyOrzOp, closePayment, publicPayment, sweepExpired } from '../lib/payments.js';
 
 const id = z.object({ id: z.string().uuid() });
@@ -18,7 +20,12 @@ const body = z.object({
   offerId: z.string().uuid(),
   seats: z.number().int().min(1).max(20).default(1),
   stop: z.string().trim().max(100).optional(),
-  payment: z.object({ operator: z.enum(['ORANGE', 'MTN', 'MOOV', 'WAVE']), accountNumber: z.string().trim().max(30) }).optional(),
+  payment: z.object({ operator: z.enum(PAYMENT_OPERATORS), accountNumber: z.string().trim().max(30) }).optional(),
+  // Informations du réservant (obligatoires) : le fournisseur doit pouvoir le joindre.
+  contact: z.object({ name: z.string().trim().min(2, 'Indiquez votre nom complet').max(100), phone: phoneField, email: z.string().trim().toLowerCase().email('E-mail invalide').max(200) }),
+  guests: z.array(z.string().trim().min(2, 'Nom de participant trop court').max(100)).max(20).default([]),
+  note: z.string().trim().max(500).default(''),
+  acceptTerms: z.literal(true, { errorMap: () => ({ message: 'Vous devez accepter les conditions de réservation' }) }),
 });
 
 export const bookingRoutes = new Hono<Env>()
@@ -29,7 +36,7 @@ export const bookingRoutes = new Hono<Env>()
    * paiement Mobile Money ORZAYAH ; ils sont rendus si le paiement échoue ou expire. Gardes dans les UPDATE (WHERE).
    */
   .post('/', v('json', body), async (c) => {
-    const { offerId, seats, stop, payment } = c.req.valid('json');
+    const { offerId, seats, stop, payment, contact, guests, note } = c.req.valid('json');
     const user = c.get('user')!;
     const db = c.get('db');
     const orz = c.get('orz');
@@ -72,6 +79,8 @@ export const bookingRoutes = new Hono<Env>()
         if (!exists) throw notFound('Offre');
         throw conflict('unavailable', 'Offre complète, expirée ou désactivée');
       }
+      const [act] = await tx.select({ activity: companies.activity }).from(companies).where(eq(companies.id, o.companyId)).limit(1);
+      if (act?.activity === 'transport' ? guests.length !== seats : guests.length > seats) throw new AppError(400, 'invalid', act?.activity === 'transport' ? 'Indiquez le nom de chaque passager' : 'Trop de noms de participants par rapport au nombre de places');
       // Le prix peut avoir changé entre la lecture et le verrou : on ne débite jamais un montant différent.
       if ((o.price * seats > 0) !== paid || o.price * seats !== totalFcfa) throw conflict('price_changed', "Le prix de l'offre vient de changer, réessayez");
       const [co] = await tx.update(companies)
@@ -79,7 +88,7 @@ export const bookingRoutes = new Hono<Env>()
         .where(and(eq(companies.id, o.companyId), eq(companies.status, 'active'), sql`${companies.credits} >= 1`))
         .returning({ id: companies.id });
       if (!co) throw new AppError(409, 'company_unavailable', "Cette entreprise ne peut pas accepter de réservation pour le moment");
-      const [b] = await tx.insert(bookings).values({ offerId, companyId: o.companyId, userId: user.id, seats, stop: chosenStop, status: paid ? 'pending_payment' : 'confirmed' }).returning();
+      const [b] = await tx.insert(bookings).values({ offerId, companyId: o.companyId, userId: user.id, seats, stop: chosenStop, status: paid ? 'pending_payment' : 'confirmed', contactName: contact.name, contactPhone: contact.phone, contactEmail: contact.email, guests, note, termsAcceptedAt: new Date() }).returning();
       await tx.insert(creditLedger).values({ companyId: o.companyId, delta: -1, reason: 'booking', bookingId: b.id });
       if (paid) {
         await tx.insert(payments).values({
@@ -110,7 +119,7 @@ export const bookingRoutes = new Hono<Env>()
   })
   .get('/mine', async (c) => {
     const rows = await c.get('db')
-      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -119,6 +128,24 @@ export const bookingRoutes = new Hono<Env>()
       .orderBy(desc(bookings.createdAt))
       .limit(100);
     return c.json({ bookings: rows });
+  })
+  /** Détail d'une réservation (page de confirmation / reçu) : visible par son auteur ou un admin. */
+  .get('/:id', v('param', id), async (c) => {
+    const user = c.get('user')!;
+    const [r] = await c.get('db').select({
+      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
+      contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,
+      offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, priceFcfa: offers.priceFcfa, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,
+      companyName: companies.name, companyPhone: companies.phone, companyAddress: companies.address,
+      payment: payments,
+    }).from(bookings)
+      .innerJoin(offers, eq(offers.id, bookings.offerId))
+      .innerJoin(companies, eq(companies.id, bookings.companyId))
+      .leftJoin(payments, eq(payments.bookingId, bookings.id))
+      .where(eq(bookings.id, c.req.valid('param').id)).limit(1);
+    if (!r || (r.userId !== user.id && user.role !== 'admin')) throw notFound('Réservation');
+    const { payment: pay, userId: _u, ...rest } = r;
+    return c.json({ booking: { ...rest, payment: pay ? publicPayment(pay) : null } });
   })
   /** Annulation par le client (réservations confirmées gratuites) : libère les places et rembourse le crédit. */
   .post('/:id/cancel', v('param', id), async (c) => {

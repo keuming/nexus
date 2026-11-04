@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { Err } from '../components/Layout';
-import { BookingDialog, type OfferView } from '../components/BookingDialog';
 import { CountrySelect } from '../components/ChipInput';
 import { ACTIVITIES } from '../../shared/constants';
 import { COUNTRIES, citiesOf, countryName } from '../../shared/geo';
@@ -19,7 +18,6 @@ export function Home() {
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
   const [q, setQ] = useState('');
-  const [selected, setSelected] = useState<OfferView | null>(null);
   const { user } = useAuth();
   const nav = useNavigate();
   const cities = country ? citiesOf(country) : COUNTRIES.flatMap((c) => c.cities);
@@ -65,20 +63,25 @@ export function Home() {
 
         {!user && <p className="mt-4 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire NEXUS</Link></p>}
 
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          {['', ...ACTIVITIES].map((a) => (
-            <button key={a} onClick={() => setActivity(a)} className={`rounded-full border px-3 py-1 text-sm ${activity === a ? 'border-brand bg-brand text-black' : 'border-white/15 text-zinc-300 hover:bg-white/5'}`}>
-              {a ? ACTIVITY_LABEL[a] : 'Tout'}
-            </button>
-          ))}
-        </div>
       </section>
 
+      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[13rem_1fr]">
+        <aside className="card h-fit lg:sticky lg:top-20" aria-label="Types d'activité">
+          <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
+          <div className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
+            {['', ...ACTIVITIES].map((a) => (
+              <button key={a} onClick={() => setActivity(a)} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm ${activity === a ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
+                {a ? ACTIVITY_LABEL[a] : 'Toutes'}
+              </button>
+            ))}
+          </div>
+        </aside>
+        <div>
       <Err e={list.error} />
       {list.isLoading ? <p className="text-center text-zinc-400">Chargement…</p> : !list.data?.offers.length ? (
         <p className="text-center text-zinc-400">Aucune offre ne correspond à votre recherche.</p>
       ) : (
-        <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.data.offers.map((o) => (
             <article key={o.id} className="card flex flex-col">
               {o.photoCount > 0 && <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" className="-mx-4 -mt-4 mb-3 aspect-[16/10] w-[calc(100%+2rem)] max-w-none rounded-t-[inherit] object-cover" />}
@@ -93,7 +96,7 @@ export function Home() {
               <p className="mt-3 text-sm text-zinc-400">{dateFr(o.startsAt)} · {o.remaining} place(s)</p>
               <div className="mt-auto flex items-center justify-between pt-4">
                 <span className="text-lg font-bold">{fcfa(o.priceFcfa)}</span>
-                <button className="btn" disabled={o.remaining < 1} onClick={() => (user ? setSelected(o as OfferView) : nav('/login'))}>
+                <button className="btn" disabled={o.remaining < 1} onClick={() => nav(user ? `/reserver/${o.id}` : '/login', user ? undefined : { state: { from: `/reserver/${o.id}` } })}>
                   {o.remaining < 1 ? 'Complet' : 'Réserver'}
                 </button>
               </div>
@@ -101,7 +104,8 @@ export function Home() {
           ))}
         </div>
       )}
-      {selected && <BookingDialog offer={selected} onClose={() => setSelected(null)} />}
+        </div>
+      </div>
     </div>
   );
 }

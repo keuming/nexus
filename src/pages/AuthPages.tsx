@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { api, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -8,13 +8,14 @@ import { Err } from '../components/Layout';
 function useAuthForm(kind: 'login' | 'register') {
   const { refresh } = useAuth();
   const nav = useNavigate();
+  const from = (useLocation().state as { from?: string } | null)?.from;
   return useMutation({
     mutationFn: (f: { email: string; password: string; name: string; role: 'customer' }) =>
       kind === 'login' ? unwrap(api.auth.login.$post({ json: { email: f.email, password: f.password } })) : unwrap(api.auth.register.$post({ json: f })),
     onSuccess: async (r) => {
       await refresh();
       const role = (r as { user: { role: string } }).user.role;
-      nav(role === 'admin' ? '/admin' : role === 'owner' ? '/company' : '/');
+      nav(from && from.startsWith('/') && !from.startsWith('//') ? from : role === 'admin' ? '/admin' : role === 'owner' ? '/company' : '/');
     },
   });
 }

@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { bookings, companies, notifications, offers, payments, users } from '../db/schema.js';
 import { config } from '../config.js';
@@ -6,7 +6,7 @@ import { config } from '../config.js';
 export interface NewNotification { userId: string; kind: string; title: string; body?: string; link?: string; refId?: string }
 
 /** Envoi e-mail via Resend (texte brut). Ne lève jamais : une alerte ratée ne doit pas casser une réservation. */
-async function sendMail(to: string, subject: string, text: string) {
+export async function sendMail(to: string, subject: string, text: string) {
   const { RESEND_API_KEY: key, MAIL_FROM: from } = config();
   if (!key || !from) return;
   try {
@@ -39,7 +39,7 @@ export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise
   try {
     const [r] = await db.select({
       seats: bookings.seats, stop: bookings.stop, offerTitle: offers.title, companyName: companies.name, ownerId: companies.ownerId,
-      customer: users.name, amount: payments.amountFcfa,
+      customer: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, phone: bookings.contactPhone, email: bookings.contactEmail, ref: bookings.reference, startsAt: offers.startsAt, amount: payments.amountFcfa,
     }).from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -47,7 +47,9 @@ export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise
       .leftJoin(payments, and(eq(payments.bookingId, bookings.id), eq(payments.status, 'paid')))
       .where(and(eq(bookings.id, bookingId), eq(bookings.status, 'confirmed'))).limit(1);
     if (!r) return;
-    const detail = `${r.customer} · ${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}`;
+    const detail = `${r.ref} · ${r.customer}${r.phone ? ` (${r.phone})` : ''} · ${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}`;
+    if (r.email) await sendMail(r.email, `Réservation confirmée ${r.ref} : ${r.offerTitle}`,
+      `Bonjour ${r.customer},\n\nVotre réservation ${r.ref} chez ${r.companyName} est confirmée.\n${r.offerTitle} · ${new Date(r.startsAt).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })}\n${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}\n\nPrésentez la référence ${r.ref} au prestataire. Reçu disponible dans « Mes réservations » sur NEXUS.`);
     await notify(db, [
       { userId: r.ownerId, kind: 'booking', refId: bookingId, title: `Nouvelle réservation : ${r.offerTitle}`, body: detail, link: '/company' },
       ...(await adminIds(db)).map((id) => ({ userId: id, kind: 'booking', refId: bookingId, title: `Réservation chez ${r.companyName} : ${r.offerTitle}`, body: detail, link: '/admin' })),

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, dateFr, unwrap } from '../lib/api';
 import { useState } from 'react';
@@ -22,9 +23,9 @@ export function Account() {
           {q.data.bookings.map((b) => (
             <li key={b.id} className="card flex items-center justify-between gap-4">
               <div>
-                <p className="font-semibold">{b.offerTitle}</p>
+                <p className="font-semibold">{b.offerTitle} <span className="ml-1 font-mono text-xs text-zinc-500">{b.reference}</span></p>
                 <p className="text-sm text-zinc-400">{b.companyName} · {b.city ? `${b.city} → ` : ''}{countryName(b.country)}{b.stop ? ` · arrêt : ${b.stop}` : ''}</p>
-                <p className="text-sm text-zinc-500">{dateFr(b.startsAt)} · {b.seats} place(s)</p>
+                <p className="text-sm text-zinc-500">{dateFr(b.startsAt)} · {b.seats} place(s) · <Link className="underline" to={`/reservation/${b.id}`}>Voir le reçu</Link></p>
               </div>
               {b.status === 'pending_payment' && b.paymentId
                 ? <button className="btn" onClick={() => setPaying(b.paymentId!)}>Suivre le paiement</button>

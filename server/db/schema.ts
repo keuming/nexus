@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { pgTable, primaryKey, smallint, uuid, text, integer, bigint, boolean, timestamp, pgEnum, doublePrecision, jsonb } from 'drizzle-orm/pg-core';
 
 export const userRole = pgEnum('user_role', ['admin', 'owner', 'customer']);
@@ -62,6 +63,13 @@ export const bookings = pgTable('bookings', {
   stop: text('stop'),
   status: bookingStatus('status').notNull().default('confirmed'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  reference: text('reference').notNull().default(sql`('NX-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)))`),
+  contactName: text('contact_name'),
+  contactPhone: text('contact_phone'),
+  contactEmail: text('contact_email'),
+  guests: text('guests').array().notNull().default(sql`'{}'`),
+  note: text('note').notNull().default(''),
+  termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
 });
 
 export const creditLedger = pgTable('credit_ledger', {

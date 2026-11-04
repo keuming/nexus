@@ -7,6 +7,8 @@ import { OrzayahError } from '../server/lib/orzayah.js';
 
 const geo = { address: 'Cocody, Rue des Jardins', latitude: 5.3599, longitude: -3.9899 };
 let ctx: Awaited<ReturnType<typeof makeApp>>;
+/** Informations obligatoires d'une réservation (contact, passager, conditions acceptées). */
+const BK = { contact: { name: 'Kouamé Client', phone: '+225 07 00 00 00 00', email: 'client@x.test' }, guests: ['Passager Test'], acceptTerms: true as const };
 const future = () => new Date(Date.now() + 86400_000).toISOString();
 
 beforeEach(async () => { ctx = await makeApp(); });
@@ -94,7 +96,7 @@ describe('réservations', () => {
 
     const offerId = (await anon.get('/offers?activity=restauration')).json.offers[0].id;
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId, seats: 2 });
+    const r = await cust.post('/bookings', { ...BK, guests: Array(2).fill('Passager Test'), offerId, seats: 2 });
     expect(r.status).toBe(201);
 
     const [after] = await ctx.db.select().from(companies).where(eq(companies.id, co.id));
@@ -112,7 +114,7 @@ describe('réservations', () => {
   it('ne survend jamais, même en concurrence', async () => {
     const { offer } = await setup(10, 1);
     const [a, b] = [await register('customer', 'a@x.test'), await register('customer', 'b@x.test')];
-    const rs = await Promise.all([a.post('/bookings', { offerId: offer.id }), b.post('/bookings', { offerId: offer.id })]);
+    const rs = await Promise.all([a.post('/bookings', { ...BK, offerId: offer.id }), b.post('/bookings', { ...BK, offerId: offer.id })]);
     expect(rs.map((r) => r.status).sort()).toEqual([201, 409]);
     const [o] = await ctx.db.select().from(offers).where(eq(offers.id, offer.id));
     expect(o.booked).toBe(1);
@@ -121,7 +123,7 @@ describe('réservations', () => {
   it('annule tout (rollback) si l\'entreprise n\'a plus de crédits', async () => {
     const { offer, co } = await setup(0, 5);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id });
     expect(r.status).toBe(409);
     const [o] = await ctx.db.select().from(offers).where(eq(offers.id, offer.id));
     expect(o.booked).toBe(0); // la place n'a pas été consommée
@@ -132,15 +134,15 @@ describe('réservations', () => {
   it('refuse une offre inexistante ou une entreprise suspendue', async () => {
     const { offer, adm, co } = await setup(5, 5);
     const cust = await register('customer', 'c@x.test');
-    expect((await cust.post('/bookings', { offerId: '00000000-0000-4000-8000-000000000000' })).status).toBe(404);
+    expect((await cust.post('/bookings', { ...BK, offerId: '00000000-0000-4000-8000-000000000000' })).status).toBe(404);
     await adm.post(`/admin/companies/${co.id}/status`, { status: 'suspended' });
-    expect((await cust.post('/bookings', { offerId: offer.id })).status).toBe(409);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id })).status).toBe(409);
   });
 
   it("isole les données : un propriétaire ne voit que ses réservations", async () => {
     const { owner, offer } = await setup(5, 5);
     const cust = await register('customer', 'c@x.test');
-    await cust.post('/bookings', { offerId: offer.id });
+    await cust.post('/bookings', { ...BK, offerId: offer.id });
     expect((await owner.get('/company/bookings')).json.bookings).toHaveLength(1);
     const other = await register('owner', 'o2@x.test');
     await other.post('/company', { name: 'Autre', activity: 'hotel', country: 'SN', city: 'Dakar', phone: '+225 07 00 00 00 00', ...geo });
@@ -186,9 +188,9 @@ describe('pays, villes et arrêts', () => {
   it("exige un arrêt valide quand l'offre en propose", async () => {
     const { offer } = await transportOffer();
     const cust = await register('customer', 'c@x.test');
-    expect((await cust.post('/bookings', { offerId: offer.id })).status).toBe(400);
-    expect((await cust.post('/bookings', { offerId: offer.id, stop: 'Ailleurs' })).status).toBe(400);
-    const ok = await cust.post('/bookings', { offerId: offer.id, stop: 'bobo-dioulasso' });
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id })).status).toBe(400);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, stop: 'Ailleurs' })).status).toBe(400);
+    const ok = await cust.post('/bookings', { ...BK, offerId: offer.id, stop: 'bobo-dioulasso' });
     expect(ok.status).toBe(201);
     expect(ok.json.booking.stop).toBe('Bobo-Dioulasso');
     expect((await cust.get('/bookings/mine')).json.bookings[0].stop).toBe('Bobo-Dioulasso');
@@ -298,9 +300,9 @@ describe('paiement ORZAYAH', () => {
   it('exige un moyen de paiement pour une offre payante', async () => {
     const { offer } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    expect((await cust.post('/bookings', { offerId: offer.id })).status).toBe(400);
-    expect((await cust.post('/bookings', { offerId: offer.id, payment: { operator: 'ORANGE', accountNumber: '12' } })).status).toBe(400);
-    expect((await cust.post('/bookings', { offerId: offer.id, payment: { operator: 'PAYPAL', accountNumber: '0707070707' } })).status).toBe(400);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id })).status).toBe(400);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payment: { operator: 'ORANGE', accountNumber: '12' } })).status).toBe(400);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payment: { operator: 'PAYPAL', accountNumber: '0707070707' } })).status).toBe(400);
     expect(orz.deposits).toHaveLength(0);
   });
 
@@ -308,14 +310,14 @@ describe('paiement ORZAYAH', () => {
     ctx = await makeApp(null);
     const { offer, co } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    expect((await cust.post('/bookings', { offerId: offer.id, payment: pay })).status).toBe(503);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay })).status).toBe(503);
     expect(await state(offer.id, co.id)).toEqual({ booked: 0, credits: 5 });
   });
 
   it('paiement réussi : bloque, puis confirme à SUCCESS (idempotent)', async () => {
     const { offer, co, owner, adm } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id, seats: 2, payment: pay });
+    const r = await cust.post('/bookings', { ...BK, guests: Array(2).fill('Passager Test'), offerId: offer.id, seats: 2, payment: pay });
     expect(r.status).toBe(201);
     expect(r.json.booking.status).toBe('pending_payment');
     expect(r.json.payment.status).toBe('pending');
@@ -341,7 +343,7 @@ describe('paiement ORZAYAH', () => {
   it('paiement échoué : libère les places et rend le crédit', async () => {
     const { offer, co } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id, payment: pay });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay });
     orz.set(key(r.json.payment.id), 'FAILED', 'Solde insuffisant');
     const s = await poll(cust, r.json.payment.id);
     expect(s.json.payment).toMatchObject({ status: 'failed', failureReason: 'Solde insuffisant' });
@@ -353,7 +355,7 @@ describe('paiement ORZAYAH', () => {
     const { offer, co } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
     orz.failNext = new OrzayahError(400, 'Numéro invalide', true);
-    const r = await cust.post('/bookings', { offerId: offer.id, payment: pay });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay });
     expect(r.status).toBe(400);
     expect(await state(offer.id, co.id)).toEqual({ booked: 0, credits: 5 });
   });
@@ -362,7 +364,7 @@ describe('paiement ORZAYAH', () => {
     const { offer } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
     orz.lostNext = true;
-    const r = await cust.post('/bookings', { offerId: offer.id, payment: pay });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay });
     expect(r.status).toBe(201);
     expect(r.json.payment.status).toBe('pending');
     expect(orz.ops.size).toBe(0);
@@ -376,7 +378,7 @@ describe('paiement ORZAYAH', () => {
   it('délai dépassé : expire et libère ; un paiement tardif réactive la réservation', async () => {
     const { offer, co } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id, payment: pay });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay });
     const pid = r.json.payment.id;
     await ctx.db.update(payments).set({ expiresAt: new Date(Date.now() - 1000), lastCheckedAt: null });
     expect((await poll(cust, pid)).json.payment.status).toBe('expired');
@@ -392,10 +394,10 @@ describe('paiement ORZAYAH', () => {
     const { offer, adm } = await setup(5, 1, 5000);
     const a = await register('customer', 'a@x.test');
     const b = await register('customer', 'b@x.test');
-    const ra = await a.post('/bookings', { offerId: offer.id, payment: pay });
+    const ra = await a.post('/bookings', { ...BK, offerId: offer.id, payment: pay });
     await ctx.db.update(payments).set({ expiresAt: new Date(Date.now() - 1000), lastCheckedAt: null });
     await poll(a, ra.json.payment.id); // expire, libère la place
-    expect((await b.post('/bookings', { offerId: offer.id, payment: pay })).status).toBe(201); // la place est reprise
+    expect((await b.post('/bookings', { ...BK, offerId: offer.id, payment: pay })).status).toBe(201); // la place est reprise
     orz.set(key(ra.json.payment.id), 'SUCCESS');
     await ctx.db.update(payments).set({ lastCheckedAt: null }).where(eq(payments.id, ra.json.payment.id));
     expect((await poll(a, ra.json.payment.id)).json.payment.status).toBe('needs_refund');
@@ -406,13 +408,13 @@ describe('paiement ORZAYAH', () => {
   it('offre gratuite : confirmée sans paiement ; réservation payée non annulable', async () => {
     const free = await setup(5, 5, 0);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: free.offer.id });
+    const r = await cust.post('/bookings', { ...BK, offerId: free.offer.id });
     expect(r.json.booking.status).toBe('confirmed');
     expect(r.json.payment).toBeNull();
     expect(orz.deposits).toHaveLength(0);
 
     const paidOffer = (await free.owner.post('/company/offers', { title: 'Payant', country: 'CI', city: 'Abidjan', priceFcfa: 3000, capacity: 5, startsAt: future() })).json.offer;
-    const p = await cust.post('/bookings', { offerId: paidOffer.id, payment: pay });
+    const p = await cust.post('/bookings', { ...BK, offerId: paidOffer.id, payment: pay });
     orz.set(key(p.json.payment.id), 'SUCCESS');
     await poll(cust, p.json.payment.id);
     expect((await cust.post(`/bookings/${p.json.booking.id}/cancel`)).status).toBe(409);
@@ -423,7 +425,7 @@ describe('paiement ORZAYAH', () => {
     const { offer, adm } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
     const other = await register('customer', 'd@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id, payment: pay });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay });
     expect((await poll(other, r.json.payment.id)).status).toBe(404);
     expect((await new Client(ctx.app).get(`/payments/${r.json.payment.id}`)).status).toBe(401);
     expect((await poll(adm, r.json.payment.id)).status).toBe(200);
@@ -433,8 +435,8 @@ describe('paiement ORZAYAH', () => {
   it('limite les réservations en attente de paiement par client', async () => {
     const { offer } = await setup(10, 10, 5000);
     const cust = await register('customer', 'c@x.test');
-    for (let i = 0; i < 3; i++) expect((await cust.post('/bookings', { offerId: offer.id, payment: pay })).status).toBe(201);
-    expect((await cust.post('/bookings', { offerId: offer.id, payment: pay })).status).toBe(429);
+    for (let i = 0; i < 3; i++) expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay })).status).toBe(201);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payment: pay })).status).toBe(429);
   });
 });
 
@@ -483,7 +485,7 @@ describe('alertes', () => {
   it('alerte le fournisseur et le back-office à la réservation (gratuite) et à l\'annulation', async () => {
     const { owner, adm, offer } = await setup(5, 5, 0);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id, seats: 2 });
+    const r = await cust.post('/bookings', { ...BK, guests: Array(2).fill('Passager Test'), offerId: offer.id, seats: 2 });
     const o = (await owner.get('/notifications')).json;
     expect(o.unread).toBe(1);
     expect(o.notifications[0]).toMatchObject({ kind: 'booking', title: expect.stringContaining('Nouvelle réservation'), link: '/company' });
@@ -503,7 +505,7 @@ describe('alertes', () => {
     const orz = new FakeOrz(); ctx = await makeApp(orz);
     const { owner, offer } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    const r = await cust.post('/bookings', { offerId: offer.id, payment: { operator: 'ORANGE', accountNumber: '0707070707' } });
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payment: { operator: 'ORANGE', accountNumber: '0707070707' } });
     expect((await owner.get('/notifications')).json.notifications.filter((n: any) => n.kind === 'booking')).toHaveLength(0);
     orz.set(`nx-${r.json.payment.id}`, 'SUCCESS');
     for (let i = 0; i < 2; i++) { await ctx.db.update(payments).set({ lastCheckedAt: null }); await cust.get(`/payments/${r.json.payment.id}`); }
@@ -515,7 +517,7 @@ describe('alertes', () => {
   it('chaque utilisateur ne voit que ses alertes', async () => {
     const { adm, offer } = await setup(5, 5, 0);
     const cust = await register('customer', 'c@x.test');
-    await cust.post('/bookings', { offerId: offer.id });
+    await cust.post('/bookings', { ...BK, offerId: offer.id });
     const other = await register('owner', 'o2@x.test');
     expect((await other.get('/notifications')).json.notifications).toHaveLength(0);
     expect((await adm.get('/notifications')).json.unread).toBeGreaterThan(0);
@@ -557,7 +559,7 @@ describe('gestion des offres (modifier, dupliquer, désactiver, supprimer)', () 
     const { owner } = await setup(5, 5, 0);
     const o = (await owner.post('/company/offers', body())).json.offer;
     const cust = await register('customer', 'c@x.test');
-    await cust.post('/bookings', { offerId: o.id, seats: 3 });
+    await cust.post('/bookings', { ...BK, guests: Array(3).fill('Passager Test'), offerId: o.id, seats: 3 });
     expect((await owner.patch(`/company/offers/${o.id}`, { capacity: 2 })).status).toBe(409);
     expect((await owner.patch(`/company/offers/${o.id}`, { capacity: 3 })).status).toBe(200);
   });
@@ -570,7 +572,7 @@ describe('gestion des offres (modifier, dupliquer, désactiver, supprimer)', () 
 
     const used = (await owner.post('/company/offers', body())).json.offer;
     const cust = await register('customer', 'c@x.test');
-    const b = await cust.post('/bookings', { offerId: used.id });
+    const b = await cust.post('/bookings', { ...BK, offerId: used.id });
     expect((await owner.delete(`/company/offers/${used.id}`)).status).toBe(409);
     await cust.post(`/bookings/${b.json.booking.id}/cancel`);
     expect((await owner.delete(`/company/offers/${used.id}`)).status).toBe(409); // l'historique (même annulé) est conservé
@@ -604,3 +606,39 @@ describe('référentiel pays et villes', () => {
   });
 });
 
+
+
+describe('parcours de réservation : informations du réservant', () => {
+  it('exige contact, conditions acceptées et noms des passagers (transport), et enregistre tout', async () => {
+    const { owner, offer } = await setup(5, 5, 0);
+    const cust = await register('customer', 'c@x.test');
+    const { contact, guests } = BK;
+    expect((await cust.post('/bookings', { offerId: offer.id, guests })).status).toBe(400); // pas de contact
+    expect((await cust.post('/bookings', { offerId: offer.id, contact, guests })).status).toBe(400); // conditions non acceptées
+    expect((await cust.post('/bookings', { offerId: offer.id, contact: { ...contact, email: 'pas-un-email' }, guests, acceptTerms: true })).status).toBe(400);
+    expect((await cust.post('/bookings', { offerId: offer.id, contact, acceptTerms: true })).status).toBe(400); // transport : nom du passager requis
+    expect((await cust.post('/bookings', { offerId: offer.id, contact, guests: ['A B', 'C D'], acceptTerms: true })).status).toBe(400); // 2 noms pour 1 place
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, note: 'Siège côté fenêtre' });
+    expect(r.status).toBe(201);
+    expect(r.json.booking.reference).toMatch(/^NX-[0-9A-F]{8}$/);
+    const d = (await cust.get(`/bookings/${r.json.booking.id}`)).json.booking;
+    expect(d).toMatchObject({ reference: r.json.booking.reference, contactName: 'Kouamé Client', contactEmail: 'client@x.test', guests: ['Passager Test'], note: 'Siège côté fenêtre', status: 'confirmed' });
+    // le fournisseur voit les coordonnées du client
+    const row = (await owner.get('/company/bookings')).json.bookings[0];
+    expect(row).toMatchObject({ customerName: 'Kouamé Client', contactPhone: '+225 07 00 00 00 00', reference: d.reference });
+    // la confirmation n'est visible que de son auteur
+    const other = await register('customer', 'd@x.test');
+    expect((await other.get(`/bookings/${r.json.booking.id}`)).status).toBe(404);
+  });
+
+  it('liste les moyens de paiement ORZAYAH', async () => {
+    ctx = await makeApp(new FakeOrz());
+    const cust = await register('customer', 'c@x.test');
+    const r = (await cust.get('/payments/methods')).json;
+    expect(r.available).toBe(true);
+    expect(r.methods.map((m: any) => m.id)).toEqual(['ORANGE', 'MTN', 'MOOV', 'WAVE']);
+    ctx = await makeApp(null);
+    const c2 = await register('customer', 'e@x.test');
+    expect((await c2.get('/payments/methods')).json.available).toBe(false);
+  });
+});

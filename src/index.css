@@ -5,3 +5,9 @@ body { @apply bg-ink text-zinc-100 antialiased; font-family: ui-sans-serif, syst
 .btn-ghost { @apply inline-flex whitespace-nowrap items-center justify-center rounded-lg border border-white/15 px-3 py-1.5 text-sm hover:bg-white/5 disabled:opacity-50; }
 .input { @apply w-full rounded-lg border border-white/15 bg-card px-3 py-2 text-sm outline-none focus:border-brand; }
 .card { @apply rounded-2xl border border-white/10 bg-card p-5; }
+
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .card { background: #fff !important; border: 1px solid #ccc !important; }
+  * { color: #000 !important; }
+}
