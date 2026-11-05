@@ -11,7 +11,7 @@ export function Footer() {
   const { user } = useAuth();
   return (
     <footer className="mt-10 border-t border-white/10 bg-black/20 print:hidden">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-3">
           <Link to="/" className="text-xl font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
           <p className="text-sm text-zinc-400">{SITE.tagline} Transport, hôtels, restaurants, loisirs, smartphones, laptops et tablettes auprès de prestataires validés.</p>
@@ -56,7 +56,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-zinc-500">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-zinc-500">
           <p>© {new Date().getFullYear()} {SITE.copyright}. Tous droits réservés.</p>
           <p>Paiements Mobile Money via ORZAYAH</p>
         </div>

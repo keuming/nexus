@@ -14,7 +14,7 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 print:hidden border-b border-white/10 bg-ink/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Link to="/" className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
           <nav className="order-last flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-1 sm:order-none sm:w-auto">
             <NavLink to="/" className={link} end>Catalogue</NavLink>
@@ -35,7 +35,7 @@ export function Layout() {
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10"><Outlet /></main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10"><Outlet /></main>
       <Footer />
     </div>
   );

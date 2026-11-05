@@ -37,7 +37,7 @@ export function Home() {
   });
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-[13rem_1fr]">
+    <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
         <aside className="card self-start md:sticky md:top-[4.5rem] md:max-h-[calc(100dvh-6rem)] md:overflow-y-auto" aria-label="Types d'activité">
           <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
           <div className="flex gap-2 overflow-x-auto md:flex-col md:gap-1 md:overflow-visible">
@@ -84,7 +84,7 @@ export function Home() {
       {list.isLoading ? <p className="text-center text-zinc-400">Chargement…</p> : !list.data?.offers.length ? (
         <p className="text-center text-zinc-400">Aucune offre ne correspond à votre recherche.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {list.data.offers.map((o) => (
             <OfferCard key={o.id} o={o} onBook={() => nav(user ? `/reserver/${o.id}` : '/login', user ? undefined : { state: { from: `/reserver/${o.id}` } })} />
           ))}
@@ -123,7 +123,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
           </>
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          <span className="text-lg font-bold">{fcfa(o.priceFcfa)}</span>
+          <span className="text-base font-bold">{fcfa(o.priceFcfa)}</span>
           <button className="btn" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
         </div>
       </div>
