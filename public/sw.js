@@ -1,5 +1,5 @@
 // Service worker BackMarket : coquille d'application hors ligne. Jamais de cache sur /api.
-const VERSION = 'backmarket-v1';
+const VERSION = 'backmarket-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
