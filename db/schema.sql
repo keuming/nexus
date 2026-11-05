@@ -27,7 +27,7 @@ create table if not exists companies (
   owner_id    uuid not null references users(id) on delete restrict,
   name        text not null,
   activity    text not null check (activity in
-    ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets')),
+    ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets','mode','beaute')),
   country     text not null default 'CI',
   city        text not null,
   service_cities text[] not null default '{}',
@@ -203,3 +203,8 @@ create table if not exists activity_display (
 alter table offers add column if not exists admin_hidden boolean not null default false;
 alter table offers add column if not exists show_from timestamptz;
 alter table offers add column if not exists show_until timestamptz;
+
+-- v26 : activités mode et beauté
+alter table companies drop constraint if exists companies_activity_check;
+alter table companies add constraint companies_activity_check check (activity in
+  ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets','mode','beaute'));

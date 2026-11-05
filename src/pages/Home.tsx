@@ -12,6 +12,7 @@ export const ACTIVITY_LABEL: Record<string, string> = {
   transport: 'Transport', restauration: 'Restauration', expedition: 'Expédition', hotel: 'Hôtel', boutique: 'Boutique',
   agence_voyage: 'Agence de voyage', residence_meuble: 'Résidence meublée', loisirs: 'Loisirs', location_vente: 'Location / vente',
   smartphones: 'Smartphones', laptops: 'Laptops', tablets: 'Tablettes',
+  mode: 'Mode', beaute: 'Beauté',
 };
 
 export function Home() {

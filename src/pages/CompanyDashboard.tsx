@@ -132,6 +132,7 @@ const NOUN: Record<string, { a: string; the: string }> = {
   location_vente: { a: 'un bien', the: 'le bien' },
   smartphones: { a: 'un smartphone', the: 'le smartphone' }, laptops: { a: 'un ordinateur portable', the: "l'ordinateur portable" },
   tablets: { a: 'une tablette', the: 'la tablette' },
+  mode: { a: 'un article de mode', the: "l'article de mode" }, beaute: { a: 'un produit de beauté', the: 'le produit de beauté' },
 };
 const toLocalInput = (iso: string) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 const OWN_PHOTO = '/api/company/offers/';
