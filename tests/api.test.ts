@@ -687,4 +687,39 @@ describe('parcours de réservation : informations du réservant', () => {
     expect((await anon.get('/offers?destCountry=SN')).json.offers).toHaveLength(0);
     expect((await anon.get('/offers?destCity=cona')).json.offers).toHaveLength(1);
   });
+
+  it("services : arrivée obligatoire pour colis et billets, catégories validées, filtres de recherche", async () => {
+    ctx = await makeApp(null);
+    const adm = await admin();
+    const mk = async (email: string, activity: string) => {
+      const owner = await register('owner', email);
+      const co = (await owner.post('/company', { name: activity, activity, country: 'CI', city: 'Abidjan', phone: '+225 07 00 00 00 00', ...geo })).json.company;
+      await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
+      return owner;
+    };
+    const base = { country: 'CI', city: 'Abidjan', priceFcfa: 5000, capacity: 10, startsAt: future() };
+    const exp = await mk('e1@x.test', 'expedition');
+    expect((await exp.post('/company/offers', { ...base, title: 'Colis Abidjan → Bouaké', category: 'Petit colis (< 5 kg)' })).status).toBe(400);
+    expect((await exp.post('/company/offers', { ...base, title: 'Colis', destCountry: 'CI', destCity: 'Bouaké', category: 'Inconnu' })).status).toBe(400);
+    expect((await exp.post('/company/offers', { ...base, title: 'Colis Abidjan → Bouaké', destCountry: 'CI', destCity: 'Bouaké', category: 'Petit colis (< 5 kg)' })).status).toBe(201);
+    const hotel = await mk('h1@x.test', 'hotel');
+    expect((await hotel.post('/company/offers', { ...base, title: 'Chambre standard', priceFcfa: 25000, capacity: 4, category: 'Standard' })).status).toBe(201);
+    await hotel.post('/company/offers', { ...base, title: 'Suite', priceFcfa: 90000, capacity: 2, category: 'Suite' });
+    const resto = await mk('r1@x.test', 'restauration');
+    await resto.post('/company/offers', { ...base, title: 'Attiéké poisson', priceFcfa: 3000, category: 'Ivoirienne' });
+    expect((await resto.post('/company/offers', { ...base, title: 'X', category: 'Standard' })).status).toBe(400); // catégorie d'un autre service
+
+    const anon = new Client(ctx.app);
+    const n = async (qs: string) => (await anon.get(`/offers?${qs}`)).json.offers.length;
+    expect(await n('activity=expedition&destCity=Bouak&category=' + encodeURIComponent('Petit colis (< 5 kg)'))).toBe(1);
+    expect(await n('activity=expedition&category=Express')).toBe(0);
+    expect(await n('activity=hotel&maxPrice=30000')).toBe(1);
+    expect(await n('activity=hotel&guests=3')).toBe(1);   // seule la chambre à 4 places convient
+    expect(await n('activity=hotel&category=Suite&maxPrice=100000')).toBe(1);
+    expect(await n('activity=restauration&category=Ivoirienne')).toBe(1);
+    const day = base.startsAt.slice(0, 10);
+    expect(await n(`activity=expedition&date=${day}`)).toBe(1);
+    expect(await n('activity=expedition&date=2001-01-01')).toBe(0);
+    expect((await anon.get('/offers?date=pas-une-date')).status).toBe(400);
+  });
 });

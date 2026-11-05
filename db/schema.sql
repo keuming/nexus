@@ -212,3 +212,6 @@ alter table companies add constraint companies_activity_check check (activity in
 -- v31 : transport — pays et ville d'arrivée (country/city = départ)
 alter table offers add column if not exists dest_country text;
 alter table offers add column if not exists dest_city text;
+
+-- v32 : catégorie d'offre (cuisine, type de colis, type de billet, type de chambre/logement)
+alter table offers add column if not exists category text;

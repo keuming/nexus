@@ -4,7 +4,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { CountrySelect } from '../components/ChipInput';
-import { ACTIVITIES, DATED_ACTIVITIES } from '../../shared/constants';
+import { ACTIVITIES, DATED_ACTIVITIES, type Activity } from '../../shared/constants';
+import { CATEGORIES, SEARCH_FORMS, type SearchForm } from '../../shared/search';
 import { COUNTRIES, citiesOf } from '../../shared/geo';
 import { placeLabel } from '../lib/place';
 
@@ -30,46 +31,57 @@ function useDebounced<T>(value: T, ms = 350): T {
   return v;
 }
 
+/** Champ de formulaire synchronisé avec l'adresse : saisie locale immédiate, écriture dans l'URL après une pause. */
+function useUrlInput(key: string): [string, (v: string) => void, string] {
+  const [params, setParams] = useSearchParams();
+  const committed = params.get(key) ?? '';
+  const [local, setLocal] = useState(committed);
+  const deb = useDebounced(local.trim());
+  useEffect(() => {
+    setParams((p) => { if ((p.get(key) ?? '') === deb) return p; const n = new URLSearchParams(p); if (deb) n.set(key, deb); else n.delete(key); return n; }, { replace: true });
+  }, [deb]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Retour arrière / lien partagé : l'adresse change sans saisie → on resynchronise le champ.
+  useEffect(() => { if (committed !== local.trim() && committed === '' ) setLocal(''); }, [committed]); // eslint-disable-line react-hooks/exhaustive-deps
+  return [local, setLocal, local.trim() ? committed : ''];
+}
+
 export function Home() {
   const [params, setParams] = useSearchParams();
   const activity = params.get('activite') ?? '';
   const country = params.get('pays') ?? '';
-  const [city, setCity] = useState(params.get('ville') ?? '');
-  const [q, setQ] = useState(params.get('q') ?? '');
   const destCountry = params.get('pays_arr') ?? '';
-  const [destCityIn, setDestCityIn] = useState(params.get('ville_arr') ?? '');
-  const isTransport = activity === 'transport';
-  const debCity = useDebounced(city.trim());
-  const debQ = useDebounced(q.trim());
-  const debDest = useDebounced(destCityIn.trim());
-  const dDest = params.get('ville_arr') ?? '';
-  const dCity = params.get('ville') ?? '';
-  const dQ = params.get('q') ?? '';
+  const date = params.get('date') ?? '';
+  const category = params.get('categorie') ?? '';
+  const [city, setCity, dCity] = useUrlInput('ville');
+  const [destCity, setDestCity, dDest] = useUrlInput('ville_arr');
+  const [q, setQ, dQ] = useUrlInput('q');
+  const [guests, setGuests, dGuests] = useUrlInput('guests');
+  const [budget, setBudget, dBudget] = useUrlInput('budget');
   const { user } = useAuth();
   const nav = useNavigate();
-  const cities = country ? citiesOf(country) : COUNTRIES.flatMap((c) => c.cities);
+  const form: SearchForm | undefined = SEARCH_FORMS[activity as Activity];
+  const cat = CATEGORIES[activity as Activity];
+  const allCities = COUNTRIES.flatMap((c) => c.cities);
 
-  // L'adresse est la source de vérité : le bouton « retour » et le partage de lien fonctionnent.
-  // La saisie libre n'y est écrite qu'après une pause (pas de requête à chaque frappe).
-  useEffect(() => { setParams((p) => { if ((p.get('ville') ?? '') === debCity) return p; const n = new URLSearchParams(p); if (debCity) n.set('ville', debCity); else n.delete('ville'); return n; }, { replace: true }); }, [debCity]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setParams((p) => { if ((p.get('ville_arr') ?? '') === debDest) return p; const n = new URLSearchParams(p); if (debDest) n.set('ville_arr', debDest); else n.delete('ville_arr'); return n; }, { replace: true }); }, [debDest]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { setParams((p) => { if ((p.get('q') ?? '') === debQ) return p; const n = new URLSearchParams(p); if (debQ) n.set('q', debQ); else n.delete('q'); return n; }, { replace: true }); }, [debQ]); // eslint-disable-line react-hooks/exhaustive-deps
   const setFilter = (k: string, v: string) => setParams((p) => {
     const n = new URLSearchParams(p);
     if (v) n.set(k, v); else n.delete(k);
     if (k === 'pays') { n.delete('ville'); setCity(''); }
-    if (k === 'pays_arr') { n.delete('ville_arr'); setDestCityIn(''); }
-    if (k === 'activite' && v !== 'transport') { n.delete('pays_arr'); n.delete('ville_arr'); setDestCityIn(''); }
+    if (k === 'pays_arr') { n.delete('ville_arr'); setDestCity(''); }
+    if (k === 'activite') { // chaque service a son propre formulaire : on repart de zéro
+      for (const x of ['pays_arr', 'ville_arr', 'date', 'categorie', 'guests', 'budget']) n.delete(x);
+      setDestCity(''); setGuests(''); setBudget('');
+    }
     return n;
   }, { replace: true });
 
   const acts = useQuery({ queryKey: ['activities'], queryFn: () => unwrap(api.offers.activities.$get()), staleTime: 60_000 });
-  const menu = acts.data ? MENU.filter((m) => m.members.some((x) => acts.data.activities.includes(x as (typeof ACTIVITIES)[number]))) : MENU;
+  const menu = acts.data ? MENU.filter((m) => m.members.some((x) => acts.data.activities.includes(x as Activity))) : MENU;
   // Un type masqué entre-temps par l'administration ne doit pas rester sélectionné.
   useEffect(() => { if (acts.data && activity && !menu.some((m) => m.id === activity)) setFilter('activite', ''); }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = useQuery({
-    queryKey: ['offers', activity, country, dCity, destCountry, dDest, dQ],
+    queryKey: ['offers', activity, country, dCity, destCountry, dDest, date, category, dGuests, dBudget, dQ],
     placeholderData: keepPreviousData,
     queryFn: () => unwrap(api.offers.$get({ query: {
       ...(activity ? { activity: (MENU.find((m) => m.id === activity)?.members ?? [activity]).join(',') } : {}),
@@ -77,19 +89,24 @@ export function Home() {
       ...(dCity ? { city: dCity } : {}),
       ...(destCountry ? { destCountry } : {}),
       ...(dDest ? { destCity: dDest } : {}),
+      ...(date ? { date } : {}),
+      ...(category ? { category } : {}),
+      ...(dGuests && Number(dGuests) > 0 ? { guests: Number(dGuests) } : {}),
+      ...(dBudget && Number(dBudget) >= 0 ? { maxPrice: Number(dBudget) } : {}),
       ...(dQ ? { q: dQ } : {}),
     } })),
   });
-  const filtered = !!(activity || country || city.trim() || q.trim() || destCountry || destCityIn.trim());
-  const reset = () => { setCity(''); setQ(''); setDestCityIn(''); setParams(new URLSearchParams(), { replace: true }); };
+  const filtered = !!(activity || country || destCountry || date || category || [city, destCity, q, guests, budget].some((x) => x.trim()));
+  const reset = () => { setCity(''); setDestCity(''); setQ(''); setGuests(''); setBudget(''); setParams(new URLSearchParams(), { replace: true }); };
   const offers = list.data?.offers ?? [];
+  const cols = form ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3';
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
-      <aside className="card self-start md:sticky md:top-[4.5rem]" aria-label="Types d'activité">
-        <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
+      <aside className="card self-start md:sticky md:top-[4.5rem]" aria-label="Services BackMarket">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Services BackMarket</p>
         <div className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1">
-          {[{ id: '', label: 'Toutes' }, ...menu].map((m) => (
+          {[{ id: '', label: 'Tous les services' }, ...menu].map((m) => (
             <button key={m.id} aria-pressed={activity === m.id} onClick={() => setFilter('activite', m.id)}
               className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-left text-sm transition ${activity === m.id ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
               {m.label}
@@ -103,14 +120,33 @@ export function Home() {
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.</p>
 
-          <form className={`card mt-5 grid gap-3 text-left ${isTransport ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3'}`} onSubmit={(e) => e.preventDefault()} role="search">
-            <PlaceFields id="f-dep" countryLabel={isTransport ? 'Pays de départ' : 'Pays'} cityLabel={isTransport ? 'Ville de départ' : 'Ville ou arrêt'}
-              country={country} city={city} onCountry={(v) => setFilter('pays', v)} onCity={setCity} cities={cities} />
-            {isTransport && (
-              <PlaceFields id="f-arr" countryLabel="Pays d'arrivée" cityLabel="Ville d'arrivée"
-                country={destCountry} city={destCityIn} onCountry={(v) => setFilter('pays_arr', v)} onCity={setDestCityIn} cities={destCountry ? citiesOf(destCountry) : COUNTRIES.flatMap((c) => c.cities)} />
+          <form className={`card mt-5 grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `Recherche ${MENU.find((m) => m.id === activity)?.label}` : 'Recherche'}>
+            <PlaceFields id="f-dep" countryLabel={form?.from?.country ?? 'Pays'} cityLabel={form?.from?.city ?? 'Ville ou arrêt'}
+              country={country} city={city} onCountry={(v) => setFilter('pays', v)} onCity={setCity} cities={country ? citiesOf(country) : allCities} />
+            {form?.to && (
+              <PlaceFields id="f-arr" countryLabel={form.to.country} cityLabel={form.to.city}
+                country={destCountry} city={destCity} onCountry={(v) => setFilter('pays_arr', v)} onCity={setDestCity} cities={destCountry ? citiesOf(destCountry) : allCities} />
             )}
-            <div className={`space-y-1 ${isTransport ? 'sm:col-span-2 xl:col-span-4' : ''}`}>
+            {form?.date && (
+              <div className="space-y-1"><label htmlFor="f-date" className="text-xs text-zinc-400">{form.date}</label>
+                <input id="f-date" type="date" className="input" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(e) => setFilter('date', e.target.value)} /></div>
+            )}
+            {form?.guests && (
+              <div className="space-y-1"><label htmlFor="f-guests" className="text-xs text-zinc-400">{form.guests}</label>
+                <input id="f-guests" type="number" min={1} max={500} inputMode="numeric" className="input" placeholder="1" value={guests} onChange={(e) => setGuests(e.target.value)} /></div>
+            )}
+            {form?.category && cat && (
+              <div className="space-y-1"><label htmlFor="f-cat" className="text-xs text-zinc-400">{cat.label}</label>
+                <select id="f-cat" className="input" value={category} onChange={(e) => setFilter('categorie', e.target.value)}>
+                  <option value="">Tous</option>
+                  {cat.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select></div>
+            )}
+            {form?.budget && (
+              <div className="space-y-1"><label htmlFor="f-budget" className="text-xs text-zinc-400">{form.budget}</label>
+                <input id="f-budget" type="number" min={0} step={500} inputMode="numeric" className="input" placeholder="Illimité" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
+            )}
+            <div className={`space-y-1 ${form ? 'sm:col-span-2' : ''}`}>
               <label htmlFor="f-q" className="text-xs text-zinc-400">Rechercher</label>
               <input id="f-q" className="input" type="search" placeholder="Mot-clé…" value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
@@ -147,7 +183,7 @@ export function Home() {
   );
 }
 
-interface OfferItem { destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; activity: string }
+interface OfferItem { category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; activity: string }
 
 /** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
 function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
@@ -164,7 +200,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-brand/25 to-white/5 text-3xl font-extrabold text-brand/70" aria-hidden>{(ACTIVITY_LABEL[o.activity] ?? '?').charAt(0)}</div>
       )}
       <div className="flex flex-1 flex-col gap-1 px-4 pb-4 pt-3">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}{o.category ? ` · ${o.category}` : ''}</span>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug">{o.title}</h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="truncate text-sm text-zinc-400">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</p>

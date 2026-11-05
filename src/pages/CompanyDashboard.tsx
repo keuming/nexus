@@ -7,6 +7,7 @@ import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
 import { CompanyFields, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
 import { placeLabel } from '../lib/place';
+import { CATEGORIES, ROUTE_ACTIVITIES, SEARCH_FORMS } from '../../shared/search';
 import { ACTIVITIES } from '../../shared/constants';
 import { citiesOf, countryName } from '../../shared/geo';
 
@@ -141,20 +142,23 @@ const OWN_PHOTO = '/api/company/offers/';
 function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[] } }) {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['company-offers'], queryFn: () => unwrap(api.company.offers.$get()) });
-  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', priceFcfa: 0, capacity: 1, startsAt: '' };
+  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, startsAt: '' };
   const [f, setF] = useState(blank);
   const [stops, setStops] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const isTransport = company.activity === 'transport';
+  const isRoute = (ROUTE_ACTIVITIES as readonly string[]).includes(company.activity);
+  const sf = SEARCH_FORMS[company.activity as keyof typeof SEARCH_FORMS];
+  const cat = CATEGORIES[company.activity as keyof typeof CATEGORIES];
   const noun = NOUN[company.activity] ?? { a: 'une offre', the: "l'offre" };
   const reset = () => { setF(blank); setStops([]); setPhotos([]); setEditing(null); };
   const close = () => { reset(); setOpen(false); };
   const refresh = () => qc.invalidateQueries({ queryKey: ['company-offers'] });
   const save = useMutation({
     mutationFn: () => {
-      const json = { ...f, ...(isTransport ? {} : { destCountry: null, destCity: null }), stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
+      const json = { ...f, category: f.category || null, ...(isRoute ? {} : { destCountry: null, destCity: null }), stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
       return editing ? unwrap(api.company.offers[':id'].$patch({ param: { id: editing }, json })) : unwrap(api.company.offers.$post({ json }));
     },
     onSuccess: () => { close(); refresh(); },
@@ -169,7 +173,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
   });
   type Row = NonNullable<typeof list.data>['offers'][number];
   const load = (o: Row, copy: boolean) => {
-    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy ? '' : toLocalInput(o.startsAt) });
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy ? '' : toLocalInput(o.startsAt) });
     setStops(o.stops);
     setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
     setEditing(copy ? null : o.id);
@@ -218,17 +222,24 @@ function Offers({ company }: { company: { country: string; city: string; activit
             </div>
             <div className="space-y-1 sm:col-span-2"><label htmlFor="o-title" className="text-sm font-medium">Titre</label>
               <input id="o-title" className="input" required autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-            <div className="space-y-1"><label htmlFor="o-country" className="text-sm font-medium">{isTransport ? 'Pays de départ' : 'Pays du service'}</label>
+            <div className="space-y-1"><label htmlFor="o-country" className="text-sm font-medium">{isRoute ? sf?.from?.country : 'Pays du service'}</label>
               <CountrySelect id="o-country" value={f.country} onChange={(v) => setF({ ...f, country: v, city: v === company.country ? company.city : '' })} /></div>
-            <div className="space-y-1"><label htmlFor="o-city" className="text-sm font-medium">{isTransport ? 'Ville de départ' : 'Ville du service'}</label>
+            <div className="space-y-1"><label htmlFor="o-city" className="text-sm font-medium">{isRoute ? sf?.from?.city : 'Ville du service'}</label>
               <CitySelect key={`${open}-${editing}-${f.country}`} id="o-city" required country={f.country} value={f.city} extra={f.country === company.country ? [company.city, ...company.serviceCities] : []} onChange={(v) => setF({ ...f, city: v })} /></div>
-            {isTransport && (
+            {isRoute && (
               <>
-                <div className="space-y-1"><label htmlFor="o-dcountry" className="text-sm font-medium">Pays d'arrivée</label>
+                <div className="space-y-1"><label htmlFor="o-dcountry" className="text-sm font-medium">{sf?.to?.country}</label>
                   <CountrySelect id="o-dcountry" value={f.destCountry} onChange={(v) => setF({ ...f, destCountry: v, destCity: '' })} /></div>
-                <div className="space-y-1"><label htmlFor="o-dcity" className="text-sm font-medium">Ville d'arrivée</label>
+                <div className="space-y-1"><label htmlFor="o-dcity" className="text-sm font-medium">{sf?.to?.city}</label>
                   <CitySelect key={`d-${open}-${editing}-${f.destCountry}`} id="o-dcity" required country={f.destCountry} value={f.destCity} extra={[]} onChange={(v) => setF({ ...f, destCity: v })} /></div>
               </>
+            )}
+            {cat && (
+              <div className="space-y-1 sm:col-span-2"><label htmlFor="o-cat" className="text-sm font-medium">{cat.label}</label>
+                <select id="o-cat" className="input" required value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
+                  <option value="">Choisir…</option>
+                  {cat.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select></div>
             )}
             <div className="sm:col-span-2">
               <ChipInput label={isTransport ? 'Arrêts (villes ou lieux indiqués)' : 'Lieux / points de rendez-vous (facultatif)'}
