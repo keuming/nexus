@@ -77,7 +77,7 @@ export const authRoutes = new Hono<Env>()
     return c.json({ user: publicUser(u) });
   })
   .post('/logout', (c) => {
-    deleteCookie(c, COOKIE_NAME, { path: '/' });
+    deleteCookie(c, COOKIE_NAME, { ...cookieOpts(), path: '/' });
     return c.json({ ok: true });
   })
   .get('/me', async (c) => {

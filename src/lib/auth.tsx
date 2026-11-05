@@ -19,6 +19,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
   const refresh = async () => { await qc.invalidateQueries({ queryKey: ['me'] }); };
-  const logout = async () => { await unwrap(api.auth.logout.$post()); qc.clear(); await refresh(); };
+  const logout = async () => {
+    try { await unwrap(api.auth.logout.$post()); } catch { /* on déconnecte l'interface quoi qu'il arrive */ }
+    qc.clear();
+    qc.setQueryData(['me'], null);
+    window.location.assign('/');
+  };
   return <AuthCtx.Provider value={{ user: q.data ?? null, loading: q.isLoading, refresh, logout }}>{children}</AuthCtx.Provider>;
 }
