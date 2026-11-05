@@ -60,7 +60,7 @@ export const adminRoutes = new Hono<Env>()
       .orderBy(sql`(${payments.status} = 'needs_refund') desc`, desc(payments.createdAt)).limit(200);
     return c.json({ payments: rows });
   })
-  /** Sommes encaissées par NEXUS et à reverser à chaque fournisseur (paiements « paid » non encore reversés). */
+  /** Sommes encaissées par BackMarket et à reverser à chaque fournisseur (paiements « paid » non encore reversés). */
   .get('/payouts', async (c) => {
     const rows = await c.get('db')
       .select({ companyId: payments.companyId, companyName: companies.name, count: count(), totalFcfa: sql<number>`sum(${payments.amountFcfa})::int` })

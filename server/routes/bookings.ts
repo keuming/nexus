@@ -31,7 +31,7 @@ const body = z.object({
 export const bookingRoutes = new Hono<Env>()
   .use(requireRole('customer', 'owner', 'admin'))
   /**
-   * Réservation atomique. 1 réservation = 1 crédit prélevé sur l'entreprise (modèle NEXUS).
+   * Réservation atomique. 1 réservation = 1 crédit prélevé sur l'entreprise (modèle BackMarket).
    * Offre gratuite : confirmée tout de suite. Offre payante : places + crédit sont bloqués (« pending_payment ») le temps du
    * paiement Mobile Money ORZAYAH ; ils sont rendus si le paiement échoue ou expire. Gardes dans les UPDATE (WHERE).
    */

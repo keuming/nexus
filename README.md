@@ -1,4 +1,4 @@
-# NEXUS (MVP)
+# BackMarket (MVP)
 
 Réservations multi-activités. Stack : Vite + React + Tailwind · Hono · Drizzle · Neon Postgres · Vercel.
 

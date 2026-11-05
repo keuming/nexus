@@ -28,7 +28,7 @@ export async function notify(db: Db, items: NewNotification[]): Promise<void> {
       .onConflictDoNothing().returning({ userId: notifications.userId, title: notifications.title, body: notifications.body });
     if (!rows.length || !config().RESEND_API_KEY) return;
     const emails = new Map((await db.select({ id: users.id, email: users.email }).from(users)).map((u) => [u.id, u.email]));
-    await Promise.allSettled(rows.map((r) => { const to = emails.get(r.userId); return to ? sendMail(to, r.title, `${r.body}\n\nOuvrez NEXUS pour le détail.`) : undefined; }));
+    await Promise.allSettled(rows.map((r) => { const to = emails.get(r.userId); return to ? sendMail(to, r.title, `${r.body}\n\nOuvrez BackMarket pour le détail.`) : undefined; }));
   } catch (e) { console.error('[notify]', e instanceof Error ? e.message : e); }
 }
 
@@ -49,7 +49,7 @@ export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise
     if (!r) return;
     const detail = `${r.ref} · ${r.customer}${r.phone ? ` (${r.phone})` : ''} · ${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}`;
     if (r.email) await sendMail(r.email, `Réservation confirmée ${r.ref} : ${r.offerTitle}`,
-      `Bonjour ${r.customer},\n\nVotre réservation ${r.ref} chez ${r.companyName} est confirmée.\n${r.offerTitle} · ${new Date(r.startsAt).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })}\n${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}\n\nPrésentez la référence ${r.ref} au prestataire. Reçu disponible dans « Mes réservations » sur NEXUS.`);
+      `Bonjour ${r.customer},\n\nVotre réservation ${r.ref} chez ${r.companyName} est confirmée.\n${r.offerTitle} · ${new Date(r.startsAt).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })}\n${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}\n\nPrésentez la référence ${r.ref} au prestataire. Reçu disponible dans « Mes réservations » sur BackMarket.`);
     await notify(db, [
       { userId: r.ownerId, kind: 'booking', refId: bookingId, title: `Nouvelle réservation : ${r.offerTitle}`, body: detail, link: '/company' },
       ...(await adminIds(db)).map((id) => ({ userId: id, kind: 'booking', refId: bookingId, title: `Réservation chez ${r.companyName} : ${r.offerTitle}`, body: detail, link: '/admin' })),

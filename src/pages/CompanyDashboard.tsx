@@ -47,7 +47,7 @@ export function CompanyDashboard() {
           <p className="text-sm text-zinc-400">{ACTIVITY_LABEL[c.activity] ?? c.activity} · {c.city}, {countryName(c.country)}</p>
         </div>
       </header>
-      {c.status === 'pending' && <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-300">Votre demande est en cours d’examen par NEXUS. Vos offres seront visibles une fois votre entreprise validée.</p>}
+      {c.status === 'pending' && <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-300">Votre demande est en cours d’examen par BackMarket. Vos offres seront visibles une fois votre entreprise validée.</p>}
       {c.status === 'rejected' && (
         <div className="space-y-2 rounded-lg bg-red-500/10 px-4 py-3 text-center text-sm text-red-300">
           <p className="font-semibold">Votre demande a été refusée.</p>

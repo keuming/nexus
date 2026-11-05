@@ -1,4 +1,4 @@
--- NEXUS MVP — schéma PostgreSQL (Neon). Idempotent : peut être rejoué sans risque.
+-- BackMarket MVP — schéma PostgreSQL (Neon). Idempotent : peut être rejoué sans risque.
 begin;
 
 do $$ begin

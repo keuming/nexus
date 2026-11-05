@@ -28,7 +28,7 @@ const publicUser = (u: typeof users.$inferSelect) => ({ id: u.id, email: u.email
 
 // Hash factice généré à la volée : égalise le temps de réponse quand l'email est inconnu (anti-énumération).
 let dummyHash: Promise<string> | undefined;
-const getDummyHash = () => (dummyHash ??= hashPassword('nexus-dummy-password'));
+const getDummyHash = () => (dummyHash ??= hashPassword('backmarket-dummy-password'));
 
 export const authRoutes = new Hono<Env>()
   .post(

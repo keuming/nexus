@@ -39,8 +39,8 @@ export function Subscribe() {
   return (
     <form onSubmit={submit} className="mx-auto max-w-2xl space-y-6">
       <header className="text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight">Devenez <span className="text-brand">partenaire</span> NEXUS</h1>
-        <p className="mt-2 text-sm text-zinc-400">Souscription réservée aux entreprises. Votre demande est examinée par NEXUS avant la publication de vos offres.</p>
+        <h1 className="text-3xl font-extrabold tracking-tight">Devenez <span className="text-brand">partenaire</span> BackMarket</h1>
+        <p className="mt-2 text-sm text-zinc-400">Souscription réservée aux entreprises. Votre demande est examinée par BackMarket avant la publication de vos offres.</p>
       </header>
 
       <Section n={1} title="Votre entreprise"><CompanyFields value={company} onChange={setCompany} /></Section>

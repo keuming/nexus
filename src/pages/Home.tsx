@@ -40,7 +40,7 @@ export function Home() {
     <div className="space-y-10">
       <section className="mx-auto max-w-3xl text-center">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
-        <p className="mx-auto mt-3 max-w-xl text-zinc-400">Transport, hôtels, restaurants et loisirs auprès d’entreprises validées par NEXUS.</p>
+        <p className="mx-auto mt-3 max-w-xl text-zinc-400">Transport, hôtels, restaurants et loisirs auprès d’entreprises validées par BackMarket.</p>
 
         <form className="card mt-8 grid gap-3 text-left sm:grid-cols-3" onSubmit={(e) => e.preventDefault()} role="search">
           <div className="space-y-1">
@@ -65,7 +65,7 @@ export function Home() {
           </div>
         </form>
 
-        {!user && <p className="mt-4 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire NEXUS</Link></p>}
+        {!user && <p className="mt-4 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire BackMarket</Link></p>}
 
       </section>
 

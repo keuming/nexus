@@ -1,6 +1,6 @@
-# NEXUS MVP — Architecture
+# BackMarket MVP — Architecture
 
-## 1. Analyse de l'existant (HUB_RESA → NEXUS)
+## 1. Analyse de l'existant (HUB_RESA → BackMarket)
 | Mesure | Valeur |
 |---|---|
 | Fichiers TS/TSX | 277 (≈19 400 lignes serveur, ≈51 000 client) |
@@ -89,7 +89,7 @@ Paiement mobile money (webhook → `credit_ledger`) · notifications e-mail/SMS 
 
 ## Paiement des réservations (API ORZAYAH)
 
-**Principe** : NEXUS encaisse via un compte partenaire ORZAYAH unique (clé `ORZAYAH_API_KEY`, permission DEPOSIT, côté serveur uniquement). Le client paie en **Mobile Money** (Orange, MTN, Moov, Wave) : l'API publique ORZAYAH ne propose pas de paiement par carte/portefeuille. Les sommes encaissées sont suivies par fournisseur (`GET /admin/payouts`) et reversées manuellement (`POST /admin/companies/:id/payouts` pour tracer le reversement).
+**Principe** : BackMarket encaisse via un compte partenaire ORZAYAH unique (clé `ORZAYAH_API_KEY`, permission DEPOSIT, côté serveur uniquement). Le client paie en **Mobile Money** (Orange, MTN, Moov, Wave) : l'API publique ORZAYAH ne propose pas de paiement par carte/portefeuille. Les sommes encaissées sont suivies par fournisseur (`GET /admin/payouts`) et reversées manuellement (`POST /admin/companies/:id/payouts` pour tracer le reversement).
 
 **Flux** `POST /bookings` avec `payment {operator, accountNumber}` :
 1. Offre gratuite → confirmée immédiatement. Offre payante → transaction : places + 1 crédit bloqués, réservation `pending_payment`, ligne `payments` (clé d'idempotence `nx-<uuid>`, expire après `HOLD_MINUTES`, 15 par défaut).

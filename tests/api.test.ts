@@ -20,9 +20,9 @@ async function register(role: 'customer' | 'owner', email: string) {
   return c;
 }
 async function admin() {
-  await ctx.db.insert(users).values({ email: 'admin@nexus.test', name: 'Admin', role: 'admin', passwordHash: await hashPassword('adminpass123') });
+  await ctx.db.insert(users).values({ email: 'admin@backmarket.test', name: 'Admin', role: 'admin', passwordHash: await hashPassword('adminpass123') });
   const c = new Client(ctx.app);
-  expect((await c.post('/auth/login', { email: 'admin@nexus.test', password: 'adminpass123' })).status).toBe(200);
+  expect((await c.post('/auth/login', { email: 'admin@backmarket.test', password: 'adminpass123' })).status).toBe(200);
   return c;
 }
 /** Entreprise active avec `credits` crédits et une offre de `capacity` places. */
