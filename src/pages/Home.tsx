@@ -87,29 +87,48 @@ export function Home() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.data.offers.map((o) => (
-            <article key={o.id} className="card flex flex-col">
-              {o.photoCount > 0 && <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" className="-mx-4 -mt-4 mb-3 aspect-[16/10] w-[calc(100%+2rem)] max-w-none rounded-t-[inherit] object-cover" />}
-              <span className="text-xs uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}</span>
-              <h2 className="mt-1 text-lg font-semibold">{o.title}</h2>
-              <p className="text-sm text-zinc-400">{o.companyName}</p>
-              <p className="mt-2 text-sm text-zinc-300">{o.city ? `${o.city} → ` : ''}{countryName(o.country)}</p>
-              {o.stops.length > 0 && (
-                <p className="mt-1 text-xs text-zinc-500">Arrêts : {o.stops.slice(0, 3).join(' · ')}{o.stops.length > 3 ? ` +${o.stops.length - 3}` : ''}</p>
-              )}
-              {o.description && <p className="mt-2 line-clamp-2 text-sm text-zinc-400">{o.description}</p>}
-              <p className="mt-3 text-sm text-zinc-400">{dateFr(o.startsAt)} · {o.remaining} place(s)</p>
-              <div className="mt-auto flex items-center justify-between pt-4">
-                <span className="text-lg font-bold">{fcfa(o.priceFcfa)}</span>
-                <button className="btn" disabled={o.remaining < 1} onClick={() => nav(user ? `/reserver/${o.id}` : '/login', user ? undefined : { state: { from: `/reserver/${o.id}` } })}>
-                  {o.remaining < 1 ? 'Complet' : 'Réserver'}
-                </button>
-              </div>
-            </article>
+            <OfferCard key={o.id} o={o} onBook={() => nav(user ? `/reserver/${o.id}` : '/login', user ? undefined : { state: { from: `/reserver/${o.id}` } })} />
           ))}
         </div>
       )}
         </div>
       </div>
     </div>
+  );
+}
+
+interface OfferItem { id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; activity: string }
+
+/** Carte d'offre compacte : photo, titre, lieu, prix. Les détails (description, arrêts) s'ouvrent à la demande. */
+function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
+  const [open, setOpen] = useState(false);
+  const hasDetails = !!o.description || o.stops.length > 0;
+  return (
+    <article className="card flex flex-col gap-2 !p-0 overflow-hidden">
+      {o.photoCount > 0 && <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" className="aspect-[16/9] w-full object-cover" />}
+      <div className="flex flex-1 flex-col gap-1 px-4 pb-4 pt-3">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}</span>
+        <h2 className="line-clamp-2 text-base font-semibold leading-snug">{o.title}</h2>
+        <p className="truncate text-sm text-zinc-400">{o.companyName} · {o.city ? `${o.city}, ` : ''}{countryName(o.country)}</p>
+        <p className="text-xs text-zinc-500">{dateFr(o.startsAt)} · {o.remaining} place(s)</p>
+        {hasDetails && (
+          <>
+            <button type="button" className="mt-1 self-start text-sm text-brand hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+              {open ? 'Masquer les détails ▲' : 'Voir les détails ▼'}
+            </button>
+            {open && (
+              <div className="space-y-1 rounded-lg bg-white/5 p-3 text-sm text-zinc-300">
+                {o.description && <p className="whitespace-pre-line">{o.description}</p>}
+                {o.stops.length > 0 && <p className="text-xs text-zinc-400">Arrêts : {o.stops.join(' · ')}</p>}
+              </div>
+            )}
+          </>
+        )}
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+          <span className="text-lg font-bold">{fcfa(o.priceFcfa)}</span>
+          <button className="btn" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
+        </div>
+      </div>
+    </article>
   );
 }
