@@ -42,7 +42,6 @@ export function Footer() {
             <H>Contact</H>
             <address className="space-y-1 text-sm not-italic text-zinc-300">
               <p>{SITE.company}</p>
-              <p className="text-zinc-400">{SITE.address}</p>
               <p><a className="hover:text-white" href={`mailto:${SITE.email}`}>{SITE.email}</a></p>
               {SITE.phone && <p><a className="hover:text-white" href={`tel:${SITE.phone.replace(/\s/g, '')}`}>{SITE.phone}</a></p>}
             </address>
