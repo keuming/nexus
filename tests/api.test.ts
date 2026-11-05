@@ -548,6 +548,10 @@ describe('gestion des offres (modifier, dupliquer, désactiver, supprimer)', () 
     expect(r.json.offer).toMatchObject({ title: 'Poulet DG', priceFcfa: 4500, capacity: 12, description: 'Servi avec attiéké', active: false });
     expect((await owner.patch(`/company/offers/${o.id}`, { startsAt: new Date(Date.now() - 3600_000).toISOString() })).status).toBe(400);
     expect((await owner.patch(`/company/offers/${o.id}`, { startsAt: o.startsAt })).status).toBe(200); // date inchangée acceptée
+    const nd = new Date(Date.now() + 30 * 86400_000).toISOString(); // republication : nouvelle date + réactivation en un appel
+    const rp = await owner.patch(`/company/offers/${o.id}`, { startsAt: nd, active: true });
+    expect(rp.status).toBe(200);
+    expect(rp.json.offer).toMatchObject({ active: true, startsAt: nd });
 
     // photos : garder la 2e, ajouter une nouvelle
     expect((await owner.patch(`/company/offers/${o.id}`, { photos: ['keep:1', jpeg] })).json.offer.photoCount).toBe(2);

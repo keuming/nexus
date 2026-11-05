@@ -148,17 +148,18 @@ function Offers({ company }: { company: { country: string; city: string; activit
   const [photos, setPhotos] = useState<string[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [republish, setRepublish] = useState(false);
   const isTransport = company.activity === 'transport';
   const isRoute = (ROUTE_ACTIVITIES as readonly string[]).includes(company.activity);
   const sf = SEARCH_FORMS[company.activity as keyof typeof SEARCH_FORMS];
   const cat = CATEGORIES[company.activity as keyof typeof CATEGORIES];
   const noun = NOUN[company.activity] ?? { a: 'une offre', the: "l'offre" };
-  const reset = () => { setF(blank); setStops([]); setPhotos([]); setEditing(null); };
+  const reset = () => { setF(blank); setStops([]); setPhotos([]); setEditing(null); setRepublish(false); };
   const close = () => { reset(); setOpen(false); };
   const refresh = () => qc.invalidateQueries({ queryKey: ['company-offers'] });
   const save = useMutation({
     mutationFn: () => {
-      const json = { ...f, category: f.category || null, ...(isRoute ? {} : { destCountry: null, destCity: null }), stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
+      const json = { ...f, ...(republish ? { active: true } : {}), category: f.category || null, ...(isRoute ? {} : { destCountry: null, destCity: null }), stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
       return editing ? unwrap(api.company.offers[':id'].$patch({ param: { id: editing }, json })) : unwrap(api.company.offers.$post({ json }));
     },
     onSuccess: () => { close(); refresh(); },
@@ -172,11 +173,12 @@ function Offers({ company }: { company: { country: string; city: string; activit
     onSuccess: refresh,
   });
   type Row = NonNullable<typeof list.data>['offers'][number];
-  const load = (o: Row, copy: boolean) => {
-    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy ? '' : toLocalInput(o.startsAt) });
+  const load = (o: Row, copy: boolean, repub = false) => {
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy || repub ? '' : toLocalInput(o.startsAt) });
     setStops(o.stops);
     setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
     setEditing(copy ? null : o.id);
+    setRepublish(repub);
     save.reset(); setOpen(true);
   };
   useEffect(() => {
@@ -200,10 +202,11 @@ function Offers({ company }: { company: { country: string; city: string; activit
           {list.data.offers.map((o) => (
             <li key={o.id} className={`card flex flex-wrap items-center justify-between gap-3 !py-3 ${o.active ? '' : 'opacity-70'}`}>
               {o.photoCount > 0 && <img src={`${OWN_PHOTO}${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
-              <div className="min-w-0 flex-1"><p className="font-medium">{o.title} {!o.active && <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">Désactivé</span>}</p>
+              <div className="min-w-0 flex-1"><p className="font-medium">{o.title} {!o.active && <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">Désactivé</span>}{new Date(o.startsAt) <= new Date() && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Date passée</span>}</p>
                 <p className="text-sm text-zinc-400">{placeLabel(o)} · {dateFr(o.startsAt)} · {fcfa(o.priceFcfa)} · {o.booked}/{o.capacity}</p>
                 {o.stops.length > 0 && <p className="text-xs text-zinc-500">Arrêts : {o.stops.join(' · ')}</p>}</div>
               <div className="flex flex-wrap gap-2" role="group" aria-label={`Actions pour ${o.title}`}>
+                <button className="btn" onClick={() => load(o, false, true)}>Republier</button>
                 <button className="btn-ghost" onClick={() => load(o, false)}>Modifier</button>
                 <button className="btn-ghost" onClick={() => load(o, true)}>Dupliquer</button>
                 <button className="btn-ghost" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: o.id, active: !o.active })}>{o.active ? 'Désactiver' : 'Activer'}</button>
@@ -246,7 +249,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
                 hint="Le client choisira l’un de ces arrêts en réservant." values={stops} onChange={setStops} max={20} placeholder="Ex. Gare de Ouaga Nord" />
             </div>
             <div className="space-y-1"><label htmlFor="o-date" className="text-sm font-medium">Date et heure</label>
-              <input id="o-date" className="input" type="datetime-local" required min={toLocalInput(new Date().toISOString())} value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} /></div>
+              <input id="o-date" className="input" type="datetime-local" required min={editing ? undefined : toLocalInput(new Date().toISOString())} value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} /></div>
             <div className="space-y-1"><label htmlFor="o-price" className="text-sm font-medium">Prix (FCFA)</label>
               <input id="o-price" className="input" type="number" min={0} required value={f.priceFcfa} onChange={(e) => setF({ ...f, priceFcfa: Number(e.target.value) })} /></div>
             <div className="space-y-1"><label htmlFor="o-cap" className="text-sm font-medium">Places</label>
