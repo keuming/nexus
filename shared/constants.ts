@@ -16,3 +16,6 @@ export const PAYMENT_METHODS = [
   { id: 'WAVE', label: 'Wave' },
 ] as const;
 export const PAYMENT_OPERATORS = PAYMENT_METHODS.map((m) => m.id) as unknown as ['ORANGE', 'MTN', 'MOOV', 'WAVE'];
+
+/** Activités dont l'offre est liée à une date (trajet, voyage, sortie) : masquée une fois la date passée. */
+export const DATED_ACTIVITIES = ['transport', 'expedition', 'agence_voyage', 'loisirs'] as const;

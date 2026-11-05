@@ -2,15 +2,43 @@ import { Hono } from 'hono';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm';
-import { bookings, companies, creditLedger, payments, users } from '../db/schema.js';
+import { activityDisplay, bookings, companies, creditLedger, offers, payments, users } from '../db/schema.js';
 import { conflict, notFound } from '../lib/errors.js';
 import { requireRole, type Env } from '../middleware/auth.js';
-import { CREDIT_PRICE_FCFA } from '../../shared/constants.js';
+import { ACTIVITIES, CREDIT_PRICE_FCFA } from '../../shared/constants.js';
 
 const id = z.object({ id: z.string().uuid() });
 
+const when = z.string().datetime({ offset: true }).nullable().transform((x) => (x ? new Date(x) : null));
+
 export const adminRoutes = new Hono<Env>()
   .use(requireRole('admin'))
+  .get('/display', async (c) => {
+    const db = c.get('db');
+    const rows = await db.select().from(activityDisplay);
+    const by = new Map(rows.map((r) => [r.activity, r]));
+    const offs = await db
+      .select({ id: offers.id, title: offers.title, active: offers.active, startsAt: offers.startsAt, adminHidden: offers.adminHidden, showFrom: offers.showFrom, showUntil: offers.showUntil, companyName: companies.name, activity: companies.activity })
+      .from(offers).innerJoin(companies, eq(companies.id, offers.companyId)).orderBy(desc(offers.createdAt)).limit(300);
+    return c.json({
+      activities: ACTIVITIES.map((a) => ({ activity: a, visible: by.get(a)?.visible ?? true, showFrom: by.get(a)?.showFrom ?? null, showUntil: by.get(a)?.showUntil ?? null })),
+      offers: offs,
+    });
+  })
+  .put('/display/activities/:activity', v('param', z.object({ activity: z.enum(ACTIVITIES) })), v('json', z.object({ visible: z.boolean(), showFrom: when, showUntil: when })), async (c) => {
+    const { activity } = c.req.valid('param');
+    const b = c.req.valid('json');
+    await c.get('db').insert(activityDisplay).values({ activity, ...b })
+      .onConflictDoUpdate({ target: activityDisplay.activity, set: b });
+    return c.json({ ok: true });
+  })
+  .patch('/display/offers/:id', v('param', id), v('json', z.object({ hidden: z.boolean(), showFrom: when, showUntil: when })), async (c) => {
+    const b = c.req.valid('json');
+    const [o] = await c.get('db').update(offers).set({ adminHidden: b.hidden, showFrom: b.showFrom, showUntil: b.showUntil })
+      .where(eq(offers.id, c.req.valid('param').id)).returning({ id: offers.id });
+    if (!o) throw notFound('Offre introuvable');
+    return c.json({ ok: true });
+  })
   .get('/stats', async (c) => {
     const db = c.get('db');
     const [[u], [co], [b], [p], [nr]] = await Promise.all([

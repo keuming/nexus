@@ -192,3 +192,14 @@ create unique index if not exists bookings_reference_uq on bookings (reference);
 alter table companies drop constraint if exists companies_activity_check;
 alter table companies add constraint companies_activity_check check (activity in
   ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets'));
+
+-- v18 : planification de l'affichage
+create table if not exists activity_display (
+  activity   text primary key,
+  visible    boolean not null default true,
+  show_from  timestamptz,
+  show_until timestamptz
+);
+alter table offers add column if not exists admin_hidden boolean not null default false;
+alter table offers add column if not exists show_from timestamptz;
+alter table offers add column if not exists show_until timestamptz;

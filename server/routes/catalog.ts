@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
-import { and, asc, eq, gte, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, sql } from 'drizzle-orm';
 import { countryCode } from '../lib/schemas.js';
-import { companies, offerPhotos, offers } from '../db/schema.js';
+import { activityDisplay, companies, offerPhotos, offers } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
 import { sweepExpired } from '../lib/payments.js';
 import type { Env } from '../middleware/auth.js';
-import { ACTIVITIES } from '../../shared/constants.js';
+import { ACTIVITIES, DATED_ACTIVITIES } from '../../shared/constants.js';
 
 /** Recherche partielle, caractères spéciaux de LIKE neutralisés. */
 const like = (v: string) => `%${v.replace(/[%_\\]/g, '\\$&')}%`;
@@ -26,6 +26,15 @@ const cols = {
   companyName: companies.name,
   activity: companies.activity,
 };
+
+/** Règles d'affichage : planification admin (type d'activité, offre) et date de l'offre pour les activités datées. */
+const displayRules = () => and(
+  eq(offers.adminHidden, false),
+  sql`(${offers.showFrom} is null or ${offers.showFrom} <= now())`,
+  sql`(${offers.showUntil} is null or ${offers.showUntil} >= now())`,
+  sql`not exists (select 1 from activity_display d where d.activity = ${companies.activity} and (d.visible = false or d.show_from > now() or d.show_until < now()))`,
+  sql`(${companies.activity} not in (${sql.join(DATED_ACTIVITIES.map((a) => sql`${a}`), sql`, `)}) or ${offers.startsAt} >= now())`,
+);
 
 /** Catalogue public : offres actives, d'entreprises validées, à venir. */
 export const catalogRoutes = new Hono<Env>()
@@ -49,7 +58,7 @@ export const catalogRoutes = new Hono<Env>()
         .where(and(
           eq(offers.active, true),
           eq(companies.status, 'active'),
-          gte(offers.startsAt, new Date()),
+          displayRules(),
           activity ? eq(companies.activity, activity) : undefined,
           country ? eq(offers.country, country) : undefined,
           city ? sql`(${offers.city} ilike ${like(city)} or exists (select 1 from unnest(${offers.stops}) as s where s ilike ${like(city)}))` : undefined,
@@ -60,12 +69,18 @@ export const catalogRoutes = new Hono<Env>()
       return c.json({ offers: rows });
     },
   )
+  .get('/activities', async (c) => {
+    const rows = await c.get('db').select().from(activityDisplay);
+    const now = Date.now();
+    const hidden = new Set(rows.filter((r) => !r.visible || (r.showFrom && r.showFrom.getTime() > now) || (r.showUntil && r.showUntil.getTime() < now)).map((r) => r.activity));
+    return c.json({ activities: ACTIVITIES.filter((a) => !hidden.has(a)) });
+  })
   .get('/:id', v('param', z.object({ id: z.string().uuid() })), async (c) => {
     const [row] = await c.get('db')
       .select(cols)
       .from(offers)
       .innerJoin(companies, eq(companies.id, offers.companyId))
-      .where(and(eq(offers.id, c.req.valid('param').id), eq(offers.active, true), eq(companies.status, 'active')))
+      .where(and(eq(offers.id, c.req.valid('param').id), eq(offers.active, true), eq(companies.status, 'active'), displayRules()))
       .limit(1);
     if (!row) throw notFound('Offre');
     return c.json({ offer: row });

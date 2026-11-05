@@ -641,4 +641,30 @@ describe('parcours de réservation : informations du réservant', () => {
     const c2 = await register('customer', 'e@x.test');
     expect((await c2.get('/payments/methods')).json.available).toBe(false);
   });
+
+  it("planifie l'affichage : type d'activité, offre, fenêtre de dates", async () => {
+    ctx = await makeApp(null);
+    const { adm, offer } = await setup(5, 5);
+    const anon = new Client(ctx.app);
+    expect((await anon.get('/offers')).json.offers).toHaveLength(1);
+    expect((await anon.get('/offers/activities')).json.activities).toContain('transport');
+    // masquer le type
+    expect((await adm.put('/admin/display/activities/transport', { visible: false, showFrom: null, showUntil: null })).status).toBe(200);
+    expect((await anon.get('/offers')).json.offers).toHaveLength(0);
+    expect((await anon.get('/offers/activities')).json.activities).not.toContain('transport');
+    // ré-afficher, puis masquer l'offre seule
+    await adm.put('/admin/display/activities/transport', { visible: true, showFrom: null, showUntil: null });
+    expect((await anon.get('/offers')).json.offers).toHaveLength(1);
+    await adm.patch(`/admin/display/offers/${offer.id}`, { hidden: true, showFrom: null, showUntil: null });
+    expect((await anon.get('/offers')).json.offers).toHaveLength(0);
+    // planification future : pas encore affichée ; passée : plus affichée
+    const t = (d: number) => new Date(Date.now() + d * 86400_000).toISOString();
+    await adm.patch(`/admin/display/offers/${offer.id}`, { hidden: false, showFrom: t(1), showUntil: null });
+    expect((await anon.get('/offers')).json.offers).toHaveLength(0);
+    await adm.patch(`/admin/display/offers/${offer.id}`, { hidden: false, showFrom: t(-1), showUntil: t(1) });
+    expect((await anon.get('/offers')).json.offers).toHaveLength(1);
+    const list = (await adm.get('/admin/display')).json;
+    expect(list.activities.length).toBeGreaterThan(10);
+    expect(list.offers).toHaveLength(1);
+  });
 });

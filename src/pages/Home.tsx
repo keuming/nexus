@@ -23,6 +23,9 @@ export function Home() {
   const nav = useNavigate();
   const cities = country ? citiesOf(country) : COUNTRIES.flatMap((c) => c.cities);
 
+  const acts = useQuery({ queryKey: ['activities'], queryFn: () => unwrap(api.offers.activities.$get()) });
+  const visibleActs = acts.data?.activities ?? ACTIVITIES;
+
   const list = useQuery({
     queryKey: ['offers', activity, country, city, q],
     queryFn: () => unwrap(api.offers.$get({ query: {
@@ -70,7 +73,7 @@ export function Home() {
         <aside className="card self-start lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto" aria-label="Types d'activité">
           <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
           <div className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
-            {['', ...ACTIVITIES].map((a) => (
+            {['', ...visibleActs].map((a) => (
               <button key={a} onClick={() => setActivity(a)} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm ${activity === a ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
                 {a ? ACTIVITY_LABEL[a] : 'Toutes'}
               </button>

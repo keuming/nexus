@@ -51,7 +51,18 @@ export const offers = pgTable('offers', {
   booked: integer('booked').notNull().default(0),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   active: boolean('active').notNull().default(true),
+  adminHidden: boolean('admin_hidden').notNull().default(false),
+  showFrom: timestamp('show_from', { withTimezone: true }),
+  showUntil: timestamp('show_until', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Planification de l'affichage par type d'activité (absent = visible). */
+export const activityDisplay = pgTable('activity_display', {
+  activity: text('activity').primaryKey(),
+  visible: boolean('visible').notNull().default(true),
+  showFrom: timestamp('show_from', { withTimezone: true }),
+  showUntil: timestamp('show_until', { withTimezone: true }),
 });
 
 export const bookings = pgTable('bookings', {

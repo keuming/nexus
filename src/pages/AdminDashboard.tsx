@@ -5,20 +5,21 @@ import { Err } from '../components/Layout';
 import { countryName } from '../../shared/geo';
 import { CREDIT_PRICE_FCFA } from '../../shared/constants';
 import { ACTIVITY_LABEL } from './Home';
+import { ACTIVITIES } from '../../shared/constants';
 
 const STATUS_FR: Record<string, string> = { pending: 'en attente', active: 'active', suspended: 'suspendue', rejected: 'refusée' };
 
-type Tab = 'pending' | 'active' | 'suspended' | 'rejected' | '' | 'payments';
+type Tab = 'pending' | 'active' | 'suspended' | 'rejected' | '' | 'payments' | 'display';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pending', label: 'Demandes à valider' }, { id: 'active', label: 'Actives' },
-  { id: 'suspended', label: 'Suspendues' }, { id: 'rejected', label: 'Refusées' }, { id: '', label: 'Toutes' }, { id: 'payments', label: 'Paiements' },
+  { id: 'suspended', label: 'Suspendues' }, { id: 'rejected', label: 'Refusées' }, { id: '', label: 'Toutes' }, { id: 'payments', label: 'Paiements' }, { id: 'display', label: 'Affichage' },
 ];
 
 export function AdminDashboard() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>('pending');
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: () => unwrap(api.admin.stats.$get()) });
-  const list = useQuery({ queryKey: ['admin-companies', tab], queryFn: () => unwrap(api.admin.companies.$get({ query: tab && tab !== 'payments' ? { status: tab } : {} })), enabled: tab !== 'payments' });
+  const list = useQuery({ queryKey: ['admin-companies', tab], queryFn: () => unwrap(api.admin.companies.$get({ query: tab && tab !== 'payments' && tab !== 'display' ? { status: tab } : {} })), enabled: tab !== 'payments' && tab !== 'display' });
   const inv = () => { qc.invalidateQueries({ queryKey: ['admin-companies'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); };
   const review = useMutation({
     mutationFn: (v: { id: string; decision: 'approve' | 'reject'; note?: string }) => unwrap(api.admin.companies[':id'].review.$post({ param: { id: v.id }, json: { decision: v.decision, note: v.note ?? '' } })),
@@ -49,7 +50,8 @@ export function AdminDashboard() {
       </div>
       <Err e={list.error ?? review.error ?? setSt.error ?? topup.error} />
       {tab === 'payments' && <PaymentsAdmin />}
-      {tab !== 'payments' && !list.data?.companies.length && !list.isLoading && <p className="text-center text-zinc-400">{tab === 'pending' ? 'Aucune demande en attente.' : 'Aucune entreprise.'}</p>}
+      {tab === 'display' && <DisplayAdmin />}
+      {tab !== 'payments' && tab !== 'display' && !list.data?.companies.length && !list.isLoading && <p className="text-center text-zinc-400">{tab === 'pending' ? 'Aucune demande en attente.' : 'Aucune entreprise.'}</p>}
       <ul className="space-y-3">
         {tab !== 'payments' && list.data?.companies.map((c) => {
           const digits = c.phone.replace(/\D/g, '');
@@ -143,6 +145,73 @@ function PaymentsAdmin() {
             </li>
           ))}</ul>
         )}
+      </section>
+    </div>
+  );
+}
+
+const toLocal = (iso: string | null) => { if (!iso) return ''; const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
+
+/** Une ligne planifiable : visible / masqué + fenêtre d'affichage (début, fin). */
+function ScheduleRow({ title, sub, visible, from, until, onSave, pending }: { title: string; sub?: string; visible: boolean; from: string | null; until: string | null; onSave: (v: { visible: boolean; from: string | null; until: string | null }) => void; pending: boolean }) {
+  const [vis, setVis] = useState(visible);
+  const [f, setF] = useState(toLocal(from));
+  const [u, setU] = useState(toLocal(until));
+  const dirty = vis !== visible || f !== toLocal(from) || u !== toLocal(until);
+  return (
+    <li className="card flex flex-wrap items-end gap-3">
+      <div className="min-w-40 flex-1">
+        <p className="font-medium">{title}</p>
+        {sub && <p className="text-xs text-zinc-500">{sub}</p>}
+      </div>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={vis} onChange={(e) => setVis(e.target.checked)} /> Affiché</label>
+      <label className="text-xs text-zinc-400">À partir du<input type="datetime-local" className="input mt-1" value={f} onChange={(e) => setF(e.target.value)} /></label>
+      <label className="text-xs text-zinc-400">Jusqu'au<input type="datetime-local" className="input mt-1" value={u} onChange={(e) => setU(e.target.value)} /></label>
+      <button className="btn" disabled={!dirty || pending} onClick={() => onSave({ visible: vis, from: toIso(f), until: toIso(u) })}>Enregistrer</button>
+    </li>
+  );
+}
+
+/** Planification de l'affichage : par type d'activité et par offre. Vide = toujours affiché. */
+function DisplayAdmin() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['admin-display'], queryFn: () => unwrap(api.admin.display.$get()) });
+  const done = () => { qc.invalidateQueries({ queryKey: ['admin-display'] }); qc.invalidateQueries({ queryKey: ['offers'] }); qc.invalidateQueries({ queryKey: ['activities'] }); };
+  const saveAct = useMutation({
+    mutationFn: (v: { activity: (typeof ACTIVITIES)[number]; visible: boolean; from: string | null; until: string | null }) =>
+      unwrap(api.admin.display.activities[':activity'].$put({ param: { activity: v.activity }, json: { visible: v.visible, showFrom: v.from, showUntil: v.until } })),
+    onSuccess: done,
+  });
+  const saveOffer = useMutation({
+    mutationFn: (v: { id: string; visible: boolean; from: string | null; until: string | null }) =>
+      unwrap(api.admin.display.offers[':id'].$patch({ param: { id: v.id }, json: { hidden: !v.visible, showFrom: v.from, showUntil: v.until } })),
+    onSuccess: done,
+  });
+  if (q.isLoading) return <p className="text-center text-zinc-400">Chargement…</p>;
+  return (
+    <div className="space-y-8">
+      <Err e={q.error ?? saveAct.error ?? saveOffer.error} />
+      <section className="space-y-2">
+        <h2 className="text-center text-lg font-semibold">Types d'activité</h2>
+        <p className="text-center text-sm text-zinc-400">Décochez pour masquer tout un type (ex. n'afficher que les smartphones). Les dates planifient l'affichage ; vide = sans limite.</p>
+        <ul className="space-y-2">
+          {q.data?.activities.map((a) => (
+            <ScheduleRow key={a.activity + String(a.visible) + a.showFrom + a.showUntil} title={ACTIVITY_LABEL[a.activity] ?? a.activity} visible={a.visible} from={a.showFrom} until={a.showUntil} pending={saveAct.isPending}
+              onSave={(v) => saveAct.mutate({ activity: a.activity as (typeof ACTIVITIES)[number], ...v })} />
+          ))}
+        </ul>
+      </section>
+      <section className="space-y-2">
+        <h2 className="text-center text-lg font-semibold">Articles publiés</h2>
+        {!q.data?.offers.length && <p className="text-center text-sm text-zinc-400">Aucune offre publiée.</p>}
+        <ul className="space-y-2">
+          {q.data?.offers.map((o) => (
+            <ScheduleRow key={o.id + String(o.adminHidden) + o.showFrom + o.showUntil} title={o.title} sub={`${o.companyName} · ${ACTIVITY_LABEL[o.activity] ?? o.activity}${o.active ? '' : ' · désactivée par le partenaire'}`}
+              visible={!o.adminHidden} from={o.showFrom} until={o.showUntil} pending={saveOffer.isPending}
+              onSave={(v) => saveOffer.mutate({ id: o.id, ...v })} />
+          ))}
+        </ul>
       </section>
     </div>
   );
