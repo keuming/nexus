@@ -57,7 +57,7 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-4 text-xs text-zinc-500">
-          <p>© {new Date().getFullYear()} {SITE.name} · {SITE.company}. Tous droits réservés.</p>
+          <p>© {new Date().getFullYear()} {SITE.copyright}. Tous droits réservés.</p>
           <p>Paiements Mobile Money via ORZAYAH</p>
         </div>
       </div>

@@ -2,8 +2,9 @@
 export const SITE = {
   name: 'BackMarket',
   tagline: 'Réservez en Afrique, simplement.',
-  company: 'ORZAYAH SERVICES',
+  company: 'NEXUS',
+  copyright: 'NEXUS Côte d’Ivoire',
   address: 'Cocody Riviera 2, Immeuble Paul, Abidjan, Côte d’Ivoire',
-  email: 'keumingo.toma@orzayah.com',
+  email: 'info@nexus-ci.com',
   phone: '' as string,
 } as const;
