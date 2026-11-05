@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { Err } from '../components/Layout';
 import { CountrySelect } from '../components/ChipInput';
-import { ACTIVITIES } from '../../shared/constants';
+import { ACTIVITIES, DATED_ACTIVITIES } from '../../shared/constants';
 import { COUNTRIES, citiesOf, countryName } from '../../shared/geo';
 
 export const ACTIVITY_LABEL: Record<string, string> = {
@@ -23,101 +22,149 @@ const MENU: { id: string; label: string; members: string[] }[] = [
   { id: 'mode_beaute', label: 'Mode / Beauté', members: ['mode', 'beaute'] },
 ];
 
+/** Valeur qui ne change qu'après une pause de saisie (évite une requête à chaque frappe). */
+function useDebounced<T>(value: T, ms = 350): T {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
+}
+
 export function Home() {
-  const [activity, setActivity] = useState('');
-  const [country, setCountry] = useState('');
-  const [city, setCity] = useState('');
-  const [q, setQ] = useState('');
+  const [params, setParams] = useSearchParams();
+  const activity = params.get('activite') ?? '';
+  const country = params.get('pays') ?? '';
+  const [city, setCity] = useState(params.get('ville') ?? '');
+  const [q, setQ] = useState(params.get('q') ?? '');
+  const debCity = useDebounced(city.trim());
+  const debQ = useDebounced(q.trim());
+  const dCity = params.get('ville') ?? '';
+  const dQ = params.get('q') ?? '';
   const { user } = useAuth();
   const nav = useNavigate();
   const cities = country ? citiesOf(country) : COUNTRIES.flatMap((c) => c.cities);
 
-  const acts = useQuery({ queryKey: ['activities'], queryFn: () => unwrap(api.offers.activities.$get()) });
-  const visibleActs = acts.data?.activities ?? ACTIVITIES;
+  // L'adresse est la source de vérité : le bouton « retour » et le partage de lien fonctionnent.
+  // La saisie libre n'y est écrite qu'après une pause (pas de requête à chaque frappe).
+  useEffect(() => { setParams((p) => { if ((p.get('ville') ?? '') === debCity) return p; const n = new URLSearchParams(p); if (debCity) n.set('ville', debCity); else n.delete('ville'); return n; }, { replace: true }); }, [debCity]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setParams((p) => { if ((p.get('q') ?? '') === debQ) return p; const n = new URLSearchParams(p); if (debQ) n.set('q', debQ); else n.delete('q'); return n; }, { replace: true }); }, [debQ]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setFilter = (k: string, v: string) => setParams((p) => { const n = new URLSearchParams(p); if (v) n.set(k, v); else n.delete(k); if (k === 'pays') { n.delete('ville'); setCity(''); } return n; }, { replace: true });
+
+  const acts = useQuery({ queryKey: ['activities'], queryFn: () => unwrap(api.offers.activities.$get()), staleTime: 60_000 });
+  const menu = acts.data ? MENU.filter((m) => m.members.some((x) => acts.data.activities.includes(x as (typeof ACTIVITIES)[number]))) : MENU;
+  // Un type masqué entre-temps par l'administration ne doit pas rester sélectionné.
+  useEffect(() => { if (acts.data && activity && !menu.some((m) => m.id === activity)) setFilter('activite', ''); }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = useQuery({
-    queryKey: ['offers', activity, country, city, q],
+    queryKey: ['offers', activity, country, dCity, dQ],
+    placeholderData: keepPreviousData,
     queryFn: () => unwrap(api.offers.$get({ query: {
       ...(activity ? { activity: (MENU.find((m) => m.id === activity)?.members ?? [activity]).join(',') } : {}),
       ...(country ? { country } : {}),
-      ...(city.trim() ? { city: city.trim() } : {}),
-      ...(q.trim() ? { q: q.trim() } : {}),
+      ...(dCity ? { city: dCity } : {}),
+      ...(dQ ? { q: dQ } : {}),
     } })),
   });
+  const filtered = !!(activity || country || city.trim() || q.trim());
+  const reset = () => { setCity(''); setQ(''); setParams(new URLSearchParams(), { replace: true }); };
+  const offers = list.data?.offers ?? [];
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
-        <aside className="card self-start md:sticky md:top-[4.5rem]" aria-label="Types d'activité">
-          <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
-          <div className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1">
-            {[{ id: '', label: 'Toutes', members: [] as string[] }, ...MENU.filter((m) => m.members.some((x) => (visibleActs as readonly string[]).includes(x)))].map((m) => (
-              <button key={m.id} onClick={() => setActivity(m.id)} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-left text-sm ${activity === m.id ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </aside>
-      <div className="min-w-0 space-y-10">
-      <section className="mx-auto max-w-3xl text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
-        <p className="mx-auto mt-3 max-w-xl text-zinc-400">Transport, hôtels, restaurants et loisirs auprès d’entreprises validées par BackMarket.</p>
-
-        <form className="card mt-8 grid gap-3 text-left sm:grid-cols-3" onSubmit={(e) => e.preventDefault()} role="search">
-          <div className="space-y-1">
-            <label htmlFor="f-country" className="text-xs text-zinc-400">Pays de destination</label>
-            <CountrySelect id="f-country" allowAll value={country} onChange={(v) => { setCountry(v); setCity(''); }} />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="f-city" className="text-xs text-zinc-400">Ville ou arrêt</label>
-            {country ? (
-              <select id="f-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
-                <option value="">Toutes les villes</option>
-                {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            ) : (
-              <input id="f-city" className="input" list="f-cities" placeholder="Ex. Bouaké, gare nord…" value={city} onChange={(e) => setCity(e.target.value)} />
-            )}
-            <datalist id="f-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="f-q" className="text-xs text-zinc-400">Rechercher</label>
-            <input id="f-q" className="input" placeholder="Mot-clé…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
-        </form>
-
-        {!user && <p className="mt-4 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire BackMarket</Link></p>}
-
-      </section>
-
-      <Err e={list.error} />
-      {list.isLoading ? <p className="text-center text-zinc-400">Chargement…</p> : !list.data?.offers.length ? (
-        <p className="text-center text-zinc-400">Aucune offre ne correspond à votre recherche.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {list.data.offers.map((o) => (
-            <OfferCard key={o.id} o={o} onBook={() => nav(`/reserver/${o.id}`)} />
+      <aside className="card self-start md:sticky md:top-[4.5rem]" aria-label="Types d'activité">
+        <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
+        <div className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1">
+          {[{ id: '', label: 'Toutes' }, ...menu].map((m) => (
+            <button key={m.id} aria-pressed={activity === m.id} onClick={() => setFilter('activite', m.id)}
+              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-left text-sm transition ${activity === m.id ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
+              {m.label}
+            </button>
           ))}
         </div>
-      )}
-    </div>
+      </aside>
+
+      <div className="min-w-0 space-y-6">
+        <section className="text-center">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.</p>
+
+          <form className="card mt-5 grid gap-3 text-left sm:grid-cols-3" onSubmit={(e) => e.preventDefault()} role="search">
+            <div className="space-y-1">
+              <label htmlFor="f-country" className="text-xs text-zinc-400">Pays</label>
+              <CountrySelect id="f-country" allowAll value={country} onChange={(v) => setFilter('pays', v)} />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="f-city" className="text-xs text-zinc-400">Ville ou arrêt</label>
+              {country ? (
+                <select id="f-city" className="input" value={city} onChange={(e) => setCity(e.target.value)}>
+                  <option value="">Toutes les villes</option>
+                  {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <input id="f-city" className="input" list="f-cities" placeholder="Ex. Bouaké, gare nord…" value={city} onChange={(e) => setCity(e.target.value)} />
+              )}
+              <datalist id="f-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="f-q" className="text-xs text-zinc-400">Rechercher</label>
+              <input id="f-q" className="input" type="search" placeholder="Mot-clé…" value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+          </form>
+          {!user && <p className="mt-3 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire BackMarket</Link></p>}
+        </section>
+
+        <div className="flex min-h-8 items-center justify-between gap-3" aria-live="polite">
+          <p className="text-sm text-zinc-400">{list.isLoading ? 'Chargement des offres…' : `${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}</p>
+          {filtered && <button className="btn-ghost" onClick={reset}>Réinitialiser les filtres</button>}
+        </div>
+
+        {list.isLoading ? (
+          <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-hidden>
+            {Array.from({ length: 8 }, (_, i) => <div key={i} className="h-60 animate-pulse rounded-2xl border border-white/10 bg-white/5" />)}
+          </div>
+        ) : list.error && !list.data ? (
+          <div role="alert" className="card mx-auto max-w-md space-y-3 text-center">
+            <p className="text-zinc-300">Impossible de charger les offres pour le moment.</p>
+            <button className="btn" onClick={() => list.refetch()}>Réessayer</button>
+          </div>
+        ) : !offers.length ? (
+          <div className="card mx-auto max-w-md space-y-3 text-center">
+            <p className="text-zinc-300">{filtered ? 'Aucune offre ne correspond à votre recherche.' : 'Aucune offre disponible pour le moment.'}</p>
+            {filtered && <button className="btn" onClick={reset}>Voir toutes les offres</button>}
+          </div>
+        ) : (
+          <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${list.isFetching ? 'opacity-60' : ''}`}>
+            {offers.map((o) => <OfferCard key={o.id} o={o} onBook={() => nav(`/reserver/${o.id}`)} />)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 interface OfferItem { id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; activity: string }
 
-/** Carte d'offre compacte : photo, titre, lieu, prix. Les détails (description, arrêts) s'ouvrent à la demande. */
+/** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
 function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
   const [open, setOpen] = useState(false);
+  const [broken, setBroken] = useState(false);
+  const dated = (DATED_ACTIVITIES as readonly string[]).includes(o.activity);
   const hasDetails = !!o.description || o.stops.length > 0;
+  const low = o.remaining > 0 && o.remaining <= 3;
   return (
-    <article className="card flex flex-col gap-2 !p-0 overflow-hidden">
-      {o.photoCount > 0 && <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" className="aspect-[16/9] w-full object-cover" />}
+    <article className="card flex flex-col overflow-hidden !p-0 transition hover:border-white/25">
+      {o.photoCount > 0 && !broken ? (
+        <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" onError={() => setBroken(true)} className="aspect-[16/9] w-full object-cover" />
+      ) : (
+        <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-brand/25 to-white/5 text-3xl font-extrabold text-brand/70" aria-hidden>{(ACTIVITY_LABEL[o.activity] ?? '?').charAt(0)}</div>
+      )}
       <div className="flex flex-1 flex-col gap-1 px-4 pb-4 pt-3">
         <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}</span>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug">{o.title}</h2>
         <p className="truncate text-sm text-zinc-400">{o.companyName} · {o.city ? `${o.city}, ` : ''}{countryName(o.country)}</p>
-        <p className="text-xs text-zinc-500">{dateFr(o.startsAt)} · {o.remaining} place(s)</p>
+        <p className="text-xs text-zinc-500">
+          {dated && <>{dateFr(o.startsAt)} · </>}
+          <span className={low ? 'font-medium text-amber-400' : ''}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : dated ? `${o.remaining} places` : `${o.remaining} disponibles`}</span>
+        </p>
         {hasDetails && (
           <>
             <button type="button" className="mt-1 self-start text-sm text-brand hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
@@ -132,7 +179,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
           </>
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          <span className="text-base font-bold">{fcfa(o.priceFcfa)}</span>
+          <span className="text-base font-bold">{o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}</span>
           <button className="btn" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
         </div>
       </div>
