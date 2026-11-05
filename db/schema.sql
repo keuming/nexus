@@ -27,7 +27,7 @@ create table if not exists companies (
   owner_id    uuid not null references users(id) on delete restrict,
   name        text not null,
   activity    text not null check (activity in
-    ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente')),
+    ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets')),
   country     text not null default 'CI',
   city        text not null,
   service_cities text[] not null default '{}',
@@ -187,3 +187,8 @@ alter table bookings add column if not exists guests text[] not null default '{}
 alter table bookings add column if not exists note text not null default '';
 alter table bookings add column if not exists terms_accepted_at timestamptz;
 create unique index if not exists bookings_reference_uq on bookings (reference);
+
+-- v17 : nouvelles activités (smartphones, laptops, tablettes)
+alter table companies drop constraint if exists companies_activity_check;
+alter table companies add constraint companies_activity_check check (activity in
+  ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets'));
