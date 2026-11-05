@@ -5,13 +5,14 @@ import { api, unwrap } from '../lib/api';
 import { useAuth, type User } from '../lib/auth';
 import { InstallButton } from '../lib/pwa';
 import { NotificationBell } from './NotificationBell';
+import { Footer } from './Footer';
 
 export function Layout() {
   const { user, logout } = useAuth();
   const pending = useQuery({ queryKey: ['admin-stats'], enabled: user?.role === 'admin', queryFn: () => unwrap(api.admin.stats.$get()), refetchInterval: 60_000 });
   const link = ({ isActive }: { isActive: boolean }) => `text-sm ${isActive ? 'text-brand' : 'text-zinc-300 hover:text-white'}`;
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 print:hidden border-b border-white/10 bg-ink/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Link to="/" className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
@@ -34,7 +35,8 @@ export function Layout() {
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-6xl px-4 py-10"><Outlet /></main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10"><Outlet /></main>
+      <Footer />
     </div>
   );
 }
