@@ -103,7 +103,7 @@ export function Home() {
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
-      <aside className="card self-start md:sticky md:top-[4.5rem]" aria-label="Services BackMarket">
+      <aside className="card self-start md:sticky md:top-[101px]" aria-label="Services BackMarket">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Services BackMarket</p>
         <div className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1">
           {[{ id: '', label: 'Tous les services' }, ...menu].map((m) => (
