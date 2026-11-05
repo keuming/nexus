@@ -156,7 +156,6 @@ export function Home() {
 
         <div className="flex min-h-8 items-center justify-between gap-3" aria-live="polite">
           <p className="text-sm text-zinc-400">{list.isLoading ? 'Chargement des offres…' : `${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}</p>
-          {filtered && <button className="btn-ghost" onClick={reset}>Réinitialiser les filtres</button>}
         </div>
 
         {list.isLoading ? (
