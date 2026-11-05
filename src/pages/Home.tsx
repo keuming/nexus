@@ -15,6 +15,14 @@ export const ACTIVITY_LABEL: Record<string, string> = {
   mode: 'Mode', beaute: 'Beauté',
 };
 
+/** Entrées du menu : une activité, ou un groupe d'activités proches (filtrées ensemble). */
+const MENU: { id: string; label: string; members: string[] }[] = [
+  ...ACTIVITIES.filter((a) => !['smartphones', 'laptops', 'tablets', 'mode', 'beaute'].includes(a)).map((a) => ({ id: a, label: ACTIVITY_LABEL[a], members: [a as string] })),
+  { id: 'smartphones', label: 'Smartphones', members: ['smartphones'] },
+  { id: 'laptops_tablets', label: 'Laptops / Tablettes', members: ['laptops', 'tablets'] },
+  { id: 'mode_beaute', label: 'Mode / Beauté', members: ['mode', 'beaute'] },
+];
+
 export function Home() {
   const [activity, setActivity] = useState('');
   const [country, setCountry] = useState('');
@@ -30,7 +38,7 @@ export function Home() {
   const list = useQuery({
     queryKey: ['offers', activity, country, city, q],
     queryFn: () => unwrap(api.offers.$get({ query: {
-      ...(activity ? { activity: activity as (typeof ACTIVITIES)[number] } : {}),
+      ...(activity ? { activity: (MENU.find((m) => m.id === activity)?.members ?? [activity]).join(',') } : {}),
       ...(country ? { country } : {}),
       ...(city.trim() ? { city: city.trim() } : {}),
       ...(q.trim() ? { q: q.trim() } : {}),
@@ -39,12 +47,12 @@ export function Home() {
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
-        <aside className="card self-start md:sticky md:top-[4.5rem] md:max-h-[calc(100dvh-6rem)] md:overflow-y-auto" aria-label="Types d'activité">
+        <aside className="card self-start md:sticky md:top-[4.5rem]" aria-label="Types d'activité">
           <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
-          <div className="flex gap-2 overflow-x-auto md:flex-col md:gap-1 md:overflow-visible">
-            {['', ...visibleActs].map((a) => (
-              <button key={a} onClick={() => setActivity(a)} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm ${activity === a ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
-                {a ? ACTIVITY_LABEL[a] : 'Toutes'}
+          <div className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1">
+            {[{ id: '', label: 'Toutes', members: [] as string[] }, ...MENU.filter((m) => m.members.some((x) => (visibleActs as readonly string[]).includes(x)))].map((m) => (
+              <button key={m.id} onClick={() => setActivity(m.id)} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-left text-sm ${activity === m.id ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
+                {m.label}
               </button>
             ))}
           </div>

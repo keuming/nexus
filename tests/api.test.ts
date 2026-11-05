@@ -648,6 +648,9 @@ describe('parcours de réservation : informations du réservant', () => {
     const anon = new Client(ctx.app);
     expect((await anon.get('/offers')).json.offers).toHaveLength(1);
     expect((await anon.get('/offers/activities')).json.activities).toContain('transport');
+    expect((await anon.get('/offers?activity=transport,hotel')).json.offers).toHaveLength(1);
+    expect((await anon.get('/offers?activity=hotel,mode')).json.offers).toHaveLength(0);
+    expect((await anon.get('/offers?activity=inconnu')).status).toBe(400);
     // masquer le type
     expect((await adm.put('/admin/display/activities/transport', { visible: false, showFrom: null, showUntil: null })).status).toBe(200);
     expect((await anon.get('/offers')).json.offers).toHaveLength(0);

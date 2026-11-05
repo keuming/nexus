@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
-import { and, asc, eq, ilike, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import { countryCode } from '../lib/schemas.js';
 import { activityDisplay, companies, offerPhotos, offers } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
@@ -41,7 +41,7 @@ export const catalogRoutes = new Hono<Env>()
   .get(
     '/',
     v('query', z.object({
-      activity: z.enum(ACTIVITIES).optional(),
+      activity: z.string().transform((x) => x.split(',')).pipe(z.array(z.enum(ACTIVITIES)).min(1).max(20)).optional(),
       country: countryCode.optional(),
       city: z.string().trim().max(80).optional(),
       q: z.string().trim().max(100).optional(),
@@ -59,7 +59,7 @@ export const catalogRoutes = new Hono<Env>()
           eq(offers.active, true),
           eq(companies.status, 'active'),
           displayRules(),
-          activity ? eq(companies.activity, activity) : undefined,
+          activity ? inArray(companies.activity, activity) : undefined,
           country ? eq(offers.country, country) : undefined,
           city ? sql`(${offers.city} ilike ${like(city)} or exists (select 1 from unnest(${offers.stops}) as s where s ilike ${like(city)}))` : undefined,
           q ? ilike(offers.title, `%${q.replace(/[%_\\]/g, '\\$&')}%`) : undefined,
