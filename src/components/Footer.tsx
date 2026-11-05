@@ -10,7 +10,7 @@ const L = ({ to, children }: { to: string; children: React.ReactNode }) => <li><
 export function Footer() {
   const { user } = useAuth();
   return (
-    <footer className="mt-10 border-t border-white/10 bg-black/20 print:hidden">
+    <footer className="mt-10 border-t border-white/10 bg-[#090b0f] relative z-10 print:hidden">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1fr_1.5fr]">
         <div className="space-y-3">
           <Link to="/" className="text-xl font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
