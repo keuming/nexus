@@ -31,7 +31,7 @@ export function Login() {
       <input className="input" type="email" required autoComplete="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
       <input className="input" type="password" required autoComplete="current-password" placeholder="Mot de passe" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
       <button className="btn w-full" disabled={m.isPending}>Se connecter</button>
-      <p className="text-sm text-zinc-400">Pas de compte ? <Link className="text-brand" to="/register">Créer un compte</Link></p>
+      <p className="text-sm text-zinc-400">Pas de compte ? <Link className="text-brand" to="/register" state={useLocation().state}>Créer un compte</Link></p>
     </form>
   );
 }

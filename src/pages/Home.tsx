@@ -87,7 +87,7 @@ export function Home() {
       ) : (
         <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {list.data.offers.map((o) => (
-            <OfferCard key={o.id} o={o} onBook={() => nav(user ? `/reserver/${o.id}` : '/login', user ? undefined : { state: { from: `/reserver/${o.id}` } })} />
+            <OfferCard key={o.id} o={o} onBook={() => nav(`/reserver/${o.id}`)} />
           ))}
         </div>
       )}

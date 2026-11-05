@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -60,7 +60,6 @@ export function Checkout() {
   });
 
   if (loading) return <p className="text-center text-zinc-400">Chargement…</p>;
-  if (!user) return <Navigate to="/login" replace state={{ from: `/reserver/${offerId}` }} />;
   if (offer.isLoading) return <p className="text-center text-zinc-400">Chargement de l'offre…</p>;
   if (offer.error || !o) return <div className="mx-auto max-w-md space-y-3 text-center"><Err e={offer.error ?? new Error('Offre introuvable ou indisponible')} /><Link className="btn" to="/">Retour au catalogue</Link></div>;
   if (o.remaining < 1) return <div className="mx-auto max-w-md space-y-3 text-center"><p className="text-zinc-300">Cette offre est complète.</p><Link className="btn" to="/">Retour au catalogue</Link></div>;
@@ -169,11 +168,16 @@ export function Checkout() {
                 <span>J'accepte les <Link to="/conditions" target="_blank" className="text-brand underline">conditions de réservation</Link>.</span>
               </label>
               <Err e={book.error} />
+              {!user && <p className="rounded-lg bg-white/5 px-3 py-2 text-sm text-zinc-300">Dernière étape : connectez-vous ou <Link className="text-brand underline" to="/register" state={{ from: `/reserver/${offerId}` }}>créez un compte</Link> pour payer. Votre sélection et vos informations sont conservées.</p>}
               <div className="flex justify-between gap-2">
                 <button type="button" className="btn-ghost" onClick={() => setStep(2)}>Retour</button>
-                <button className="btn" disabled={book.isPending || (paid && (!methodsOk || d.account.replace(/\D/g, '').length < 8 || !d.operator))}>
-                  {book.isPending ? 'Un instant…' : paid ? `Payer ${fcfa(total)}` : 'Confirmer ma réservation'}
-                </button>
+                {user ? (
+                  <button className="btn" disabled={book.isPending || (paid && (!methodsOk || d.account.replace(/\D/g, '').length < 8 || !d.operator))}>
+                    {book.isPending ? 'Un instant…' : paid ? `Payer ${fcfa(total)}` : 'Confirmer ma réservation'}
+                  </button>
+                ) : (
+                  <Link className="btn" to="/login" state={{ from: `/reserver/${offerId}` }}>Se connecter pour finaliser</Link>
+                )}
               </div>
             </form>
           )}
