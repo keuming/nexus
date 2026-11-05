@@ -1,3 +1,4 @@
+import { placeLabel } from '../lib/place';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -40,7 +41,7 @@ export function Confirmation() {
           <Item k="Prestataire" v={b.companyName} />
           <Item k="Contact prestataire" v={b.companyPhone} />
           <Item k="Date et heure" v={dateFr(b.startsAt)} />
-          <Item k="Lieu" v={`${b.city ? `${b.city} → ` : ''}${countryName(b.country)}`} />
+          <Item k="Lieu" v={placeLabel(b)} />
           {b.stop && <Item k="Arrêt / rendez-vous" v={b.stop} />}
           {b.companyAddress && <Item k="Adresse" v={b.companyAddress} />}
           <Item k="Places" v={String(b.seats)} />

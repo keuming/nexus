@@ -208,3 +208,7 @@ alter table offers add column if not exists show_until timestamptz;
 alter table companies drop constraint if exists companies_activity_check;
 alter table companies add constraint companies_activity_check check (activity in
   ('transport','restauration','expedition','hotel','boutique','agence_voyage','residence_meuble','loisirs','location_vente','smartphones','laptops','tablets','mode','beaute'));
+
+-- v31 : transport — pays et ville d'arrivée (country/city = départ)
+alter table offers add column if not exists dest_country text;
+alter table offers add column if not exists dest_city text;

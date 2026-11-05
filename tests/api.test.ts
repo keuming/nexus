@@ -32,7 +32,7 @@ async function setup(credits: number, capacity: number, priceFcfa = 0) {
   const adm = await admin();
   await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
   if (credits) await adm.post(`/admin/companies/${co.id}/credits`, { credits });
-  const offer = (await owner.post('/company/offers', { title: 'Abidjan → Bouaké', country: 'CI', city: 'Abidjan', stops: [], priceFcfa, capacity, startsAt: future() })).json.offer;
+  const offer = (await owner.post('/company/offers', { title: 'Abidjan → Bouaké', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', stops: [], priceFcfa, capacity, startsAt: future() })).json.offer;
   return { owner, adm, co, offer };
 }
 
@@ -85,7 +85,7 @@ describe('réservations', () => {
     const owner = await register('owner', 'o@x.test');
     const co = (await owner.post('/company', { name: 'Resto', activity: 'restauration', country: 'CI', city: 'Abidjan', phone: '+225 07 00 00 00 00', ...geo })).json.company;
     expect(co.status).toBe('pending');
-    await owner.post('/company/offers', { title: 'Dîner', country: 'CI', city: 'Abidjan', priceFcfa: 0, capacity: 5, startsAt: future() });
+    await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', title: 'Dîner', country: 'CI', city: 'Abidjan', priceFcfa: 0, capacity: 5, startsAt: future() });
     const anon = new Client(ctx.app);
     expect((await anon.get('/offers')).json.offers).toHaveLength(0); // entreprise non validée
 
@@ -167,7 +167,7 @@ describe('pays, villes et arrêts', () => {
     await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
     await adm.post(`/admin/companies/${co.id}/credits`, { credits: 5 });
     const offer = (await owner.post('/company/offers', {
-      title: 'Abidjan → Ouagadougou', country: 'BF', city: 'Abidjan', stops: ['Gare de Ouaga Nord', 'Bobo-Dioulasso'], priceFcfa: 0, capacity: 30, startsAt: future(),
+      title: 'Abidjan → Ouagadougou', country: 'BF', city: 'Abidjan', destCountry: 'BF', destCity: 'Ouagadougou', stops: ['Gare de Ouaga Nord', 'Bobo-Dioulasso'], priceFcfa: 0, capacity: 30, startsAt: future(),
     })).json.offer;
     return { owner, offer };
   }
@@ -413,7 +413,7 @@ describe('paiement ORZAYAH', () => {
     expect(r.json.payment).toBeNull();
     expect(orz.deposits).toHaveLength(0);
 
-    const paidOffer = (await free.owner.post('/company/offers', { title: 'Payant', country: 'CI', city: 'Abidjan', priceFcfa: 3000, capacity: 5, startsAt: future() })).json.offer;
+    const paidOffer = (await free.owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', title: 'Payant', country: 'CI', city: 'Abidjan', priceFcfa: 3000, capacity: 5, startsAt: future() })).json.offer;
     const p = await cust.post('/bookings', { ...BK, offerId: paidOffer.id, payment: pay });
     orz.set(key(p.json.payment.id), 'SUCCESS');
     await poll(cust, p.json.payment.id);
@@ -446,11 +446,11 @@ describe('photos des offres', () => {
   it('enregistre jusqu\'à 4 photos, les sert publiquement et refuse le reste', async () => {
     const { owner } = await setup(5, 5, 0);
     const base = { title: 'Avec photos', country: 'CI', city: 'Abidjan', priceFcfa: 0, capacity: 5, startsAt: future() };
-    expect((await owner.post('/company/offers', { ...base, photos: [jpeg, jpeg, jpeg, jpeg, jpeg] })).status).toBe(400);
-    expect((await owner.post('/company/offers', { ...base, photos: ['data:image/png;base64,AAAA'] })).status).toBe(400);
+    expect((await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', ...base, photos: [jpeg, jpeg, jpeg, jpeg, jpeg] })).status).toBe(400);
+    expect((await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', ...base, photos: ['data:image/png;base64,AAAA'] })).status).toBe(400);
     const fake = 'data:image/jpeg;base64,' + Buffer.from('<script>alert(1)</script>').toString('base64');
-    expect((await owner.post('/company/offers', { ...base, photos: [fake] })).status).toBe(400);
-    const r = await owner.post('/company/offers', { ...base, photos: [jpeg, jpeg, jpeg, jpeg] });
+    expect((await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', ...base, photos: [fake] })).status).toBe(400);
+    const r = await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', ...base, photos: [jpeg, jpeg, jpeg, jpeg] });
     expect(r.status).toBe(201);
     expect(r.json.offer.photoCount).toBe(4);
     const anon = new Client(ctx.app);
@@ -471,9 +471,9 @@ describe('photos des offres', () => {
     expect((await owner.get('/company/upload-config')).json.cloudinary).toEqual({ cloudName: 'demo', preset: 'nexus_offers' });
     const base = { title: 'Cloud', country: 'CI', city: 'Abidjan', priceFcfa: 0, capacity: 5, startsAt: future() };
     for (const bad of ['https://evil.test/demo/image/upload/a.jpg', 'https://res.cloudinary.com/autre/image/upload/v1/a.jpg', 'https://res.cloudinary.com/demo/raw/upload/a.js', 'http://res.cloudinary.com/demo/image/upload/a.jpg', 'https://u:p@res.cloudinary.com/demo/image/upload/a.jpg'])
-      expect((await owner.post('/company/offers', { ...base, photos: [bad] })).status).toBe(400);
+      expect((await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', ...base, photos: [bad] })).status).toBe(400);
     const url = 'https://res.cloudinary.com/demo/image/upload/v1/nexus/offers/a.jpg';
-    const r = await owner.post('/company/offers', { ...base, photos: [url + '?x=1'] });
+    const r = await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', ...base, photos: [url + '?x=1'] });
     expect(r.status).toBe(201);
     const res = await ctx.app.request(`http://localhost/api/offers/${r.json.offer.id}/photos/0`);
     expect(res.status).toBe(302);
@@ -538,7 +538,7 @@ describe('alertes', () => {
 
 describe('gestion des offres (modifier, dupliquer, désactiver, supprimer)', () => {
   const jpeg = 'data:image/jpeg;base64,' + Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]).toString('base64');
-  const body = (extra = {}) => ({ title: 'Poulet braisé', description: 'Servi avec attiéké', country: 'CI', city: 'Abidjan', priceFcfa: 0, capacity: 10, startsAt: future(), ...extra });
+  const body = (extra = {}) => ({ title: 'Poulet braisé', description: 'Servi avec attiéké', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', priceFcfa: 0, capacity: 10, startsAt: future(), ...extra });
 
   it('modifie une offre : champs, capacité protégée, date future, photos conservées/remplacées/retirées', async () => {
     const { owner } = await setup(5, 5, 0);
@@ -669,5 +669,22 @@ describe('parcours de réservation : informations du réservant', () => {
     const list = (await adm.get('/admin/display')).json;
     expect(list.activities.length).toBeGreaterThan(10);
     expect(list.offers).toHaveLength(1);
+  });
+
+  it("transport : pays et ville d'arrivée obligatoires, filtrables, renvoyés au catalogue", async () => {
+    ctx = await makeApp(null);
+    const owner = await register('owner', 'o2@x.test');
+    const co = (await owner.post('/company', { name: 'Bus', activity: 'transport', country: 'CI', city: 'Abidjan', phone: '+225 07 00 00 00 00', ...geo })).json.company;
+    const adm = await admin();
+    await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
+    const base = { title: 'Abidjan → Conakry', country: 'CI', city: 'Abidjan', priceFcfa: 30000, capacity: 20, startsAt: future() };
+    expect((await owner.post('/company/offers', base)).status).toBe(400); // arrivée manquante
+    expect((await owner.post('/company/offers', { ...base, destCountry: 'GN', destCity: 'Conakry' })).status).toBe(201);
+    const anon = new Client(ctx.app);
+    const hit = (await anon.get('/offers?activity=transport&country=CI&city=Abidjan&destCountry=GN&destCity=Conakry')).json.offers;
+    expect(hit).toHaveLength(1);
+    expect(hit[0]).toMatchObject({ destCountry: 'GN', destCity: 'Conakry' });
+    expect((await anon.get('/offers?destCountry=SN')).json.offers).toHaveLength(0);
+    expect((await anon.get('/offers?destCity=cona')).json.offers).toHaveLength(1);
   });
 });

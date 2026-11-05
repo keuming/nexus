@@ -119,7 +119,7 @@ export const bookingRoutes = new Hono<Env>()
   })
   .get('/mine', async (c) => {
     const rows = await c.get('db')
-      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -135,7 +135,7 @@ export const bookingRoutes = new Hono<Env>()
     const [r] = await c.get('db').select({
       id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
       contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,
-      offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, priceFcfa: offers.priceFcfa, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,
+      offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, destCity: offers.destCity, destCountry: offers.destCountry, priceFcfa: offers.priceFcfa, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,
       companyName: companies.name, companyPhone: companies.phone, companyAddress: companies.address,
       payment: payments,
     }).from(bookings)

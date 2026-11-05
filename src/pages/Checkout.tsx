@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { placeLabel } from '../lib/place';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
@@ -191,7 +192,7 @@ export function Checkout() {
               <p className="text-sm text-zinc-400">{o.companyName}</p>
             </div>
             <dl className="space-y-1 text-sm">
-              <Row k="Lieu" v={`${o.city ? `${o.city} → ` : ''}${countryName(o.country)}`} />
+              <Row k="Lieu" v={placeLabel(o)} />
               <Row k="Date" v={dateFr(o.startsAt)} />
               {d.stop && <Row k={isTransport ? 'Arrêt' : 'Rendez-vous'} v={d.stop} />}
               <Row k="Places" v={String(d.seats)} />

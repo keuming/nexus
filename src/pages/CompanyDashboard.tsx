@@ -6,6 +6,7 @@ import { PhotoPicker } from '../components/PhotoPicker';
 import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
 import { CompanyFields, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
+import { placeLabel } from '../lib/place';
 import { ACTIVITIES } from '../../shared/constants';
 import { citiesOf, countryName } from '../../shared/geo';
 
@@ -140,7 +141,7 @@ const OWN_PHOTO = '/api/company/offers/';
 function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[] } }) {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['company-offers'], queryFn: () => unwrap(api.company.offers.$get()) });
-  const blank = { title: '', description: '', country: company.country, city: company.city, priceFcfa: 0, capacity: 1, startsAt: '' };
+  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', priceFcfa: 0, capacity: 1, startsAt: '' };
   const [f, setF] = useState(blank);
   const [stops, setStops] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -153,7 +154,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
   const refresh = () => qc.invalidateQueries({ queryKey: ['company-offers'] });
   const save = useMutation({
     mutationFn: () => {
-      const json = { ...f, stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
+      const json = { ...f, ...(isTransport ? {} : { destCountry: null, destCity: null }), stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
       return editing ? unwrap(api.company.offers[':id'].$patch({ param: { id: editing }, json })) : unwrap(api.company.offers.$post({ json }));
     },
     onSuccess: () => { close(); refresh(); },
@@ -168,7 +169,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
   });
   type Row = NonNullable<typeof list.data>['offers'][number];
   const load = (o: Row, copy: boolean) => {
-    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy ? '' : toLocalInput(o.startsAt) });
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy ? '' : toLocalInput(o.startsAt) });
     setStops(o.stops);
     setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
     setEditing(copy ? null : o.id);
@@ -196,7 +197,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
             <li key={o.id} className={`card flex flex-wrap items-center justify-between gap-3 !py-3 ${o.active ? '' : 'opacity-70'}`}>
               {o.photoCount > 0 && <img src={`${OWN_PHOTO}${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
               <div className="min-w-0 flex-1"><p className="font-medium">{o.title} {!o.active && <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">Désactivé</span>}</p>
-                <p className="text-sm text-zinc-400">{o.city ? `${o.city} → ` : ''}{countryName(o.country)} · {dateFr(o.startsAt)} · {fcfa(o.priceFcfa)} · {o.booked}/{o.capacity}</p>
+                <p className="text-sm text-zinc-400">{placeLabel(o)} · {dateFr(o.startsAt)} · {fcfa(o.priceFcfa)} · {o.booked}/{o.capacity}</p>
                 {o.stops.length > 0 && <p className="text-xs text-zinc-500">Arrêts : {o.stops.join(' · ')}</p>}</div>
               <div className="flex flex-wrap gap-2" role="group" aria-label={`Actions pour ${o.title}`}>
                 <button className="btn-ghost" onClick={() => load(o, false)}>Modifier</button>
@@ -217,10 +218,18 @@ function Offers({ company }: { company: { country: string; city: string; activit
             </div>
             <div className="space-y-1 sm:col-span-2"><label htmlFor="o-title" className="text-sm font-medium">Titre</label>
               <input id="o-title" className="input" required autoFocus value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-            <div className="space-y-1"><label htmlFor="o-country" className="text-sm font-medium">{isTransport ? 'Pays de destination' : 'Pays du service'}</label>
+            <div className="space-y-1"><label htmlFor="o-country" className="text-sm font-medium">{isTransport ? 'Pays de départ' : 'Pays du service'}</label>
               <CountrySelect id="o-country" value={f.country} onChange={(v) => setF({ ...f, country: v, city: v === company.country ? company.city : '' })} /></div>
             <div className="space-y-1"><label htmlFor="o-city" className="text-sm font-medium">{isTransport ? 'Ville de départ' : 'Ville du service'}</label>
               <CitySelect key={`${open}-${editing}-${f.country}`} id="o-city" required country={f.country} value={f.city} extra={f.country === company.country ? [company.city, ...company.serviceCities] : []} onChange={(v) => setF({ ...f, city: v })} /></div>
+            {isTransport && (
+              <>
+                <div className="space-y-1"><label htmlFor="o-dcountry" className="text-sm font-medium">Pays d'arrivée</label>
+                  <CountrySelect id="o-dcountry" value={f.destCountry} onChange={(v) => setF({ ...f, destCountry: v, destCity: '' })} /></div>
+                <div className="space-y-1"><label htmlFor="o-dcity" className="text-sm font-medium">Ville d'arrivée</label>
+                  <CitySelect key={`d-${open}-${editing}-${f.destCountry}`} id="o-dcity" required country={f.destCountry} value={f.destCity} extra={[]} onChange={(v) => setF({ ...f, destCity: v })} /></div>
+              </>
+            )}
             <div className="sm:col-span-2">
               <ChipInput label={isTransport ? 'Arrêts (villes ou lieux indiqués)' : 'Lieux / points de rendez-vous (facultatif)'}
                 hint="Le client choisira l’un de ces arrêts en réservant." values={stops} onChange={setStops} max={20} placeholder="Ex. Gare de Ouaga Nord" />

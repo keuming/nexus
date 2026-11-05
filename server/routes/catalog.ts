@@ -21,6 +21,8 @@ const cols = {
   remaining: sql<number>`${offers.capacity} - ${offers.booked}`.as('remaining'),
   country: offers.country,
   city: offers.city,
+  destCountry: offers.destCountry,
+  destCity: offers.destCity,
   stops: offers.stops,
   photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`.as('photo_count'),
   companyName: companies.name,
@@ -44,11 +46,13 @@ export const catalogRoutes = new Hono<Env>()
       activity: z.string().transform((x) => x.split(',')).pipe(z.array(z.enum(ACTIVITIES)).min(1).max(20)).optional(),
       country: countryCode.optional(),
       city: z.string().trim().max(80).optional(),
+      destCountry: countryCode.optional(),
+      destCity: z.string().trim().max(80).optional(),
       q: z.string().trim().max(100).optional(),
       limit: z.coerce.number().int().min(1).max(100).default(50),
     })),
     async (c) => {
-      const { activity, country, city, q, limit } = c.req.valid('query');
+      const { activity, country, city, destCountry, destCity, q, limit } = c.req.valid('query');
       // Libère les places des paiements expirés (pas de cron) ; ne doit jamais bloquer le catalogue.
       try { await sweepExpired({ db: c.get('db'), orz: c.get('orz') }, 3); } catch (e) { console.error('[sweep]', e); }
       const rows = await c.get('db')
@@ -62,6 +66,8 @@ export const catalogRoutes = new Hono<Env>()
           activity ? inArray(companies.activity, activity) : undefined,
           country ? eq(offers.country, country) : undefined,
           city ? sql`(${offers.city} ilike ${like(city)} or exists (select 1 from unnest(${offers.stops}) as s where s ilike ${like(city)}))` : undefined,
+          destCountry ? eq(offers.destCountry, destCountry) : undefined,
+          destCity ? sql`(${offers.destCity} ilike ${like(destCity)} or exists (select 1 from unnest(${offers.stops}) as s where s ilike ${like(destCity)}))` : undefined,
           q ? ilike(offers.title, `%${q.replace(/[%_\\]/g, '\\$&')}%`) : undefined,
         ))
         .orderBy(asc(offers.startsAt))

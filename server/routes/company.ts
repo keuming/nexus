@@ -30,6 +30,8 @@ const offerFields = z.object({
   description: z.string().trim().max(2000).default(''),
   country: countryCode,
   city: cityName,
+  destCountry: countryCode.nullish(),
+  destCity: cityName.nullish(),
   stops: placeList(20),
   priceFcfa: z.number().int().min(0).max(100_000_000),
   capacity: z.number().int().min(1).max(10_000),
@@ -81,6 +83,8 @@ export const companyRoutes = new Hono<Env>()
   .post('/offers', v('json', offerFields.extend({ startsAt: z.string().datetime().transform((x) => new Date(x)).refine((d) => d.getTime() > Date.now(), 'La date doit être dans le futur') })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const { photos, ...input } = c.req.valid('json');
+    if (co.activity === 'transport' && (!input.destCountry || !input.destCity)) throw new AppError(400, 'invalid', "Indiquez le pays et la ville d'arrivée");
+    if (co.activity !== 'transport') { input.destCountry = null; input.destCity = null; }
     const rows = photos.map((p) => parsePhoto(p));
     const o = await c.get('db').transaction(async (tx) => {
       const [row] = await tx.insert(offers).values({ ...input, companyId: co.id }).returning();
