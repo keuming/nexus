@@ -37,7 +37,18 @@ export function Home() {
   });
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-[13rem_1fr]">
+        <aside className="card self-start md:sticky md:top-[4.5rem] md:max-h-[calc(100dvh-6rem)] md:overflow-y-auto" aria-label="Types d'activité">
+          <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
+          <div className="flex gap-2 overflow-x-auto md:flex-col md:gap-1 md:overflow-visible">
+            {['', ...visibleActs].map((a) => (
+              <button key={a} onClick={() => setActivity(a)} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm ${activity === a ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
+                {a ? ACTIVITY_LABEL[a] : 'Toutes'}
+              </button>
+            ))}
+          </div>
+        </aside>
+      <div className="min-w-0 space-y-10">
       <section className="mx-auto max-w-3xl text-center">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
         <p className="mx-auto mt-3 max-w-xl text-zinc-400">Transport, hôtels, restaurants et loisirs auprès d’entreprises validées par BackMarket.</p>
@@ -69,18 +80,6 @@ export function Home() {
 
       </section>
 
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[13rem_1fr]">
-        <aside className="card self-start lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto" aria-label="Types d'activité">
-          <p className="mb-2 text-xs uppercase tracking-wide text-zinc-500">Activités</p>
-          <div className="flex gap-2 overflow-x-auto lg:flex-col lg:gap-1 lg:overflow-visible">
-            {['', ...visibleActs].map((a) => (
-              <button key={a} onClick={() => setActivity(a)} className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm ${activity === a ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
-                {a ? ACTIVITY_LABEL[a] : 'Toutes'}
-              </button>
-            ))}
-          </div>
-        </aside>
-        <div>
       <Err e={list.error} />
       {list.isLoading ? <p className="text-center text-zinc-400">Chargement…</p> : !list.data?.offers.length ? (
         <p className="text-center text-zinc-400">Aucune offre ne correspond à votre recherche.</p>
@@ -91,8 +90,7 @@ export function Home() {
           ))}
         </div>
       )}
-        </div>
-      </div>
+    </div>
     </div>
   );
 }
