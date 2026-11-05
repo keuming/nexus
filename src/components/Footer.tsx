@@ -11,7 +11,7 @@ export function Footer() {
   const { user } = useAuth();
   return (
     <footer className="mt-10 border-t border-white/10 bg-black/20 print:hidden">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1fr_1.5fr]">
         <div className="space-y-3">
           <Link to="/" className="text-xl font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
           <p className="text-sm text-zinc-400">{SITE.tagline} Transport, hôtels, restaurants, loisirs, smartphones, laptops et tablettes auprès de prestataires validés.</p>
@@ -49,8 +49,8 @@ export function Footer() {
           </div>
           <div>
             <H>Paiement sécurisé</H>
-            <ul className="flex flex-wrap gap-2">
-              {PAYMENT_METHODS.map((m) => <li key={m.id} className="rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300">{m.label}</li>)}
+            <ul className="flex flex-wrap gap-1.5 lg:flex-nowrap">
+              {PAYMENT_METHODS.map((m) => <li key={m.id} className="whitespace-nowrap rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300">{m.label}</li>)}
             </ul>
           </div>
         </div>
