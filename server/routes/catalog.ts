@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
-import { and, asc, eq, ilike, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, sql, desc } from 'drizzle-orm';
 import { countryCode } from '../lib/schemas.js';
 import { activityDisplay, companies, offerPhotos, offers } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
 import { sweepExpired } from '../lib/payments.js';
 import type { Env } from '../middleware/auth.js';
-import { ACTIVITIES, DATED_ACTIVITIES } from '../../shared/constants.js';
+import { ACTIVITIES } from '../../shared/constants.js';
 
 /** Recherche partielle, caractères spéciaux de LIKE neutralisés. */
 const like = (v: string) => `%${v.replace(/[%_\\]/g, '\\$&')}%`;
@@ -37,7 +37,7 @@ const displayRules = () => and(
   sql`(${offers.showFrom} is null or ${offers.showFrom} <= now())`,
   sql`(${offers.showUntil} is null or ${offers.showUntil} >= now())`,
   sql`not exists (select 1 from activity_display d where d.activity = ${companies.activity} and (d.visible = false or d.show_from > now() or d.show_until < now()))`,
-  sql`(${companies.activity} not in (${sql.join(DATED_ACTIVITIES.map((a) => sql`${a}`), sql`, `)}) or ${offers.startsAt} >= now())`,
+  sql`${offers.capacity} - ${offers.booked} > 0`, // stock épuisé : l'offre quitte le catalogue
 );
 
 /** Catalogue public : offres actives, d'entreprises validées, à venir. */
@@ -53,12 +53,11 @@ export const catalogRoutes = new Hono<Env>()
       category: z.string().trim().max(60).optional(),
       maxPrice: z.coerce.number().int().min(0).max(1_000_000_000).optional(),
       guests: z.coerce.number().int().min(1).max(500).optional(),
-      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       q: z.string().trim().max(100).optional(),
       limit: z.coerce.number().int().min(1).max(100).default(50),
     })),
     async (c) => {
-      const { activity, country, city, destCountry, destCity, category, maxPrice, guests, date, q, limit } = c.req.valid('query');
+      const { activity, country, city, destCountry, destCity, category, maxPrice, guests, q, limit } = c.req.valid('query');
       // Libère les places des paiements expirés (pas de cron) ; ne doit jamais bloquer le catalogue.
       try { await sweepExpired({ db: c.get('db'), orz: c.get('orz') }, 3); } catch (e) { console.error('[sweep]', e); }
       const rows = await c.get('db')
@@ -75,12 +74,11 @@ export const catalogRoutes = new Hono<Env>()
           category ? eq(offers.category, category) : undefined,
           maxPrice !== undefined ? sql`${offers.priceFcfa} <= ${maxPrice}` : undefined,
           guests ? sql`${offers.capacity} - ${offers.booked} >= ${guests}` : undefined,
-          date ? sql`${offers.startsAt} >= ${date + 'T00:00:00Z'}::timestamptz and ${offers.startsAt} < (${date + 'T00:00:00Z'}::timestamptz + interval '1 day')` : undefined,
           destCountry ? eq(offers.destCountry, destCountry) : undefined,
           destCity ? sql`(${offers.destCity} ilike ${like(destCity)} or exists (select 1 from unnest(${offers.stops}) as s where s ilike ${like(destCity)}))` : undefined,
           q ? ilike(offers.title, `%${q.replace(/[%_\\]/g, '\\$&')}%`) : undefined,
         ))
-        .orderBy(asc(offers.startsAt))
+        .orderBy(desc(offers.startsAt))
         .limit(limit);
       return c.json({ offers: rows });
     },

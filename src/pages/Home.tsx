@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { CountrySelect } from '../components/ChipInput';
-import { ACTIVITIES, DATED_ACTIVITIES, type Activity } from '../../shared/constants';
+import { ACTIVITIES, type Activity } from '../../shared/constants';
 import { CATEGORIES, SEARCH_FORMS, type SearchForm } from '../../shared/search';
 import { COUNTRIES, citiesOf } from '../../shared/geo';
 import { placeLabel } from '../lib/place';
@@ -50,7 +50,6 @@ export function Home() {
   const activity = params.get('activite') ?? '';
   const country = params.get('pays') ?? '';
   const destCountry = params.get('pays_arr') ?? '';
-  const date = params.get('date') ?? '';
   const category = params.get('categorie') ?? '';
   const [city, setCity, dCity] = useUrlInput('ville');
   const [destCity, setDestCity, dDest] = useUrlInput('ville_arr');
@@ -69,7 +68,7 @@ export function Home() {
     if (k === 'pays') { n.delete('ville'); setCity(''); }
     if (k === 'pays_arr') { n.delete('ville_arr'); setDestCity(''); }
     if (k === 'activite') { // chaque service a son propre formulaire : on repart de zéro
-      for (const x of ['pays_arr', 'ville_arr', 'date', 'categorie', 'guests', 'budget']) n.delete(x);
+      for (const x of ['pays_arr', 'ville_arr', 'categorie', 'guests', 'budget']) n.delete(x);
       setDestCity(''); setGuests(''); setBudget('');
     }
     return n;
@@ -81,7 +80,7 @@ export function Home() {
   useEffect(() => { if (acts.data && activity && !menu.some((m) => m.id === activity)) setFilter('activite', ''); }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = useQuery({
-    queryKey: ['offers', activity, country, dCity, destCountry, dDest, date, category, dGuests, dBudget, dQ],
+    queryKey: ['offers', activity, country, dCity, destCountry, dDest, category, dGuests, dBudget, dQ],
     placeholderData: keepPreviousData,
     queryFn: () => unwrap(api.offers.$get({ query: {
       ...(activity ? { activity: (MENU.find((m) => m.id === activity)?.members ?? [activity]).join(',') } : {}),
@@ -89,14 +88,13 @@ export function Home() {
       ...(dCity ? { city: dCity } : {}),
       ...(destCountry ? { destCountry } : {}),
       ...(dDest ? { destCity: dDest } : {}),
-      ...(date ? { date } : {}),
       ...(category ? { category } : {}),
       ...(dGuests && Number(dGuests) > 0 ? { guests: Number(dGuests) } : {}),
       ...(dBudget && Number(dBudget) >= 0 ? { maxPrice: Number(dBudget) } : {}),
       ...(dQ ? { q: dQ } : {}),
     } })),
   });
-  const filtered = !!(activity || country || destCountry || date || category || [city, destCity, q, guests, budget].some((x) => x.trim()));
+  const filtered = !!(activity || country || destCountry || category || [city, destCity, q, guests, budget].some((x) => x.trim()));
   const reset = () => { setCity(''); setDestCity(''); setQ(''); setGuests(''); setBudget(''); setParams(new URLSearchParams(), { replace: true }); };
   const offers = list.data?.offers ?? [];
   const cols = form ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3';
@@ -126,10 +124,6 @@ export function Home() {
             {form?.to && (
               <PlaceFields id="f-arr" countryLabel={form.to.country} cityLabel={form.to.city}
                 country={destCountry} city={destCity} onCountry={(v) => setFilter('pays_arr', v)} onCity={setDestCity} cities={destCountry ? citiesOf(destCountry) : allCities} />
-            )}
-            {form?.date && (
-              <div className="space-y-1"><label htmlFor="f-date" className="text-xs text-zinc-400">{form.date}</label>
-                <input id="f-date" type="date" className="input" min={new Date().toISOString().slice(0, 10)} value={date} onChange={(e) => setFilter('date', e.target.value)} /></div>
             )}
             {form?.guests && (
               <div className="space-y-1"><label htmlFor="f-guests" className="text-xs text-zinc-400">{form.guests}</label>
@@ -188,7 +182,6 @@ interface OfferItem { category?: string | null; destCity?: string | null; destCo
 function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
-  const dated = (DATED_ACTIVITIES as readonly string[]).includes(o.activity);
   const hasDetails = !!o.description || o.stops.length > 0;
   const low = o.remaining > 0 && o.remaining <= 3;
   return (
@@ -204,8 +197,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
         <p className="text-xs text-zinc-500">
-          {dated && <>{dateFr(o.startsAt)} · </>}
-          <span className={low ? 'font-medium text-amber-400' : ''}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : dated ? `${o.remaining} places` : `${o.remaining} disponibles`}</span>
+          <span className={low ? 'font-medium text-amber-400' : ''}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : `${o.remaining} disponibles`}</span>
         </p>
         {hasDetails && (
           <>

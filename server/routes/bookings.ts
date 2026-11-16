@@ -72,12 +72,12 @@ export const bookingRoutes = new Hono<Env>()
       }
       const [o] = await tx.update(offers)
         .set({ booked: sql`${offers.booked} + ${seats}` })
-        .where(and(eq(offers.id, offerId), eq(offers.active, true), gte(offers.startsAt, new Date()), sql`${offers.booked} + ${seats} <= ${offers.capacity}`))
+        .where(and(eq(offers.id, offerId), eq(offers.active, true), sql`${offers.booked} + ${seats} <= ${offers.capacity}`))
         .returning({ companyId: offers.companyId, price: offers.priceFcfa });
       if (!o) {
         const [exists] = await tx.select({ id: offers.id }).from(offers).where(eq(offers.id, offerId)).limit(1);
         if (!exists) throw notFound('Offre');
-        throw conflict('unavailable', 'Offre complète, expirée ou désactivée');
+        throw conflict('unavailable', 'Offre épuisée ou non disponible');
       }
       const [act] = await tx.select({ activity: companies.activity }).from(companies).where(eq(companies.id, o.companyId)).limit(1);
       if (act?.activity === 'transport' ? guests.length !== seats : guests.length > seats) throw new AppError(400, 'invalid', act?.activity === 'transport' ? 'Indiquez le nom de chaque passager' : 'Trop de noms de participants par rapport au nombre de places');

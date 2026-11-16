@@ -39,7 +39,7 @@ export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise
   try {
     const [r] = await db.select({
       seats: bookings.seats, stop: bookings.stop, offerTitle: offers.title, companyName: companies.name, ownerId: companies.ownerId,
-      customer: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, phone: bookings.contactPhone, email: bookings.contactEmail, ref: bookings.reference, startsAt: offers.startsAt, amount: payments.amountFcfa,
+      customer: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, phone: bookings.contactPhone, email: bookings.contactEmail, ref: bookings.reference, amount: payments.amountFcfa,
     }).from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -49,7 +49,7 @@ export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise
     if (!r) return;
     const detail = `${r.ref} · ${r.customer}${r.phone ? ` (${r.phone})` : ''} · ${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}`;
     if (r.email) await sendMail(r.email, `Réservation confirmée ${r.ref} : ${r.offerTitle}`,
-      `Bonjour ${r.customer},\n\nVotre réservation ${r.ref} chez ${r.companyName} est confirmée.\n${r.offerTitle} · ${new Date(r.startsAt).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })}\n${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}\n\nPrésentez la référence ${r.ref} au prestataire. Reçu disponible dans « Mes réservations » sur BackMarket.`);
+      `Bonjour ${r.customer},\n\nVotre réservation ${r.ref} chez ${r.companyName} est confirmée.\n${r.offerTitle}\n${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${r.amount ? `payé ${new Intl.NumberFormat('fr-FR').format(r.amount)} FCFA` : 'gratuit'}\n\nPrésentez la référence ${r.ref} au prestataire. Reçu disponible dans « Mes réservations » sur BackMarket.`);
     await notify(db, [
       { userId: r.ownerId, kind: 'booking', refId: bookingId, title: `Nouvelle réservation : ${r.offerTitle}`, body: detail, link: '/company' },
       ...(await adminIds(db)).map((id) => ({ userId: id, kind: 'booking', refId: bookingId, title: `Réservation chez ${r.companyName} : ${r.offerTitle}`, body: detail, link: '/admin' })),

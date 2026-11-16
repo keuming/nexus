@@ -16,15 +16,14 @@ export const ROUTE_ACTIVITIES = ['transport', 'expedition', 'agence_voyage'] as 
 export interface SearchForm {
   from?: { country: string; city: string };   // lieu principal (ou départ)
   to?: { country: string; city: string };     // arrivée / livraison
-  date?: string;
   guests?: string;
   category?: boolean;
   budget?: string;
 }
 export const SEARCH_FORMS: Partial<Record<Activity, SearchForm>> = {
-  transport: { from: { country: 'Pays de départ', city: 'Ville de départ' }, to: { country: "Pays d'arrivée", city: "Ville d'arrivée" }, date: 'Date du voyage', guests: 'Passagers', budget: 'Prix max (FCFA)' },
-  agence_voyage: { from: { country: 'Pays de départ', city: 'Ville de départ' }, to: { country: 'Pays de destination', city: 'Ville de destination' }, date: 'Date de départ', guests: 'Voyageurs', category: true, budget: 'Prix max (FCFA)' },
-  expedition: { from: { country: "Pays d'enlèvement", city: "Ville d'enlèvement" }, to: { country: 'Pays de livraison', city: 'Ville de livraison' }, date: "Date d'enlèvement", category: true, budget: 'Prix max (FCFA)' },
+  transport: { from: { country: 'Pays de départ', city: 'Ville de départ' }, to: { country: "Pays d'arrivée", city: "Ville d'arrivée" }, guests: 'Passagers', budget: 'Prix max (FCFA)' },
+  agence_voyage: { from: { country: 'Pays de départ', city: 'Ville de départ' }, to: { country: 'Pays de destination', city: 'Ville de destination' }, guests: 'Voyageurs', category: true, budget: 'Prix max (FCFA)' },
+  expedition: { from: { country: "Pays d'enlèvement", city: "Ville d'enlèvement" }, to: { country: 'Pays de livraison', city: 'Ville de livraison' }, category: true, budget: 'Prix max (FCFA)' },
   hotel: { from: { country: 'Pays', city: 'Destination (ville)' }, guests: 'Voyageurs', category: true, budget: 'Budget max / nuit (FCFA)' },
   residence_meuble: { from: { country: 'Pays', city: 'Destination (ville)' }, guests: 'Voyageurs', category: true, budget: 'Budget max / nuit (FCFA)' },
   restauration: { from: { country: 'Pays', city: 'Ville' }, category: true, budget: 'Budget max (FCFA)' },

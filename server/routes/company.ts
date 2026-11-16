@@ -38,7 +38,6 @@ const offerFields = z.object({
   stops: placeList(20),
   priceFcfa: z.number().int().min(0).max(100_000_000),
   capacity: z.number().int().min(1).max(10_000),
-  startsAt: z.string().datetime(),
   // Photos : URL Cloudinary (envoi direct du navigateur) ou, sans Cloudinary configuré, data URL JPEG (≈375 Ko max).
   // À la modification : « keep:N » conserve la photo N existante.
   photos: z.array(z.string().max(520_000)).max(4).default([]),
@@ -100,7 +99,8 @@ export const companyRoutes = new Hono<Env>()
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     return c.json({ offers: await c.get('db').select({ ...getTableColumns(offers), photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`.as('photo_count') }).from(offers).where(eq(offers.companyId, co.id)).orderBy(desc(offers.startsAt)).limit(200) });
   })
-  .post('/offers', v('json', offerFields.extend({ startsAt: z.string().datetime().transform((x) => new Date(x)).refine((d) => d.getTime() > Date.now(), 'La date doit être dans le futur') })), async (c) => {
+  /** Création : « startsAt » est la date d'ajout (automatique, sans effet sur l'affichage). */
+  .post('/offers', v('json', offerFields.extend({ active: z.boolean().default(true) })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const { photos, ...input } = c.req.valid('json');
     const isRoute = (ROUTE_ACTIVITIES as readonly string[]).includes(co.activity);
@@ -111,7 +111,7 @@ export const companyRoutes = new Hono<Env>()
     if (!cats) input.category = null;
     const rows = photos.map((p) => parsePhoto(p));
     const o = await c.get('db').transaction(async (tx) => {
-      const [row] = await tx.insert(offers).values({ ...input, companyId: co.id }).returning();
+      const [row] = await tx.insert(offers).values({ ...input, companyId: co.id, startsAt: new Date() }).returning();
       if (rows.length) await tx.insert(offerPhotos).values(rows.map((r, position) => ({ offerId: row.id, position, ...r })));
       return row;
     });
@@ -120,19 +120,12 @@ export const companyRoutes = new Hono<Env>()
   /** Modification d'une offre (champs partiels, y compris `active`) ; les photos sont remplacées par la liste fournie. */
   .patch('/offers/:id', v('param', z.object({ id: z.string().uuid() })), v('json', offerFields.partial().extend({ active: z.boolean().optional() })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
-    const { photos, startsAt, ...rest } = c.req.valid('json');
+    const { photos, ...rest } = c.req.valid('json');
     const o = await c.get('db').transaction(async (tx) => {
       const [cur] = await tx.select().from(offers).where(and(eq(offers.id, c.req.valid('param').id), eq(offers.companyId, co.id))).for('update');
       if (!cur) throw notFound('Offre');
       const set: Partial<typeof offers.$inferInsert> = { ...rest };
-      if (startsAt) {
-        const d = new Date(startsAt);
-        if (d.getTime() !== cur.startsAt.getTime()) {
-          if (d.getTime() <= Date.now()) throw new AppError(400, 'invalid', 'La date doit être dans le futur');
-          set.startsAt = d;
-        }
-      }
-      if (rest.capacity !== undefined && rest.capacity < cur.booked) throw conflict('capacity_too_low', `${cur.booked} place(s) déjà réservée(s) : la capacité ne peut pas descendre en dessous`);
+      if (rest.capacity !== undefined && rest.capacity < cur.booked) throw conflict('capacity_too_low', `${cur.booked} place(s) déjà réservée(s) : le stock ne peut pas descendre en dessous`);
       let photoCount: number | undefined;
       if (photos) {
         const old = await tx.select().from(offerPhotos).where(eq(offerPhotos.offerId, cur.id));

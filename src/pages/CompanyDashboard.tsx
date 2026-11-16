@@ -40,7 +40,7 @@ export function CompanyDashboard() {
   if (c.status === 'rejected' && editing) return <CompanyForm mode="resubmit" initial={c} onDone={refresh} />;
   const confirmed = bookings.data?.bookings.filter((b) => b.status === 'confirmed').length ?? 0;
   const waiting = bookings.data?.bookings.filter((b) => b.status === 'pending_payment').length ?? 0;
-  const liveOffers = offers.data?.offers.filter((o) => o.active && new Date(o.startsAt) > new Date()).length ?? 0;
+  const liveOffers = offers.data?.offers.filter((o) => o.active && o.booked < o.capacity).length ?? 0;
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -195,30 +195,29 @@ const NOUN: Record<string, { a: string; the: string }> = {
   tablets: { a: 'une tablette', the: 'la tablette' },
   mode: { a: 'un article de mode', the: "l'article de mode" }, beaute: { a: 'un produit de beauté', the: 'le produit de beauté' },
 };
-const toLocalInput = (iso: string) => { const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 const OWN_PHOTO = '/api/company/offers/';
 
 function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[] } }) {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['company-offers'], queryFn: () => unwrap(api.company.offers.$get()) });
-  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, startsAt: '' };
+  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, available: true };
   const [f, setF] = useState(blank);
   const [stops, setStops] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [republish, setRepublish] = useState(false);
   const isTransport = company.activity === 'transport';
   const isRoute = (ROUTE_ACTIVITIES as readonly string[]).includes(company.activity);
   const sf = SEARCH_FORMS[company.activity as keyof typeof SEARCH_FORMS];
   const cat = CATEGORIES[company.activity as keyof typeof CATEGORIES];
   const noun = NOUN[company.activity] ?? { a: 'une offre', the: "l'offre" };
-  const reset = () => { setMissing([]); setF(blank); setStops([]); setPhotos([]); setEditing(null); setRepublish(false); };
+  const reset = () => { setMissing([]); setF(blank); setStops([]); setPhotos([]); setEditing(null); };
   const close = () => { reset(); setOpen(false); };
   const refresh = () => qc.invalidateQueries({ queryKey: ['company-offers'] });
   const save = useMutation({
     mutationFn: () => {
-      const json = { ...f, ...(republish ? { active: true } : {}), category: f.category || null, ...(isRoute ? {} : { destCountry: null, destCity: null }), stops, startsAt: new Date(f.startsAt).toISOString(), photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
+      const { available, ...rest } = f;
+      const json = { ...rest, active: available, category: f.category || null, ...(isRoute ? {} : { destCountry: null, destCity: null }), stops, photos: photos.map((p) => (p.startsWith(OWN_PHOTO) ? `keep:${p.split('/').pop()}` : p)) };
       return editing ? unwrap(api.company.offers[':id'].$patch({ param: { id: editing }, json })) : unwrap(api.company.offers.$post({ json }));
     },
     onSuccess: () => { close(); refresh(); },
@@ -232,12 +231,11 @@ function Offers({ company }: { company: { country: string; city: string; activit
     onSuccess: refresh,
   });
   type Row = NonNullable<typeof list.data>['offers'][number];
-  const load = (o: Row, copy: boolean, repub = false) => {
-    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, startsAt: copy || repub ? '' : toLocalInput(o.startsAt) });
+  const load = (o: Row, copy: boolean) => {
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, available: copy ? true : o.active });
     setStops(o.stops);
     setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
     setEditing(copy ? null : o.id);
-    setRepublish(repub);
     save.reset(); setOpen(true);
   };
   useEffect(() => {
@@ -254,8 +252,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
     if (!f.city.trim()) m.push(isRoute ? sf?.from?.city ?? 'Ville' : 'Ville du service');
     if (isRoute && !f.destCity.trim()) m.push(sf?.to?.city ?? "Ville d'arrivée");
     if (cat && !f.category) m.push(cat.label);
-    if (!f.startsAt) m.push('Date et heure');
-    if (!(f.capacity >= 1)) m.push('Places');
+    if (!(f.capacity >= 1)) m.push('Stock');
     setMissing(m);
     if (m.length) { requestAnimationFrame(() => document.getElementById('o-missing')?.scrollIntoView({ block: 'center', behavior: 'smooth' })); return; }
     save.mutate();
@@ -274,14 +271,13 @@ function Offers({ company }: { company: { country: string; city: string; activit
           {list.data.offers.map((o) => (
             <li key={o.id} className={`card flex flex-wrap items-center justify-between gap-3 !py-3 ${o.active ? '' : 'opacity-70'}`}>
               {o.photoCount > 0 && <img src={`${OWN_PHOTO}${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
-              <div className="min-w-0 flex-1"><p className="font-medium">{o.title} {!o.active && <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300">Désactivé</span>}{new Date(o.startsAt) <= new Date() && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Date passée</span>}</p>
-                <p className="text-sm text-zinc-400">{placeLabel(o)} · {dateFr(o.startsAt)} · {fcfa(o.priceFcfa)} · {o.booked}/{o.capacity}</p>
+              <div className="min-w-0 flex-1"><p className="font-medium">{o.title} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs ${o.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/10 text-zinc-300'}`}>{o.active ? 'Disponible' : 'Non disponible'}</span>{o.booked >= o.capacity && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Stock épuisé</span>}</p>
+                <p className="text-sm text-zinc-400">{placeLabel(o)} · {fcfa(o.priceFcfa)} · Stock : {Math.max(0, o.capacity - o.booked)} restant(s) sur {o.capacity} · Ajouté le {dateFr(o.startsAt)}</p>
                 {o.stops.length > 0 && <p className="text-xs text-zinc-500">Arrêts : {o.stops.join(' · ')}</p>}</div>
               <div className="flex flex-wrap gap-2" role="group" aria-label={`Actions pour ${o.title}`}>
-                <button className="btn" onClick={() => load(o, false, true)}>Republier</button>
                 <button className="btn-ghost" onClick={() => load(o, false)}>Modifier</button>
                 <button className="btn-ghost" onClick={() => load(o, true)}>Dupliquer</button>
-                <button className="btn-ghost" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: o.id, active: !o.active })}>{o.active ? 'Désactiver' : 'Activer'}</button>
+                <button className="btn-ghost" disabled={toggle.isPending} onClick={() => toggle.mutate({ id: o.id, active: !o.active })}>{o.active ? 'Marquer non disponible' : 'Marquer disponible'}</button>
                 <button className="btn-ghost text-red-300" disabled={remove.isPending} onClick={() => confirm(`Supprimer « ${o.title} » définitivement ?`) && remove.mutate(o.id)}>Supprimer</button>
               </div>
             </li>
@@ -289,9 +285,9 @@ function Offers({ company }: { company: { country: string; city: string; activit
         </ul>
       )}
       {open && (
-        <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center">
-          <form role="dialog" aria-modal="true" aria-label={editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`} onSubmit={submit} noValidate className="card my-4 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
-            <div className="flex items-center justify-between gap-2 sm:col-span-2">
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-3 sm:p-4">
+          <form role="dialog" aria-modal="true" aria-label={editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`} onSubmit={submit} noValidate className="card grid max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl gap-3 overflow-y-auto overscroll-contain !py-0 sm:max-h-[calc(100dvh-2rem)] sm:grid-cols-2">
+            <div className="sticky top-0 z-10 -mx-5 flex items-center justify-between gap-2 border-b border-white/10 bg-card px-5 py-3 sm:col-span-2">
               <h3 className="text-lg font-semibold">{editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`}</h3>
               <button type="button" className="btn-ghost !px-3" aria-label="Fermer" onClick={close}>✕</button>
             </div>
@@ -320,18 +316,20 @@ function Offers({ company }: { company: { country: string; city: string; activit
               <ChipInput label={isTransport ? 'Arrêts (villes ou lieux indiqués)' : 'Lieux / points de rendez-vous (facultatif)'}
                 hint="Le client choisira l’un de ces arrêts en réservant." values={stops} onChange={setStops} max={20} placeholder="Ex. Gare de Ouaga Nord" />
             </div>
-            <div className="space-y-1"><label htmlFor="o-date" className="text-sm font-medium">Date et heure</label>
-              <input id="o-date" className="input" type="datetime-local" required min={editing ? undefined : toLocalInput(new Date().toISOString())} value={f.startsAt} onChange={(e) => setF({ ...f, startsAt: e.target.value })} /></div>
+            <div className="space-y-1"><label htmlFor="o-avail" className="text-sm font-medium">Disponibilité</label>
+              <select id="o-avail" className="input" value={f.available ? 'yes' : 'no'} onChange={(e) => setF({ ...f, available: e.target.value === 'yes' })}>
+                <option value="yes">Disponible</option><option value="no">Non disponible</option>
+              </select></div>
             <div className="space-y-1"><label htmlFor="o-price" className="text-sm font-medium">Prix (FCFA)</label>
               <input id="o-price" className="input" type="number" min={0} required value={f.priceFcfa} onChange={(e) => setF({ ...f, priceFcfa: Number(e.target.value) })} /></div>
-            <div className="space-y-1"><label htmlFor="o-cap" className="text-sm font-medium">Places</label>
+            <div className="space-y-1"><label htmlFor="o-cap" className="text-sm font-medium">Stock disponible</label>
               <input id="o-cap" className="input" type="number" min={1} required value={f.capacity} onChange={(e) => setF({ ...f, capacity: Number(e.target.value) })} /></div>
             <div className="space-y-1 sm:col-span-2"><label htmlFor="o-desc" className="text-sm font-medium">Description</label>
               <textarea id="o-desc" className="input" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div className="sm:col-span-2"><PhotoPicker value={photos} onChange={setPhotos} /></div>
             {missing.length > 0 && <p id="o-missing" role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300 sm:col-span-2">Veuillez renseigner : {missing.join(', ')}.</p>}
             <div className="sm:col-span-2"><Err e={save.error} /></div>
-            <div className="flex justify-end gap-2 sm:col-span-2">
+            <div className="sticky bottom-0 z-10 -mx-5 flex justify-end gap-2 border-t border-white/10 bg-card px-5 py-3 sm:col-span-2">
               <button type="button" className="btn-ghost" onClick={close}>Annuler</button>
               <button className="btn" disabled={save.isPending}>{editing ? 'Enregistrer les modifications' : "Publier l'offre"}</button>
             </div>

@@ -26,7 +26,7 @@ export function Account() {
               <div>
                 <p className="font-semibold">{b.offerTitle} <span className="ml-1 font-mono text-xs text-zinc-500">{b.reference}</span></p>
                 <p className="text-sm text-zinc-400">{b.companyName} · {placeLabel(b)}{b.stop ? ` · arrêt : ${b.stop}` : ''}</p>
-                <p className="text-sm text-zinc-500">{dateFr(b.startsAt)} · {b.seats} place(s) · <Link className="underline" to={`/reservation/${b.id}`}>Voir le reçu</Link></p>
+                <p className="text-sm text-zinc-500">{b.seats} place(s) · <Link className="underline" to={`/reservation/${b.id}`}>Voir le reçu</Link></p>
               </div>
               {b.status === 'pending_payment' && b.paymentId
                 ? <button className="btn" onClick={() => setPaying(b.paymentId!)}>Suivre le paiement</button>

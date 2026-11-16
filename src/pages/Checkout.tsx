@@ -193,7 +193,6 @@ export function Checkout() {
             </div>
             <dl className="space-y-1 text-sm">
               <Row k="Lieu" v={placeLabel(o)} />
-              <Row k="Date" v={dateFr(o.startsAt)} />
               {d.stop && <Row k={isTransport ? 'Arrêt' : 'Rendez-vous'} v={d.stop} />}
               <Row k="Places" v={String(d.seats)} />
               <Row k="Prix unitaire" v={price ? fcfa(price) : 'Gratuit'} />

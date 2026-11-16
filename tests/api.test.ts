@@ -540,19 +540,16 @@ describe('gestion des offres (modifier, dupliquer, désactiver, supprimer)', () 
   const jpeg = 'data:image/jpeg;base64,' + Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]).toString('base64');
   const body = (extra = {}) => ({ title: 'Poulet braisé', description: 'Servi avec attiéké', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', priceFcfa: 0, capacity: 10, startsAt: future(), ...extra });
 
-  it('modifie une offre : champs, capacité protégée, date future, photos conservées/remplacées/retirées', async () => {
+  it('modifie une offre : champs, capacité protégée, disponibilité, photos conservées/remplacées/retirées', async () => {
     const { owner } = await setup(5, 5, 0);
     const o = (await owner.post('/company/offers', body({ photos: [jpeg, jpeg] }))).json.offer;
     expect((await owner.patch(`/company/offers/${o.id}`, { active: false })).json.offer.photoCount).toBe(2); // désactiver ne touche pas aux photos
     const r = await owner.patch(`/company/offers/${o.id}`, { title: 'Poulet DG', priceFcfa: 4500, capacity: 12 });
     expect(r.json.offer).toMatchObject({ title: 'Poulet DG', priceFcfa: 4500, capacity: 12, description: 'Servi avec attiéké', active: false });
-    expect((await owner.patch(`/company/offers/${o.id}`, { startsAt: new Date(Date.now() - 3600_000).toISOString() })).status).toBe(400);
-    expect((await owner.patch(`/company/offers/${o.id}`, { startsAt: o.startsAt })).status).toBe(200); // date inchangée acceptée
-    const nd = new Date(Date.now() + 30 * 86400_000).toISOString(); // republication : nouvelle date + réactivation en un appel
-    const rp = await owner.patch(`/company/offers/${o.id}`, { startsAt: nd, active: true });
-    expect(rp.status).toBe(200);
-    expect(rp.json.offer).toMatchObject({ active: true, startsAt: nd });
-
+    // la date d'ajout est automatique : elle n'est pas modifiable et ne limite pas l'affichage
+    const added = (await owner.patch(`/company/offers/${o.id}`, { startsAt: '2001-01-01T00:00:00.000Z', active: true })).json.offer;
+    expect(added.active).toBe(true);
+    expect(added.startsAt).toBe(o.startsAt);
     // photos : garder la 2e, ajouter une nouvelle
     expect((await owner.patch(`/company/offers/${o.id}`, { photos: ['keep:1', jpeg] })).json.offer.photoCount).toBe(2);
     expect((await owner.patch(`/company/offers/${o.id}`, { photos: ['keep:3'] })).status).toBe(400);
@@ -721,10 +718,6 @@ describe('parcours de réservation : informations du réservant', () => {
     expect(await n('activity=hotel&guests=3')).toBe(1);   // seule la chambre à 4 places convient
     expect(await n('activity=hotel&category=Suite&maxPrice=100000')).toBe(1);
     expect(await n('activity=restauration&category=Ivoirienne')).toBe(1);
-    const day = base.startsAt.slice(0, 10);
-    expect(await n(`activity=expedition&date=${day}`)).toBe(1);
-    expect(await n('activity=expedition&date=2001-01-01')).toBe(0);
-    expect((await anon.get('/offers?date=pas-une-date')).status).toBe(400);
   });
 });
 
@@ -744,5 +737,24 @@ describe('profil partenaire', () => {
     expect((await owner.patch('/company/profile', { ...base, email: '' })).json.company.email).toBe('');
     expect((await anon.get('/offers')).json.offers[0].companyName).toBe('Chez Anicette');
     expect((await anon.patch('/company/profile', base)).status).toBe(401);
+  });
+});
+
+describe('disponibilité sans date', () => {
+  it("l'offre reste visible tant que le stock n'est pas épuisé, quelle que soit la date d'ajout", async () => {
+    const { owner } = await setup(5, 5, 0);
+    const anon = new Client(ctx.app);
+    const base = { title: 'Poulet braisé', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', priceFcfa: 0, capacity: 2 };
+    const o = (await owner.post('/company/offers', base)).json.offer;
+    expect(new Date(o.startsAt).getTime()).toBeLessThanOrEqual(Date.now());
+    const ids = async () => (await anon.get('/offers')).json.offers.map((x: any) => x.id);
+    expect(await ids()).toContain(o.id);
+    const off = (await owner.post('/company/offers', { ...base, title: 'Indisponible', active: false })).json.offer;
+    expect(await ids()).not.toContain(off.id);
+    expect((await owner.patch(`/company/offers/${off.id}`, { active: true })).status).toBe(200);
+    expect(await ids()).toContain(off.id);
+    const cust = await register('customer', 'dispo@x.test');
+    expect((await cust.post('/bookings', { ...BK, guests: ['Passager Un', 'Passager Deux'], offerId: o.id, seats: 2 })).status).toBe(201);
+    expect(await ids()).not.toContain(o.id); // stock épuisé
   });
 });

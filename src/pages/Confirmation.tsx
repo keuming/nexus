@@ -40,7 +40,6 @@ export function Confirmation() {
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <Item k="Prestataire" v={b.companyName} />
           <Item k="Contact prestataire" v={b.companyPhone} />
-          <Item k="Date et heure" v={dateFr(b.startsAt)} />
           <Item k="Lieu" v={placeLabel(b)} />
           {b.stop && <Item k="Arrêt / rendez-vous" v={b.stop} />}
           {b.companyAddress && <Item k="Adresse" v={b.companyAddress} />}
