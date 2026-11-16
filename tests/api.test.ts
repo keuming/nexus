@@ -782,3 +782,30 @@ describe('paiement à la livraison', () => {
     expect(back.credits).toBe(5);
   });
 });
+
+describe('réservation avec ou sans compte', () => {
+  it('invité : réserve sans inscription, puis transforme sa session en vrai compte', async () => {
+    const { owner } = await setup(5, 5, 3000);
+    const offerId = (await owner.get('/company/offers')).json.offers[0].id;
+    const g = new Client(ctx.app);
+    const r = await g.post('/auth/guest', { name: 'Client Invité' });
+    expect(r.status).toBe(201);
+    expect(r.json.user).toMatchObject({ role: 'customer', guest: true, email: '' });
+    const b = await g.post('/bookings', { ...BK, offerId, payMode: 'cash' });
+    expect(b.status).toBe(201);
+    expect((await g.get('/auth/me')).json.user.guest).toBe(true);
+    // un e-mail déjà pris est refusé ; une adresse fictive d'invité aussi
+    await register('customer', 'pris@x.test');
+    expect((await g.post('/auth/upgrade', { email: 'pris@x.test', password: 'motdepasse1' })).status).toBe(409);
+    expect((await new Client(ctx.app).post('/auth/register', { email: 'x@invite.backmarket.invalid', name: 'Pirate', password: 'motdepasse1' })).status).toBe(400);
+    const up = await g.post('/auth/upgrade', { email: 'nouveau@x.test', password: 'motdepasse1' });
+    expect(up.status).toBe(200);
+    expect(up.json.user).toMatchObject({ guest: false, email: 'nouveau@x.test' });
+    expect((await g.post('/auth/upgrade', { email: 'autre@x.test', password: 'motdepasse1' })).status).toBe(409); // déjà complet
+    // la réservation est conservée et le compte fonctionne au login
+    expect((await g.get('/bookings/mine')).json.bookings).toHaveLength(1);
+    const again = new Client(ctx.app);
+    expect((await again.post('/auth/login', { email: 'nouveau@x.test', password: 'motdepasse1' })).status).toBe(200);
+    expect((await again.get('/bookings/mine')).json.bookings).toHaveLength(1);
+  });
+});

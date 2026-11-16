@@ -2,7 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, unwrap } from './api';
 
-export interface User { id: string; email: string; name: string; role: 'admin' | 'owner' | 'customer' }
+export interface User { id: string; email: string; name: string; role: 'admin' | 'owner' | 'customer'; guest?: boolean }
 interface Ctx { user: User | null; loading: boolean; refresh: () => Promise<void>; logout: () => Promise<void> }
 const AuthCtx = createContext<Ctx>(null!);
 export const useAuth = () => useContext(AuthCtx);

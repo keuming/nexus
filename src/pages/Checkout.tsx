@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { placeLabel } from '../lib/place';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { api, dateFr, fcfa, unwrap } from '../lib/api';
+import { api, ApiError, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { Err } from '../components/Layout';
 import { PaymentPanel } from '../components/PaymentPanel';
@@ -15,20 +15,21 @@ const NOUN: Record<string, string> = { transport: 'passager', hotel: 'occupant',
 interface Draft {
   seats: number; stop: string; name: string; phone: string; email: string; guests: string[]; note: string;
   mode: '' | 'cash' | 'digital'; operator: string; account: string; accept: boolean;
+  signup: '' | 'create' | 'guest'; password: string;
 }
 const key = (id: string) => `nx-checkout-${id}`;
 const load = (id: string): Partial<Draft> => { try { return JSON.parse(sessionStorage.getItem(key(id)) ?? '{}'); } catch { return {}; } };
-const save = (id: string, d: Draft) => { try { sessionStorage.setItem(key(id), JSON.stringify({ ...d, accept: false })); } catch { /* stockage indisponible */ } };
+const save = (id: string, d: Draft) => { try { sessionStorage.setItem(key(id), JSON.stringify({ ...d, accept: false, password: '' })); } catch { /* stockage indisponible */ } };
 
 /** Parcours de réservation en ligne : sélection → informations du réservant → paiement ORZAYAH → confirmation. */
 export function Checkout() {
   const { offerId = '' } = useParams();
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const nav = useNavigate();
   const offer = useQuery({ queryKey: ['offer', offerId], queryFn: () => unwrap(api.offers[':id'].$get({ param: { id: offerId } })), retry: false });
   const methods = useQuery({ queryKey: ['pay-methods'], queryFn: () => unwrap(api.payments.methods.$get()), staleTime: 60_000 });
   const [step, setStep] = useState<Step>(1);
-  const [d, setD] = useState<Draft>(() => ({ seats: 1, stop: '', name: '', phone: '', email: '', guests: [], note: '', mode: '', operator: '', account: '', accept: false, ...load(offerId) }));
+  const [d, setD] = useState<Draft>(() => ({ seats: 1, stop: '', name: '', phone: '', email: '', guests: [], note: '', mode: '', operator: '', account: '', accept: false, signup: '', password: '', ...load(offerId) }));
   const [paying, setPaying] = useState<{ paymentId: string; bookingId: string } | null>(null);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
@@ -47,13 +48,21 @@ export function Checkout() {
   const guests = useMemo(() => Array.from({ length: d.seats }, (_, i) => d.guests[i] ?? ''), [d.guests, d.seats]);
 
   const book = useMutation({
-    mutationFn: () => unwrap(api.bookings.$post({ json: {
+    mutationFn: async () => {
+      // Étape « compte » (facultative) : création du compte, ou session d'invité pour réserver sans inscription.
+      if (!user) {
+        if (d.signup === 'create') await unwrap(api.auth.register.$post({ json: { email: d.email, name: d.name, password: d.password, role: 'customer' as const } }));
+        else await unwrap(api.auth.guest.$post({ json: { name: d.name } }));
+        await refresh();
+      }
+      return unwrap(api.bookings.$post({ json: {
       offerId, seats: d.seats, ...(needsStop ? { stop: d.stop } : {}),
       contact: { name: d.name, phone: d.phone, email: d.email },
       guests: guests.map((g) => g.trim()).filter(Boolean), note: d.note, acceptTerms: true as const,
       ...(paid ? { payMode: d.mode === 'cash' ? 'cash' as const : 'digital' as const } : {}),
       ...(paid && d.mode === 'digital' ? { payment: { operator: d.operator as 'ORANGE', accountNumber: d.account } } : {}),
-    } })),
+    } }));
+    },
     onSuccess: (r) => {
       try { sessionStorage.removeItem(key(offerId)); } catch { /* ignore */ }
       if (r.payment) setPaying({ paymentId: r.payment.id, bookingId: r.booking.id });
@@ -191,16 +200,31 @@ export function Checkout() {
                 <span>J'accepte les <Link to="/conditions" target="_blank" className="text-brand underline">conditions de réservation</Link>.</span>
               </label>
               <Err e={book.error} />
-              {!user && <p className="rounded-lg bg-white/5 px-3 py-2 text-sm text-zinc-300">Dernière étape : connectez-vous ou <Link className="text-brand underline" to="/register" state={{ from: `/reserver/${offerId}` }}>créez un compte</Link> pour payer. Votre sélection et vos informations sont conservées.</p>}
+              {book.error instanceof ApiError && book.error.code === 'email_taken' && <p className="text-sm">Cet e-mail a déjà un compte : <Link className="text-brand underline" to="/login" state={{ from: `/reserver/${offerId}` }}>connectez-vous</Link> ou choisissez « Continuer sans compte ».</p>}
+              {!user && (
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Votre compte BackMarket</legend>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.signup === 'create' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+                    <input type="radio" name="signup" className="mt-1" required checked={d.signup === 'create'} onChange={() => set('signup', 'create')} />
+                    <span><span className="block text-sm font-semibold">Créer mon compte</span><span className="block text-xs text-zinc-400">Pour retrouver vos réservations et réserver plus vite la prochaine fois.</span></span>
+                  </label>
+                  {d.signup === 'create' && (
+                    <Field id="s-pw" label={`Mot de passe pour ${d.email} * (8 caractères minimum)`}>
+                      <input id="s-pw" className="input" type="password" required minLength={8} maxLength={200} autoComplete="new-password" value={d.password} onChange={(e) => set('password', e.target.value)} />
+                    </Field>
+                  )}
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.signup === 'guest' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+                    <input type="radio" name="signup" className="mt-1" required checked={d.signup === 'guest'} onChange={() => set('signup', 'guest')} />
+                    <span><span className="block text-sm font-semibold">Continuer sans compte</span><span className="block text-xs text-zinc-400">Aucune inscription : vous pourrez créer votre compte plus tard depuis votre confirmation.</span></span>
+                  </label>
+                  <p className="text-xs text-zinc-500">Vous avez déjà un compte ? <Link className="text-brand underline" to="/login" state={{ from: `/reserver/${offerId}` }}>Connectez-vous</Link></p>
+                </fieldset>
+              )}
               <div className="flex justify-between gap-2">
                 <button type="button" className="btn-ghost" onClick={() => setStep(2)}>Retour</button>
-                {user ? (
-                  <button className="btn" disabled={book.isPending || !canSubmit}>
-                    {book.isPending ? 'Un instant…' : online ? `Payer ${fcfa(total)}` : 'Confirmer ma réservation'}
-                  </button>
-                ) : (
-                  <Link className="btn" to="/login" state={{ from: `/reserver/${offerId}` }}>Se connecter pour finaliser</Link>
-                )}
+                <button className="btn" disabled={book.isPending || !canSubmit || (!user && (!d.signup || (d.signup === 'create' && d.password.length < 8)))}>
+                  {book.isPending ? 'Un instant…' : online ? `Payer ${fcfa(total)}` : 'Confirmer ma réservation'}
+                </button>
               </div>
             </form>
           )}

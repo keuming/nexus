@@ -6,13 +6,15 @@ import { z } from 'zod';
 import { eq, sql } from 'drizzle-orm';
 import { companies, users } from '../db/schema.js';
 import { companyInput, phoneField } from '../lib/schemas.js';
+import { randomUUID, randomBytes } from 'node:crypto';
 import { hashPassword, signSession, verifyPassword } from '../lib/auth.js';
 import { AppError, conflict, unauthorized } from '../lib/errors.js';
 import type { Env } from '../middleware/auth.js';
 import { COOKIE_NAME, SESSION_DAYS } from '../../shared/constants.js';
 
+const GUEST_DOMAIN = '@invite.backmarket.invalid';
 const cred = {
-  email: z.string().trim().toLowerCase().email().max(200),
+  email: z.string().trim().toLowerCase().email().max(200).refine((e) => !e.endsWith(GUEST_DOMAIN), 'Adresse e-mail invalide'),
   password: z.string().min(8, '8 caractères minimum').max(200),
 };
 
@@ -24,7 +26,8 @@ const cookieOpts = () => ({
   maxAge: SESSION_DAYS * 86400,
 });
 
-const publicUser = (u: typeof users.$inferSelect) => ({ id: u.id, email: u.email, name: u.name, role: u.role });
+/** Compte « invité » : créé pour réserver sans inscription. Son e-mail est fictif (jamais utilisable pour se connecter). */
+const publicUser = (u: typeof users.$inferSelect) => ({ id: u.id, email: u.email.endsWith(GUEST_DOMAIN) ? '' : u.email, name: u.name, role: u.role, guest: u.email.endsWith(GUEST_DOMAIN) });
 
 // Hash factice généré à la volée : égalise le temps de réponse quand l'email est inconnu (anti-énumération).
 let dummyHash: Promise<string> | undefined;
@@ -68,6 +71,32 @@ export const authRoutes = new Hono<Env>()
       return c.json({ user: publicUser(user) }, 201);
     },
   )
+  /** Réserver sans créer de compte : session d'invité (le client pourra créer son compte plus tard, depuis sa confirmation). */
+  .post('/guest', v('json', z.object({ name: z.string().trim().min(2).max(100) })), async (c) => {
+    const s = c.get('user');
+    const db = c.get('db');
+    if (s) {
+      const [cur] = await db.select().from(users).where(eq(users.id, s.id)).limit(1);
+      if (cur) return c.json({ user: publicUser(cur) });
+    }
+    const [u] = await db.insert(users).values({ email: `invite-${randomUUID()}${GUEST_DOMAIN}`, name: c.req.valid('json').name, role: 'customer', passwordHash: await hashPassword(randomBytes(24).toString('hex')) }).returning();
+    setCookie(c, COOKIE_NAME, await signSession({ id: u.id, role: u.role }), cookieOpts());
+    return c.json({ user: publicUser(u) }, 201);
+  })
+  /** Transforme le compte invité en vrai compte (e-mail + mot de passe) : les réservations déjà faites sont conservées. */
+  .post('/upgrade', v('json', z.object({ ...cred })), async (c) => {
+    const s = c.get('user');
+    if (!s) throw unauthorized();
+    const db = c.get('db');
+    const b = c.req.valid('json');
+    const [cur] = await db.select().from(users).where(eq(users.id, s.id)).limit(1);
+    if (!cur) throw unauthorized();
+    if (!cur.email.endsWith(GUEST_DOMAIN)) throw conflict('not_guest', 'Ce compte est déjà un compte complet');
+    const exists = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${b.email}`).limit(1);
+    if (exists.length) throw conflict('email_taken', 'Cet email est déjà utilisé : connectez-vous avec ce compte');
+    const [u] = await db.update(users).set({ email: b.email, passwordHash: await hashPassword(b.password) }).where(eq(users.id, cur.id)).returning();
+    return c.json({ user: publicUser(u) });
+  })
   .post('/login', v('json', z.object({ email: cred.email, password: z.string().min(1).max(200) })), async (c) => {
     const { email, password } = c.req.valid('json');
     const [u] = await c.get('db').select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);

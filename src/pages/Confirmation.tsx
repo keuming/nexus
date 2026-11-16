@@ -1,9 +1,10 @@
 import { placeLabel } from '../lib/place';
 import { Link, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { Err } from '../components/Layout';
+import { useAuth } from '../lib/auth';
 import { PaymentPanel } from '../components/PaymentPanel';
 import { countryName } from '../../shared/geo';
 
@@ -12,6 +13,7 @@ const METHOD: Record<string, string> = { ORANGE: 'Orange Money', MTN: 'MTN MoMo'
 /** Confirmation et reçu d'une réservation (imprimable). Se met à jour tant que le paiement est en cours. */
 export function Confirmation() {
   const { id = '' } = useParams();
+  const { user } = useAuth();
   const [track, setTrack] = useState(false);
   const q = useQuery({
     queryKey: ['booking', id],
@@ -61,6 +63,8 @@ export function Confirmation() {
         </div>
       </section>
 
+      {user?.guest && <CreateAccount defaultEmail={b.contactEmail ?? ''} />}
+
       <div className="flex flex-wrap justify-center gap-3 print:hidden">
         {confirmed && <button className="btn" onClick={() => window.print()}>Imprimer / enregistrer le reçu</button>}
         <Link className="btn-ghost" to="/account">Mes réservations</Link>
@@ -72,3 +76,25 @@ export function Confirmation() {
 }
 
 const Item = ({ k, v }: { k: string; v: string }) => <div><dt className="text-xs text-zinc-500">{k}</dt><dd className="font-medium">{v}</dd></div>;
+
+/** Proposé aux clients « invités » : crée leur compte en gardant leurs réservations. */
+function CreateAccount({ defaultEmail }: { defaultEmail: string }) {
+  const { refresh } = useAuth();
+  const [email, setEmail] = useState(defaultEmail);
+  const [password, setPassword] = useState('');
+  const m = useMutation({ mutationFn: () => unwrap(api.auth.upgrade.$post({ json: { email, password } })), onSuccess: () => { void refresh(); } });
+  return (
+    <form className="card space-y-3 print:hidden" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+      <h2 className="font-semibold">Créer mon compte BackMarket (facultatif)</h2>
+      <p className="text-sm text-zinc-400">Retrouvez cette réservation et les suivantes dans « Mes réservations », depuis n'importe quel appareil.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1"><label htmlFor="u-email" className="text-sm font-medium">E-mail</label>
+          <input id="u-email" type="email" required className="input" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+        <div className="space-y-1"><label htmlFor="u-pw" className="text-sm font-medium">Mot de passe (8 caractères min.)</label>
+          <input id="u-pw" type="password" required minLength={8} className="input" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+      </div>
+      <Err e={m.error} />
+      <button className="btn" disabled={m.isPending}>{m.isPending ? 'Création…' : 'Créer mon compte'}</button>
+    </form>
+  );
+}
