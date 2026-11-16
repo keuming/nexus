@@ -213,7 +213,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
   const sf = SEARCH_FORMS[company.activity as keyof typeof SEARCH_FORMS];
   const cat = CATEGORIES[company.activity as keyof typeof CATEGORIES];
   const noun = NOUN[company.activity] ?? { a: 'une offre', the: "l'offre" };
-  const reset = () => { setF(blank); setStops([]); setPhotos([]); setEditing(null); setRepublish(false); };
+  const reset = () => { setMissing([]); setF(blank); setStops([]); setPhotos([]); setEditing(null); setRepublish(false); };
   const close = () => { reset(); setOpen(false); };
   const refresh = () => qc.invalidateQueries({ queryKey: ['company-offers'] });
   const save = useMutation({
@@ -246,7 +246,20 @@ function Offers({ company }: { company: { country: string; city: string; activit
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }); // eslint-disable-line react-hooks/exhaustive-deps
-  const submit = (e: FormEvent) => { e.preventDefault(); save.mutate(); };
+  const [missing, setMissing] = useState<string[]>([]);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const m: string[] = [];
+    if (f.title.trim().length < 2) m.push('Titre');
+    if (!f.city.trim()) m.push(isRoute ? sf?.from?.city ?? 'Ville' : 'Ville du service');
+    if (isRoute && !f.destCity.trim()) m.push(sf?.to?.city ?? "Ville d'arrivée");
+    if (cat && !f.category) m.push(cat.label);
+    if (!f.startsAt) m.push('Date et heure');
+    if (!(f.capacity >= 1)) m.push('Places');
+    setMissing(m);
+    if (m.length) { requestAnimationFrame(() => document.getElementById('o-missing')?.scrollIntoView({ block: 'center', behavior: 'smooth' })); return; }
+    save.mutate();
+  };
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -277,7 +290,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
       )}
       {open && (
         <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center">
-          <form role="dialog" aria-modal="true" aria-label={editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`} onSubmit={submit} className="card my-4 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
+          <form role="dialog" aria-modal="true" aria-label={editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`} onSubmit={submit} noValidate className="card my-4 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
             <div className="flex items-center justify-between gap-2 sm:col-span-2">
               <h3 className="text-lg font-semibold">{editing ? `Modifier ${noun.the}` : `Ajouter ${noun.a}`}</h3>
               <button type="button" className="btn-ghost !px-3" aria-label="Fermer" onClick={close}>✕</button>
@@ -316,6 +329,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
             <div className="space-y-1 sm:col-span-2"><label htmlFor="o-desc" className="text-sm font-medium">Description</label>
               <textarea id="o-desc" className="input" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div className="sm:col-span-2"><PhotoPicker value={photos} onChange={setPhotos} /></div>
+            {missing.length > 0 && <p id="o-missing" role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300 sm:col-span-2">Veuillez renseigner : {missing.join(', ')}.</p>}
             <div className="sm:col-span-2"><Err e={save.error} /></div>
             <div className="flex justify-end gap-2 sm:col-span-2">
               <button type="button" className="btn-ghost" onClick={close}>Annuler</button>
