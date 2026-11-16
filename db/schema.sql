@@ -221,3 +221,6 @@ alter table companies add column if not exists logo_url text;
 
 -- v34 : mode de paiement de la réservation (digital = Mobile Money/carte via ORZAYAH ; cash = à la livraison)
 alter table bookings add column if not exists pay_method text not null default 'digital';
+
+-- v35 : le fournisseur autorise (ou non) le paiement à la livraison pour chaque offre
+alter table offers add column if not exists allow_cash boolean not null default true;

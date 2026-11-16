@@ -35,6 +35,7 @@ const offerFields = z.object({
   destCountry: countryCode.nullish(),
   destCity: cityName.nullish(),
   category: z.string().trim().max(60).nullish(),
+  allowCash: z.boolean().default(true), // paiement à la livraison autorisé
   stops: placeList(20),
   priceFcfa: z.number().int().min(0).max(100_000_000),
   capacity: z.number().int().min(1).max(10_000),

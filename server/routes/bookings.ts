@@ -46,8 +46,9 @@ export const bookingRoutes = new Hono<Env>()
 
     try { await sweepExpired(ctx, 3); } catch (e) { console.error('[sweep]', e); }
 
-    const [pre] = await db.select({ price: offers.priceFcfa }).from(offers).where(eq(offers.id, offerId)).limit(1);
+    const [pre] = await db.select({ price: offers.priceFcfa, allowCash: offers.allowCash }).from(offers).where(eq(offers.id, offerId)).limit(1);
     if (!pre) throw notFound('Offre');
+    if (pre.price > 0 && payMode === 'cash' && !pre.allowCash) throw new AppError(400, 'cash_not_allowed', "Ce prestataire n'accepte pas le paiement à la livraison pour cette offre");
     const totalFcfa = pre.price * seats;
     const priced = totalFcfa > 0;
     const paid = priced && payMode === 'digital'; // paiement en ligne (sinon gratuit ou à la livraison)

@@ -36,6 +36,8 @@ export function Checkout() {
   // Préremplit avec le compte, sans écraser ce que le client a déjà saisi.
   useEffect(() => { if (user) setD((x) => ({ ...x, name: x.name || user.name, email: x.email || user.email })); }, [user]);
   useEffect(() => { save(offerId, d); }, [offerId, d]);
+  const allowCash = offer.data?.offer.allowCash;
+  useEffect(() => { if (allowCash === false) setD((x) => (x.mode === 'cash' ? { ...x, mode: '' } : x)); }, [allowCash]);
 
   const o = offer.data?.offer;
   const price = o?.priceFcfa ?? 0;
@@ -78,8 +80,9 @@ export function Checkout() {
   const next = (e: FormEvent, to: Step) => { e.preventDefault(); book.reset(); setStep(to); window.scrollTo({ top: 0 }); };
   const pay = (e: FormEvent) => { e.preventDefault(); book.mutate(); };
   const methodsOk = methods.data?.available !== false;
+  const cashOk = o.allowCash !== false;
   const online = paid && d.mode === 'digital';
-  const canSubmit = !paid || (d.mode === 'cash') || (d.mode === 'digital' && methodsOk && !!d.operator && d.account.replace(/\D/g, '').length >= 8);
+  const canSubmit = !paid || (d.mode === 'cash' && cashOk) || (d.mode === 'digital' && methodsOk && !!d.operator && d.account.replace(/\D/g, '').length >= 8);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -161,10 +164,10 @@ export function Checkout() {
                 <>
                   <fieldset className="space-y-2">
                     <legend className="text-sm font-medium">Comment souhaitez-vous payer ?</legend>
-                    <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.mode === 'cash' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+                    {cashOk && <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.mode === 'cash' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
                       <input type="radio" name="mode" className="mt-1" required checked={d.mode === 'cash'} onChange={() => set('mode', 'cash')} />
                       <span><span className="block text-sm font-semibold">Payer à la livraison</span><span className="block text-xs text-zinc-400">Vous réglez {fcfa(total)} directement au prestataire. Votre réservation est confirmée tout de suite.</span></span>
-                    </label>
+                    </label>}
                     <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.mode === 'digital' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
                       <input type="radio" name="mode" className="mt-1" required checked={d.mode === 'digital'} onChange={() => set('mode', 'digital')} />
                       <span><span className="block text-sm font-semibold">Mobile Money (ORZAYAH)</span><span className="block text-xs text-zinc-400">Orange Money, MTN MoMo, Moov Money, Wave : vous validez sur votre téléphone.</span></span>

@@ -200,7 +200,7 @@ const OWN_PHOTO = '/api/company/offers/';
 function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[] } }) {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['company-offers'], queryFn: () => unwrap(api.company.offers.$get()) });
-  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, available: true };
+  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, available: true, allowCash: true };
   const [f, setF] = useState(blank);
   const [stops, setStops] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -232,7 +232,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
   });
   type Row = NonNullable<typeof list.data>['offers'][number];
   const load = (o: Row, copy: boolean) => {
-    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, available: copy ? true : o.active });
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, available: copy ? true : o.active, allowCash: o.allowCash });
     setStops(o.stops);
     setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
     setEditing(copy ? null : o.id);
@@ -272,7 +272,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
             <li key={o.id} className={`card flex flex-wrap items-center justify-between gap-3 !py-3 ${o.active ? '' : 'opacity-70'}`}>
               {o.photoCount > 0 && <img src={`${OWN_PHOTO}${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
               <div className="min-w-0 flex-1"><p className="font-medium">{o.title} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs ${o.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/10 text-zinc-300'}`}>{o.active ? 'Disponible' : 'Non disponible'}</span>{o.booked >= o.capacity && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Stock épuisé</span>}</p>
-                <p className="text-sm text-zinc-400">{placeLabel(o)} · {fcfa(o.priceFcfa)} · Stock : {Math.max(0, o.capacity - o.booked)} restant(s) sur {o.capacity} · Ajouté le {dateFr(o.startsAt)}</p>
+                <p className="text-sm text-zinc-400">{placeLabel(o)} · {fcfa(o.priceFcfa)} · Stock : {Math.max(0, o.capacity - o.booked)} restant(s) sur {o.capacity} · {o.allowCash ? 'Paiement à la livraison autorisé' : 'Paiement en ligne uniquement'} · Ajouté le {dateFr(o.startsAt)}</p>
                 {o.stops.length > 0 && <p className="text-xs text-zinc-500">Arrêts : {o.stops.join(' · ')}</p>}</div>
               <div className="flex flex-wrap gap-2" role="group" aria-label={`Actions pour ${o.title}`}>
                 <button className="btn-ghost" onClick={() => load(o, false)}>Modifier</button>
@@ -324,6 +324,10 @@ function Offers({ company }: { company: { country: string; city: string; activit
               <input id="o-price" className="input" type="number" min={0} required value={f.priceFcfa} onChange={(e) => setF({ ...f, priceFcfa: Number(e.target.value) })} /></div>
             <div className="space-y-1"><label htmlFor="o-cap" className="text-sm font-medium">Stock disponible</label>
               <input id="o-cap" className="input" type="number" min={1} required value={f.capacity} onChange={(e) => setF({ ...f, capacity: Number(e.target.value) })} /></div>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <input type="checkbox" className="mt-1" checked={f.allowCash} onChange={(e) => setF({ ...f, allowCash: e.target.checked })} />
+              <span><span className="font-medium">Autoriser le paiement à la livraison</span><span className="block text-xs text-zinc-400">Si décoché, le client doit payer en ligne (Mobile Money). Sans effet sur les offres gratuites.</span></span>
+            </label>
             <div className="space-y-1 sm:col-span-2"><label htmlFor="o-desc" className="text-sm font-medium">Description</label>
               <textarea id="o-desc" className="input" value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div className="sm:col-span-2"><PhotoPicker value={photos} onChange={setPhotos} /></div>

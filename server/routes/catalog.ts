@@ -24,6 +24,7 @@ const cols = {
   destCountry: offers.destCountry,
   destCity: offers.destCity,
   category: offers.category,
+  allowCash: offers.allowCash,
   stops: offers.stops,
   photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`.as('photo_count'),
   companyName: companies.name,

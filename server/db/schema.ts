@@ -49,6 +49,7 @@ export const offers = pgTable('offers', {
   destCountry: text('dest_country'),
   destCity: text('dest_city'),
   category: text('category'),
+  allowCash: boolean('allow_cash').notNull().default(true),
   stops: text('stops').array().notNull().default([]),
   priceFcfa: integer('price_fcfa').notNull(),
   capacity: integer('capacity').notNull(),

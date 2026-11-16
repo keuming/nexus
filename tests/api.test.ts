@@ -809,3 +809,24 @@ describe('réservation avec ou sans compte', () => {
     expect((await again.get('/bookings/mine')).json.bookings).toHaveLength(1);
   });
 });
+
+describe('paiement à la livraison autorisé par offre', () => {
+  it("le fournisseur peut l'interdire : la réservation à la livraison est alors refusée", async () => {
+    const { owner } = await setup(5, 5, 3000);
+    const anon = new Client(ctx.app);
+    const offer = (await owner.get('/company/offers')).json.offers[0];
+    expect(offer.allowCash).toBe(true);
+    expect((await anon.get(`/offers/${offer.id}`)).json.offer.allowCash).toBe(true);
+    const cust = await register('customer', 'nocash@x.test');
+    expect((await owner.patch(`/company/offers/${offer.id}`, { allowCash: false })).json.offer.allowCash).toBe(false);
+    expect((await anon.get(`/offers/${offer.id}`)).json.offer.allowCash).toBe(false);
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id, payMode: 'cash' });
+    expect(r.status).toBe(400);
+    expect(r.json.error.code).toBe('cash_not_allowed');
+    expect((await owner.patch(`/company/offers/${offer.id}`, { allowCash: true })).status).toBe(200);
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payMode: 'cash' })).status).toBe(201);
+    // une modification sans ce champ ne le réinitialise pas
+    await owner.patch(`/company/offers/${offer.id}`, { allowCash: false });
+    expect((await owner.patch(`/company/offers/${offer.id}`, { title: 'Nouveau titre' })).json.offer.allowCash).toBe(false);
+  });
+});
