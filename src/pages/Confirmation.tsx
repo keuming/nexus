@@ -8,7 +8,6 @@ import { useAuth } from '../lib/auth';
 import { PaymentPanel } from '../components/PaymentPanel';
 import { countryName } from '../../shared/geo';
 
-const METHOD: Record<string, string> = { ORANGE: 'Orange Money', MTN: 'MTN MoMo', MOOV: 'Moov Money', WAVE: 'Wave' };
 
 /** Confirmation et reçu d'une réservation (imprimable). Se met à jour tant que le paiement est en cours. */
 export function Confirmation() {
@@ -34,7 +33,10 @@ export function Confirmation() {
         <p className="mt-2 text-sm text-zinc-400">Numéro de réservation</p>
         <p className="font-mono text-3xl font-extrabold tracking-wider" aria-label="Numéro de réservation">{b.reference}</p>
         {confirmed && <p className="mt-2 text-sm text-zinc-400">Présentez ce numéro au prestataire. Un e-mail de confirmation est envoyé à {b.contactEmail ?? 'votre adresse'} lorsque le service d'e-mails est actif.</p>}
-        {pending && <div className="mt-3 print:hidden"><button className="btn" onClick={() => setTrack(true)}>Suivre le paiement</button></div>}
+        {pending && <div className="mt-3 flex flex-wrap justify-center gap-2 print:hidden">
+          {b.payment?.payUrl && /^https:\/\//.test(b.payment.payUrl) && <a className="btn" href={b.payment.payUrl}>Payer maintenant</a>}
+          <button className="btn-ghost" onClick={() => setTrack(true)}>Suivre le paiement</button>
+        </div>}
       </div>
 
       <section className="card space-y-4">
@@ -58,7 +60,7 @@ export function Confirmation() {
         </dl>
         <hr className="border-white/10" />
         <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-          <span className="text-zinc-400">{b.payMethod === 'cash' && b.priceFcfa > 0 ? 'Paiement à la livraison : à régler directement au prestataire' : b.payment ? `Payé par ${METHOD[b.payment.operator] ?? b.payment.operator} (${b.payment.account})` : 'Offre gratuite'}{b.payment?.paidAt ? ` · ${dateFr(b.payment.paidAt)}` : ''}</span>
+          <span className="text-zinc-400">{b.payMethod === 'cash' && b.priceFcfa > 0 ? 'Paiement à la livraison : à régler directement au prestataire' : b.payment ? (b.payment.status === 'paid' ? 'Payé en ligne via ORZAYAH' : 'Paiement en ligne ORZAYAH') : 'Offre gratuite'}{b.payment?.paidAt ? ` · ${dateFr(b.payment.paidAt)}` : ''}</span>
           <span className="text-xl font-bold">{b.payment ? fcfa(b.payment.amountFcfa) : b.payMethod === 'cash' && b.priceFcfa > 0 ? fcfa(b.priceFcfa * b.seats) : 'Gratuit'}</span>
         </div>
       </section>

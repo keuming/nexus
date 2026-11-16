@@ -7,14 +7,21 @@ export interface OrzOp {
   feeAmount: string | null;
   failureReason: string | null;
   nextAction: { type?: string; message?: string; url?: string } | null;
+  /** Montant du lien en centimes (à comparer au montant attendu avant de livrer). */
+  amount: number | null;
+  /** Page de paiement hébergée par ORZAYAH. */
+  url: string | null;
 }
 
-export interface DepositInput { operator: 'ORANGE' | 'MTN' | 'MOOV' | 'WAVE'; accountNumber: string; amountCentimes: number; idempotencyKey: string }
+export interface PaymentLinkInput {
+  amountCentimes: number; description: string; idempotencyKey: string; externalReference: string; returnUrl: string;
+}
 
 export interface OrzayahClient {
-  createDeposit(i: DepositInput): Promise<OrzOp>;
-  /** `ref` : id ORZAYAH, référence publique ou idempotencyKey. `null` si l'opération est inconnue (404). */
-  getTransaction(ref: string): Promise<OrzOp | null>;
+  /** Crée un lien de paiement (même clé + même description = même lien). `id` = slug du lien. */
+  createPaymentLink(i: PaymentLinkInput): Promise<OrzOp>;
+  /** Source de vérité : relit le lien par son slug. `null` si inconnu (404). */
+  getPaymentLink(slug: string): Promise<OrzOp | null>;
 }
 
 /** `definitive` : la requête a été refusée, l'opération n'existe pas (400/401/403) ; sinon l'issue est incertaine. */
@@ -22,13 +29,18 @@ export class OrzayahError extends Error {
   constructor(public status: number, message: string, public definitive: boolean) { super(message); }
 }
 
-const normalize = (d: any): OrzOp => ({
-  id: String(d?.id ?? ''),
-  status: String(d?.status ?? 'PENDING'),
-  feeAmount: d?.feeAmount == null ? null : String(d.feeAmount),
-  failureReason: d?.failureReason ?? null,
-  nextAction: d?.nextAction ?? null,
-});
+const normalize = (d: any): OrzOp => {
+  const amount = d?.amount == null ? null : Number(d.amount);
+  return {
+    id: String(d?.slug ?? ''),
+    status: String(d?.status ?? 'PENDING'),
+    feeAmount: null,
+    failureReason: d?.transaction?.failureReason ?? null,
+    nextAction: null,
+    amount: Number.isFinite(amount) ? amount : null,
+    url: typeof d?.url === 'string' ? d.url : null,
+  };
+};
 
 export class HttpOrzayah implements OrzayahClient {
   constructor(private key: string, private base: string) {}
@@ -54,12 +66,15 @@ export class HttpOrzayah implements OrzayahClient {
     return json?.data;
   }
 
-  async createDeposit(i: DepositInput) {
-    return normalize(await this.call('POST', '/deposits', { operator: i.operator, accountNumber: i.accountNumber, amount: i.amountCentimes, idempotencyKey: i.idempotencyKey }));
+  async createPaymentLink(i: PaymentLinkInput) {
+    return normalize(await this.call('POST', '/payment-links', {
+      amount: i.amountCentimes, description: i.description, idempotencyKey: i.idempotencyKey,
+      externalReference: i.externalReference, returnUrl: i.returnUrl,
+    }));
   }
 
-  async getTransaction(ref: string) {
-    try { return normalize(await this.call('GET', `/transactions/${encodeURIComponent(ref)}`)); }
+  async getPaymentLink(slug: string) {
+    try { return normalize(await this.call('GET', `/payment-links/${encodeURIComponent(slug)}`)); }
     catch (e) { if (e instanceof OrzayahError && e.status === 404) return null; throw e; }
   }
 }

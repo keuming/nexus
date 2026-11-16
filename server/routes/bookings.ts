@@ -9,9 +9,8 @@ import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { OrzayahError } from '../lib/orzayah.js';
 import { notify, notifyBookingConfirmed } from '../lib/notify.js';
-import { PAYMENT_OPERATORS } from '../../shared/constants.js';
 import { phoneField } from '../lib/schemas.js';
-import { applyOrzOp, closePayment, publicPayment, sweepExpired } from '../lib/payments.js';
+import { applyLink, closePayment, linkInput, publicPayment, sweepExpired, syncPayment } from '../lib/payments.js';
 
 const id = z.object({ id: z.string().uuid() });
 const MAX_PENDING = 3;
@@ -20,9 +19,8 @@ const body = z.object({
   offerId: z.string().uuid(),
   seats: z.number().int().min(1).max(20).default(1),
   stop: z.string().trim().max(100).optional(),
-  // « cash » : paiement à la livraison (réservation confirmée tout de suite) ; « digital » : Mobile Money ORZAYAH.
+  // « cash » : paiement à la livraison (réservation confirmée tout de suite) ; « digital » : lien de paiement ORZAYAH (Mobile Money, carte, wallet).
   payMode: z.enum(['cash', 'digital']).default('digital'),
-  payment: z.object({ operator: z.enum(PAYMENT_OPERATORS), accountNumber: z.string().trim().max(30) }).optional(),
   // Informations du réservant (obligatoires) : le fournisseur doit pouvoir le joindre.
   contact: z.object({ name: z.string().trim().min(2, 'Indiquez votre nom complet').max(100), phone: phoneField, email: z.string().trim().toLowerCase().email('E-mail invalide').max(200) }),
   guests: z.array(z.string().trim().min(2, 'Nom de participant trop court').max(100)).max(20).default([]),
@@ -38,7 +36,7 @@ export const bookingRoutes = new Hono<Env>()
    * paiement Mobile Money ORZAYAH ; ils sont rendus si le paiement échoue ou expire. Gardes dans les UPDATE (WHERE).
    */
   .post('/', v('json', body), async (c) => {
-    const { offerId, seats, stop, payMode, payment, contact, guests, note } = c.req.valid('json');
+    const { offerId, seats, stop, payMode, contact, guests, note } = c.req.valid('json');
     const user = c.get('user')!;
     const db = c.get('db');
     const orz = c.get('orz');
@@ -54,15 +52,12 @@ export const bookingRoutes = new Hono<Env>()
     const paid = priced && payMode === 'digital'; // paiement en ligne (sinon gratuit ou à la livraison)
     const payMethod = priced && payMode === 'cash' ? 'cash' : 'digital';
 
-    let account = '';
     if (paid) {
-      if (!payment) throw new AppError(400, 'payment_required', 'Choisissez un moyen de paiement (opérateur et numéro Mobile Money)');
-      account = payment.accountNumber.replace(/[\s.\-+]/g, '');
-      if (!/^\d{8,15}$/.test(account)) throw new AppError(400, 'invalid', 'Numéro Mobile Money invalide (8 à 15 chiffres)');
       if (!orz) throw new AppError(503, 'payments_unavailable', 'Le paiement en ligne est momentanément indisponible');
       const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(payments).where(and(eq(payments.userId, user.id), eq(payments.status, 'pending')));
       if (n >= MAX_PENDING) throw new AppError(429, 'too_many_pending', 'Trop de paiements en attente : terminez-les ou attendez leur expiration');
     }
+    const appUrl = (config().APP_URL ?? `${(c.req.header('x-forwarded-proto') ?? new URL(c.req.url).protocol.replace(':', '')).split(',')[0]}://${c.req.header('x-forwarded-host') ?? c.req.header('host') ?? new URL(c.req.url).host}`).replace(/\/$/, '');
 
     const paymentId = randomUUID();
     const booking = await db.transaction(async (tx) => {
@@ -98,7 +93,7 @@ export const bookingRoutes = new Hono<Env>()
       if (paid) {
         await tx.insert(payments).values({
           id: paymentId, bookingId: b.id, companyId: o.companyId, userId: user.id, amountFcfa: totalFcfa,
-          operator: payment!.operator, accountNumber: account, idempotencyKey: `nx-${paymentId}`,
+          idempotencyKey: `bm-${paymentId}`, returnUrl: `${appUrl}/reservation/${b.id}`,
           expiresAt: new Date(Date.now() + config().HOLD_MINUTES * 60_000),
         });
       }
@@ -106,17 +101,18 @@ export const bookingRoutes = new Hono<Env>()
     });
     if (!paid) { await notifyBookingConfirmed(db, booking.id); return c.json({ booking, payment: null }, 201); }
 
-    // Demande de débit Mobile Money : le client confirme ensuite sur son téléphone.
+    // Création du lien de paiement ORZAYAH : le client y est redirigé pour payer (Mobile Money, carte, wallet).
     try {
-      const op = await orz!.createDeposit({ operator: payment!.operator, accountNumber: account, amountCentimes: totalFcfa * 100, idempotencyKey: `nx-${paymentId}` });
-      await applyOrzOp(db, paymentId, op);
+      const [row] = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
+      const op = await orz!.createPaymentLink(await linkInput(db, row!));
+      await applyLink(db, paymentId, op);
     } catch (e) {
       if (e instanceof OrzayahError && e.definitive) {
         await closePayment(db, paymentId, 'failed', e.message);
         throw new AppError(e.status === 400 ? 400 : 503, e.status === 400 ? 'payment_rejected' : 'payments_unavailable', e.status === 400 ? `Paiement refusé : ${e.message}` : 'Le paiement en ligne est momentanément indisponible');
       }
-      // Issue incertaine (réseau, 5xx, 429) : on garde la réservation ; le suivi rejouera avec la même clé sans double débit.
-      console.error('[orzayah] createDeposit incertain', e instanceof Error ? e.message : e);
+      // Issue incertaine (réseau, 5xx, 429) : on garde la réservation ; le suivi rejouera avec la même clé sans doublon.
+      console.error('[orzayah] createPaymentLink incertain', e instanceof Error ? e.message : e);
     }
     const [p] = await db.select().from(payments).where(eq(payments.id, paymentId)).limit(1);
     const [b] = await db.select().from(bookings).where(eq(bookings.id, booking.id)).limit(1);
@@ -137,7 +133,11 @@ export const bookingRoutes = new Hono<Env>()
   /** Détail d'une réservation (page de confirmation / reçu) : visible par son auteur ou un admin. */
   .get('/:id', v('param', id), async (c) => {
     const user = c.get('user')!;
-    const [r] = await c.get('db').select({
+    const db = c.get('db');
+    // Retour de la page de paiement : on relit le lien chez ORZAYAH (espacé de 3 s) pour afficher l'état réel.
+    const [open] = await db.select().from(payments).where(and(eq(payments.bookingId, c.req.valid('param').id), eq(payments.userId, user.id))).limit(1);
+    if (open) await syncPayment({ db, orz: c.get('orz') }, open);
+    const [r] = await db.select({
       id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
       contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,
       offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, destCity: offers.destCity, destCountry: offers.destCountry, priceFcfa: offers.priceFcfa, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,

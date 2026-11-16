@@ -104,8 +104,8 @@ export const payments = pgTable('payments', {
   companyId: uuid('company_id').notNull().references(() => companies.id),
   userId: uuid('user_id').notNull().references(() => users.id),
   amountFcfa: integer('amount_fcfa').notNull(),
-  operator: text('operator').notNull(),
-  accountNumber: text('account_number').notNull(),
+  operator: text('operator').notNull().default('ORZAYAH'),
+  accountNumber: text('account_number').notNull().default(''),
   idempotencyKey: text('idempotency_key').notNull().unique(),
   status: text('status').notNull().default('pending'),
   orzRef: text('orz_ref'),
@@ -117,6 +117,8 @@ export const payments = pgTable('payments', {
   lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
   paidAt: timestamp('paid_at', { withTimezone: true }),
   reversedAt: timestamp('reversed_at', { withTimezone: true }),
+  payUrl: text('pay_url'),
+  returnUrl: text('return_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

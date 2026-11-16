@@ -10,13 +10,10 @@ export interface PayCtx { db: Db; orz: OrzayahClient | null }
 
 const FAILED = new Set(['FAILED', 'CANCELLED', 'EXPIRED']);
 const POLL_MIN_MS = 3000;     // l'API ORZAYAH limite à 120 requêtes/min par IP : on espace les relectures
-const NOT_INITIATED_MS = 120_000;
 
-/** Ce que le client est autorisé à voir d'un paiement (numéro masqué, aucune donnée interne). */
+/** Ce que le client est autorisé à voir d'un paiement (aucune donnée interne). */
 export const publicPayment = (p: PaymentRow) => ({
-  id: p.id, bookingId: p.bookingId, status: p.status, amountFcfa: p.amountFcfa, operator: p.operator,
-  account: `•••${p.accountNumber.slice(-3)}`, failureReason: p.failureReason,
-  nextAction: (p.nextAction ?? null) as { type?: string; message?: string; url?: string } | null,
+  id: p.id, bookingId: p.bookingId, status: p.status, amountFcfa: p.amountFcfa, payUrl: p.payUrl ?? null, failureReason: p.failureReason,
   expiresAt: p.expiresAt, paidAt: p.paidAt,
 });
 
@@ -54,10 +51,12 @@ async function reinstate(tx: Tx, p: PaymentRow, meta: Partial<PaymentRow>) {
 /** Applique l'état renvoyé par ORZAYAH. Idempotent : rejouer le même état ne change rien. */
 export async function applyOrzOp(db: Db, paymentId: string, op: OrzOp): Promise<void> {
   let before = '';
+  let mismatch = false;
   await db.transaction(async (tx) => {
     const [p] = await tx.select().from(payments).where(eq(payments.id, paymentId)).for('update');
     if (!p) return;
     before = p.status;
+    if (op.status === 'SUCCESS' && op.amount != null && op.amount !== p.amountFcfa * 100) { mismatch = true; return; }
     const meta = { orzRef: op.id || p.orzRef, orzStatus: op.status, nextAction: op.nextAction, feeCentimes: op.feeAmount == null ? p.feeCentimes : Number(op.feeAmount), lastCheckedAt: new Date() };
     const set = (v: Partial<PaymentRow>) => tx.update(payments).set({ ...meta, ...v }).where(eq(payments.id, p.id));
 
@@ -77,6 +76,12 @@ export async function applyOrzOp(db: Db, paymentId: string, op: OrzOp): Promise<
     }
     await set({});
   });
+  if (mismatch) {
+    // Montant payé différent du montant attendu : on ne confirme rien, un administrateur vérifie.
+    await db.update(payments).set({ lastCheckedAt: new Date() }).where(eq(payments.id, paymentId));
+    await notifyAdmins(db, { kind: 'amount_mismatch', refId: paymentId, title: 'Montant de paiement inattendu', body: `Le lien ORZAYAH ${op.id} est payé mais son montant (${op.amount! / 100} FCFA) ne correspond pas à la réservation. Vérifiez dans le dashboard ORZAYAH.`, link: '/admin' });
+    return;
+  }
   // Alertes après validation de la transaction (idempotentes : une seule alerte par réservation).
   if (before === 'pending' || before === 'expired') {
     const [after] = await db.select({ status: payments.status, bookingId: payments.bookingId, amount: payments.amountFcfa }).from(payments).where(eq(payments.id, paymentId)).limit(1);
@@ -96,19 +101,37 @@ export async function closePayment(db: Db, paymentId: string, kind: 'failed' | '
 
 const load = async (db: Db, id: string) => (await db.select().from(payments).where(eq(payments.id, id)).limit(1))[0]!;
 
-/** Relit l'état chez ORZAYAH (GET /transactions/{clé}) et l'applique. Tolérant aux pannes : en cas de doute, on ne change rien. */
+/** Données d'une création de lien pour un paiement (réutilisées à l'identique en cas de rejeu : même clé, même description). */
+export async function linkInput(db: Db, p: PaymentRow) {
+  const [r] = await db.select({ reference: bookings.reference, title: offers.title }).from(bookings)
+    .innerJoin(offers, eq(offers.id, bookings.offerId)).where(eq(bookings.id, p.bookingId)).limit(1);
+  const reference = r?.reference ?? p.bookingId;
+  return {
+    amountCentimes: p.amountFcfa * 100,
+    description: `Réservation ${reference} - ${r?.title ?? 'BackMarket'}`.slice(0, 120),
+    idempotencyKey: p.idempotencyKey,
+    externalReference: reference.replace(/[^A-Za-z0-9._:/-]/g, '').slice(0, 64),
+    returnUrl: p.returnUrl ?? '',
+  };
+}
+
+/** Enregistre le slug et l'adresse de la page de paiement renvoyés par ORZAYAH, puis applique l'état. */
+export async function applyLink(db: Db, paymentId: string, op: OrzOp): Promise<void> {
+  if (op.url) await db.update(payments).set({ payUrl: op.url }).where(eq(payments.id, paymentId));
+  await applyOrzOp(db, paymentId, op);
+}
+
+/** Relit le lien chez ORZAYAH (GET /payment-links/{slug}, source de vérité) et applique l'état. Tolérant aux pannes. */
 export async function syncPayment(ctx: PayCtx, p: PaymentRow, force = false): Promise<PaymentRow> {
   const { db, orz } = ctx;
   if (!orz || (p.status !== 'pending' && p.status !== 'expired')) return p;
   if (!force && p.lastCheckedAt && Date.now() - p.lastCheckedAt.getTime() < POLL_MIN_MS) return p;
   try {
-    let op = await orz.getTransaction(p.idempotencyKey);
-    if (!op && p.status === 'pending') {
-      if (Date.now() - p.createdAt.getTime() > NOT_INITIATED_MS) { await closePayment(db, p.id, 'expired', 'Paiement non initié chez ORZAYAH'); return load(db, p.id); }
-      // Jamais reçu par ORZAYAH (coupure au moment de la création) : rejouer avec la MÊME clé est sans risque.
-      op = await orz.createDeposit({ operator: p.operator as 'ORANGE', accountNumber: p.accountNumber, amountCentimes: p.amountFcfa * 100, idempotencyKey: p.idempotencyKey });
-    }
-    if (op) await applyOrzOp(db, p.id, op);
+    let op: OrzOp | null;
+    if (p.orzRef) op = await orz.getPaymentLink(p.orzRef);
+    else if (p.status === 'pending') op = await orz.createPaymentLink(await linkInput(db, p)); // lien jamais reçu : rejeu avec la MÊME clé, sans doublon
+    else op = null;
+    if (op) await applyLink(db, p.id, op);
     else await db.update(payments).set({ lastCheckedAt: new Date() }).where(eq(payments.id, p.id));
   } catch (e) {
     if (e instanceof OrzayahError && e.definitive && p.status === 'pending') await closePayment(db, p.id, 'failed', e.message);

@@ -5,7 +5,7 @@ import { Err } from './Layout';
 
 const FINAL = new Set(['paid', 'failed', 'expired', 'needs_refund', 'refunded']);
 
-/** Suivi d'un paiement Mobile Money : interroge le serveur toutes les 4 s (ORZAYAH n'a pas de webhook). */
+/** Suivi d'un paiement ORZAYAH : interroge le serveur toutes les 4 s (le serveur relit le lien, espacé de 3 s au minimum). */
 export function PaymentPanel({ paymentId, onClose, onPaid }: { paymentId: string; onClose: () => void; onPaid?: () => void }) {
   const q = useQuery({
     queryKey: ['payment', paymentId],
@@ -21,9 +21,9 @@ export function PaymentPanel({ paymentId, onClose, onPaid }: { paymentId: string
         {!p ? <p className="text-zinc-400">Chargement…</p> : p.status === 'pending' ? (
           <>
             <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" aria-hidden />
-            <h2 className="text-lg font-bold">Confirmez sur votre téléphone</h2>
-            <p className="text-sm text-zinc-300">{p.nextAction?.message ?? `Validez le paiement de ${fcfa(p.amountFcfa)} avec ${p.operator} (${p.account}).`}</p>
-            {p.nextAction?.url && /^https:\/\//.test(p.nextAction.url) && <a className="btn inline-block" href={p.nextAction.url} target="_blank" rel="noopener noreferrer">Ouvrir la page de validation</a>}
+            <h2 className="text-lg font-bold">{p.payUrl ? 'Finalisez votre paiement' : 'Préparation du paiement…'}</h2>
+            <p className="text-sm text-zinc-300">{p.payUrl ? `Réglez ${fcfa(p.amountFcfa)} sur la page sécurisée ORZAYAH (Mobile Money, carte ou wallet).` : 'La page de paiement se prépare, quelques secondes.'}</p>
+            {p.payUrl && /^https:\/\//.test(p.payUrl) && <a className="btn inline-block" href={p.payUrl}>Ouvrir la page de paiement</a>}
             <p className="text-xs text-zinc-500">Cette page se met à jour automatiquement. Vos places sont réservées jusqu'à {new Date(p.expiresAt).toLocaleTimeString('fr-FR', { timeStyle: 'short' })}.</p>
           </>
         ) : p.status === 'paid' ? (

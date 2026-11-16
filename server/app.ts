@@ -12,6 +12,7 @@ import { bookingRoutes } from './routes/bookings.js';
 import { companyRoutes } from './routes/company.js';
 import { adminRoutes } from './routes/admin.js';
 import { paymentRoutes } from './routes/payments.js';
+import { orzayahRoutes } from './routes/orzayah.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { defaultOrzayah, type OrzayahClient } from './lib/orzayah.js';
 
@@ -50,6 +51,7 @@ export function createApp(getDb: () => Db, deps: { orzayah?: OrzayahClient | nul
     .route('/offers', catalogRoutes)
     .route('/bookings', bookingRoutes)
     .route('/payments', paymentRoutes)
+    .route('/orzayah', orzayahRoutes)
     .route('/notifications', notificationRoutes)
     .route('/company', companyRoutes)
     .route('/admin', adminRoutes);

@@ -13,6 +13,9 @@ const schema = z.object({
   // Paiement ORZAYAH : facultatif (sans clé, seules les offres gratuites peuvent être réservées).
   ORZAYAH_API_KEY: z.string().optional(),
   ORZAYAH_API_URL: z.string().url().default('https://api.orzayah.com/api/public/v1'),
+  // Secret de signature des webhooks ORZAYAH (whsec_…) et URL publique du site (adresse de retour https).
+  ORZAYAH_WEBHOOK_SECRET: z.string().optional(),
+  APP_URL: z.string().url().optional(),
   HOLD_MINUTES: z.coerce.number().int().min(5).max(120).default(15),
 });
 
@@ -29,3 +32,6 @@ export function config(): Config {
   }
   return cached;
 }
+
+/** Pour les tests : relit process.env au prochain appel de config(). */
+export const resetConfig = () => { cached = undefined; };

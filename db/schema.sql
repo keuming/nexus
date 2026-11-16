@@ -135,8 +135,8 @@ create table if not exists payments (
   company_id      uuid not null references companies(id) on delete restrict,
   user_id         uuid not null references users(id) on delete restrict,
   amount_fcfa     integer not null check (amount_fcfa > 0),
-  operator        text not null check (operator in ('ORANGE','MTN','MOOV','WAVE')),
-  account_number  text not null,                       -- numéro Mobile Money débité (jamais renvoyé en clair)
+  operator        text not null default 'ORZAYAH',
+  account_number  text not null default '',                     -- numéro Mobile Money débité (jamais renvoyé en clair)
   idempotency_key text not null unique,                -- clé envoyée à ORZAYAH : protège contre les doubles débits
   status          text not null default 'pending' check (status in ('pending','paid','failed','expired','needs_refund','refunded')),
   orz_ref         text,
@@ -148,6 +148,8 @@ create table if not exists payments (
   last_checked_at timestamptz,
   paid_at         timestamptz,
   reversed_at     timestamptz,                         -- date du reversement au fournisseur
+  pay_url         text,                                -- page de paiement ORZAYAH
+  return_url      text,
   created_at      timestamptz not null default now()
 );
 create index if not exists payments_company_idx on payments (company_id, status);
@@ -224,3 +226,10 @@ alter table bookings add column if not exists pay_method text not null default '
 
 -- v35 : le fournisseur autorise (ou non) le paiement à la livraison pour chaque offre
 alter table offers add column if not exists allow_cash boolean not null default true;
+
+-- v44 : paiement par lien ORZAYAH (Mobile Money, carte, wallet) au lieu du dépôt direct.
+alter table payments add column if not exists pay_url text;
+alter table payments add column if not exists return_url text;
+alter table payments drop constraint if exists payments_operator_check;
+alter table payments alter column operator set default 'ORZAYAH';
+alter table payments alter column account_number set default '';
