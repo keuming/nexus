@@ -6,10 +6,10 @@ const MAX_SIDE = 1280;
 const MAX_CHARS = 500_000; // limite serveur ≈ 375 Ko par photo
 
 /** Redimensionne et recompresse en JPEG jusqu'à passer sous la limite d'envoi. */
-async function compress(file: File): Promise<string> {
+export async function compress(file: File, maxSide = MAX_SIDE): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Fichier non pris en charge (image attendue)');
   const bmp = await createImageBitmap(file).catch(() => { throw new Error("Impossible de lire cette image"); });
-  const k = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  const k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
   const cv = document.createElement('canvas');
   cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
   const ctx = cv.getContext('2d')!;
@@ -23,7 +23,7 @@ async function compress(file: File): Promise<string> {
 }
 
 /** Envoi direct vers Cloudinary (preset non signé) ; renvoie l'URL sécurisée de l'image. */
-async function upload(cfg: { cloudName: string; preset: string }, dataUrl: string): Promise<string> {
+export async function upload(cfg: { cloudName: string; preset: string }, dataUrl: string): Promise<string> {
   const form = new FormData();
   form.append('file', await (await fetch(dataUrl)).blob());
   form.append('upload_preset', cfg.preset);

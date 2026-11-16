@@ -182,7 +182,7 @@ export function Home() {
   );
 }
 
-interface OfferItem { category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; activity: string }
+interface OfferItem { category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string }
 
 /** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
 function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
@@ -202,7 +202,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}{o.category ? ` · ${o.category}` : ''}</span>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug">{o.title}</h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
-        <p className="truncate text-sm text-zinc-400">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</p>
+        <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
         <p className="text-xs text-zinc-500">
           {dated && <>{dateFr(o.startsAt)} · </>}
           <span className={low ? 'font-medium text-amber-400' : ''}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : dated ? `${o.remaining} places` : `${o.remaining} disponibles`}</span>

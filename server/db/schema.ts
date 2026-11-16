@@ -29,6 +29,7 @@ export const companies = pgTable('companies', {
   latitude: doublePrecision('latitude'),
   longitude: doublePrecision('longitude'),
   email: text('email').notNull().default(''),
+  logoUrl: text('logo_url'),
   managerTitle: text('manager_title').notNull().default(''),
   status: companyStatus('status').notNull().default('pending'),
   reviewNote: text('review_note').notNull().default(''),

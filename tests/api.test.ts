@@ -727,3 +727,22 @@ describe('parcours de réservation : informations du réservant', () => {
     expect((await anon.get('/offers?date=pas-une-date')).status).toBe(400);
   });
 });
+
+describe('profil partenaire', () => {
+  it('modifie nom, téléphone, e-mail ; refuse un logo hors Cloudinary ; le nom est repris au catalogue', async () => {
+    const { owner } = await setup(5, 5, 0);
+    const anon = new Client(ctx.app);
+    const base = { name: 'Chez Anicette', phone: '+225 07 00 00 00 00', email: 'Contact@Anicette.CI', logoUrl: null };
+    const r = await owner.patch('/company/profile', base);
+    expect(r.status).toBe(200);
+    expect(r.json.company).toMatchObject({ name: 'Chez Anicette', phone: '+225 07 00 00 00 00', email: 'contact@anicette.ci', logoUrl: null });
+    expect((await owner.get('/company')).json.company.name).toBe('Chez Anicette');
+    expect((await owner.patch('/company/profile', { ...base, logoUrl: 'https://evil.example.com/x.png' })).status).toBe(400);
+    expect((await owner.patch('/company/profile', { ...base, logoUrl: 'http://res.cloudinary.com/x/image/upload/a.png' })).status).toBe(400);
+    expect((await owner.patch('/company/profile', { ...base, name: 'A' })).status).toBe(400);
+    expect((await owner.patch('/company/profile', { ...base, phone: 'abc' })).status).toBe(400);
+    expect((await owner.patch('/company/profile', { ...base, email: '' })).json.company.email).toBe('');
+    expect((await anon.get('/offers')).json.offers[0].companyName).toBe('Chez Anicette');
+    expect((await anon.patch('/company/profile', base)).status).toBe(401);
+  });
+});

@@ -215,3 +215,6 @@ alter table offers add column if not exists dest_city text;
 
 -- v32 : catégorie d'offre (cuisine, type de colis, type de billet, type de chambre/logement)
 alter table offers add column if not exists category text;
+
+-- v33 : logo de l'entreprise (URL Cloudinary)
+alter table companies add column if not exists logo_url text;

@@ -9,7 +9,7 @@ import type { Activity } from '../../shared/constants.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { notifyAdmins } from '../lib/notify.js';
-import { cityName, companyInput, countryCode, placeList } from '../lib/schemas.js';
+import { cityName, companyInput, countryCode, phoneField, placeList } from '../lib/schemas.js';
 import type { Db } from '../db/client.js';
 
 /** Valide une photo : URL Cloudinary de NOTRE compte (jamais une URL arbitraire) ou JPEG en base64. */
@@ -72,6 +72,23 @@ export const companyRoutes = new Hono<Env>()
   .patch('/', v('json', z.object({ serviceCities: placeList(30) })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const [row] = await c.get('db').update(companies).set({ serviceCities: c.req.valid('json').serviceCities }).where(eq(companies.id, co.id)).returning();
+    return c.json({ company: row });
+  })
+  /** Profil : nom, téléphone, e-mail de contact et logo (modifiables à tout moment). */
+  .patch('/profile', v('json', z.object({
+    name: z.string().trim().min(2).max(120),
+    phone: phoneField,
+    email: z.union([z.literal(''), z.string().trim().toLowerCase().email().max(200)]),
+    logoUrl: z.string().max(400).nullable(),
+  })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const b = c.req.valid('json');
+    let logoUrl: string | null = null;
+    if (b.logoUrl) {
+      if (!b.logoUrl.startsWith('https://')) throw new AppError(400, 'invalid', 'Logo invalide');
+      logoUrl = parsePhoto(b.logoUrl).url;
+    }
+    const [row] = await c.get('db').update(companies).set({ name: b.name, phone: b.phone, email: b.email, logoUrl }).where(eq(companies.id, co.id)).returning();
     return c.json({ company: row });
   })
   /** Paramètres d'envoi direct des photos (publics par nature : nom du compte et preset non signé). */

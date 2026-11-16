@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, dateFr, fcfa, unwrap } from '../lib/api';
 import { Err } from '../components/Layout';
-import { PhotoPicker } from '../components/PhotoPicker';
+import { PhotoPicker, compress, upload } from '../components/PhotoPicker';
 import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
 import { CompanyFields, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
@@ -44,9 +44,12 @@ export function CompanyDashboard() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{c.name}</h1>
-          <p className="text-sm text-zinc-400">{ACTIVITY_LABEL[c.activity] ?? c.activity} · {c.city}, {countryName(c.country)}</p>
+        <div className="flex items-center gap-3">
+          {c.logoUrl && <img src={c.logoUrl} alt={`Logo ${c.name}`} className="h-14 w-14 rounded-xl bg-white object-cover" />}
+          <div>
+            <h1 className="text-2xl font-bold">{c.name}</h1>
+            <p className="text-sm text-zinc-400">{ACTIVITY_LABEL[c.activity] ?? c.activity} · {c.city}, {countryName(c.country)}</p>
+          </div>
         </div>
       </header>
       {c.status === 'pending' && <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-300">Votre demande est en cours d’examen par BackMarket. Vos offres seront visibles une fois votre entreprise validée.</p>}
@@ -74,7 +77,7 @@ export function CompanyDashboard() {
           </div>
           {tab === 'bookings' && <Bookings q={bookings} />}
           {tab === 'offers' && <Offers company={{ country: c.country, city: c.city, activity: c.activity, serviceCities: c.serviceCities }} />}
-          {tab === 'settings' && <ServiceCities country={c.country} cities={c.serviceCities} />}
+          {tab === 'settings' && <><Profile company={c} /><ServiceCities country={c.country} cities={c.serviceCities} /></>}
         </>
       )}
     </div>
@@ -107,6 +110,62 @@ function CompanyForm({ mode, initial, onDone }: { mode: 'create' | 'resubmit'; i
       <Err e={localErr ? new Error(localErr) : m.error} />
       <CompanyFields value={f} onChange={setF} />
       <button className="btn w-full" disabled={m.isPending}>{mode === 'create' ? 'Envoyer pour validation' : 'Renvoyer ma demande'}</button>
+    </form>
+  );
+}
+
+function Profile({ company: c }: { company: { name: string; phone: string; email: string; logoUrl: string | null } }) {
+  const qc = useQueryClient();
+  const [f, setF] = useState({ name: c.name, phone: c.phone, email: c.email });
+  const [logo, setLogo] = useState<string | null>(c.logoUrl);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  const cfg = useQuery({ queryKey: ['upload-config'], queryFn: () => unwrap(api.company['upload-config'].$get()), staleTime: Infinity });
+  const save = useMutation({
+    mutationFn: () => unwrap(api.company.profile.$patch({ json: { ...f, logoUrl: logo } })),
+    onSuccess: () => { setSaved(true); qc.invalidateQueries({ queryKey: ['company'] }); },
+  });
+  const dirty = f.name !== c.name || f.phone !== c.phone || f.email !== c.email || logo !== c.logoUrl;
+  const pick = async (files: FileList | null) => {
+    const file = files?.[0]; if (!file || !cfg.data?.cloudinary) return;
+    setErr(''); setBusy(true);
+    try { setLogo(await upload(cfg.data.cloudinary, await compress(file, 512))); setSaved(false); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Erreur'); }
+    setBusy(false); if (ref.current) ref.current.value = '';
+  };
+  const set = (k: 'name' | 'phone' | 'email', v: string) => { setF({ ...f, [k]: v }); setSaved(false); };
+  return (
+    <form className="card space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+      <h2 className="text-lg font-semibold">Profil de l’entreprise</h2>
+      <div className="flex items-center gap-4">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-white text-xs text-zinc-500">
+          {logo ? <img src={logo} alt="Logo" className="h-full w-full object-cover" /> : 'Aucun logo'}
+        </div>
+        <div className="space-y-1">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost" disabled={busy || !cfg.data?.cloudinary} onClick={() => ref.current?.click()}>{busy ? 'Envoi…' : logo ? 'Changer le logo' : 'Ajouter un logo'}</button>
+            {logo && <button type="button" className="btn-ghost" onClick={() => { setLogo(null); setSaved(false); }}>Retirer</button>}
+          </div>
+          <input ref={ref} type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files)} aria-label="Choisir un logo" />
+          {cfg.data && !cfg.data.cloudinary && <p className="text-xs text-amber-300">L’envoi d’images n’est pas configuré sur la plateforme.</p>}
+          <p className="text-xs text-zinc-500">Image carrée conseillée, réduite automatiquement.</p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1 sm:col-span-2"><label htmlFor="p-name" className="text-sm font-medium">Nom de l’entreprise</label>
+          <input id="p-name" className="input" required minLength={2} maxLength={120} value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
+        <div className="space-y-1"><label htmlFor="p-phone" className="text-sm font-medium">Téléphone</label>
+          <input id="p-phone" className="input" type="tel" required value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+        <div className="space-y-1"><label htmlFor="p-email" className="text-sm font-medium">E-mail de contact</label>
+          <input id="p-email" className="input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
+      </div>
+      <Err e={err ? new Error(err) : save.error} />
+      <div className="flex items-center gap-3">
+        <button className="btn" disabled={!dirty || save.isPending || busy}>{save.isPending ? 'Enregistrement…' : 'Enregistrer'}</button>
+        {saved && !dirty && <span role="status" className="text-sm text-emerald-400">Profil mis à jour ✓</span>}
+      </div>
     </form>
   );
 }
