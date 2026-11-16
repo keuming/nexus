@@ -758,3 +758,27 @@ describe('disponibilité sans date', () => {
     expect(await ids()).not.toContain(o.id); // stock épuisé
   });
 });
+
+describe('paiement à la livraison', () => {
+  it('confirme tout de suite sans paiement en ligne, garde le montant dû, reste annulable', async () => {
+    const { owner, co } = await setup(5, 5, 3000);
+    const offers = (await owner.get('/company/offers')).json.offers;
+    const offerId = offers[0].id;
+    const cust = await register('customer', 'cod@x.test');
+    // sans mode : le paiement en ligne reste exigé
+    expect((await cust.post('/bookings', { ...BK, offerId })).status).toBe(400);
+    const r = await cust.post('/bookings', { ...BK, offerId, seats: 1, payMode: 'cash' });
+    expect(r.status).toBe(201);
+    expect(r.json.payment).toBeNull();
+    expect(r.json.booking).toMatchObject({ status: 'confirmed', payMethod: 'cash' });
+    const mine = (await cust.get('/bookings/mine')).json.bookings[0];
+    expect(mine).toMatchObject({ payMethod: 'cash', priceFcfa: 3000, status: 'confirmed' });
+    const [after] = await ctx.db.select().from(companies).where(eq(companies.id, co.id));
+    expect(after.credits).toBe(4);
+    const row = (await owner.get('/company/bookings')).json.bookings[0];
+    expect(row).toMatchObject({ payMethod: 'cash', dueFcfa: 3000 });
+    expect((await cust.post(`/bookings/${r.json.booking.id}/cancel`)).status).toBe(200);
+    const [back] = await ctx.db.select().from(companies).where(eq(companies.id, co.id));
+    expect(back.credits).toBe(5);
+  });
+});

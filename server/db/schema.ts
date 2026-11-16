@@ -85,6 +85,7 @@ export const bookings = pgTable('bookings', {
   guests: text('guests').array().notNull().default(sql`'{}'`),
   note: text('note').notNull().default(''),
   termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
+  payMethod: text('pay_method').notNull().default('digital'),
 });
 
 export const creditLedger = pgTable('credit_ledger', {

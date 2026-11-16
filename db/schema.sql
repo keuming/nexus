@@ -218,3 +218,6 @@ alter table offers add column if not exists category text;
 
 -- v33 : logo de l'entreprise (URL Cloudinary)
 alter table companies add column if not exists logo_url text;
+
+-- v34 : mode de paiement de la réservation (digital = Mobile Money/carte via ORZAYAH ; cash = à la livraison)
+alter table bookings add column if not exists pay_method text not null default 'digital';

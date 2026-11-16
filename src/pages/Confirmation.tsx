@@ -56,8 +56,8 @@ export function Confirmation() {
         </dl>
         <hr className="border-white/10" />
         <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-          <span className="text-zinc-400">{b.payment ? `Payé par ${METHOD[b.payment.operator] ?? b.payment.operator} (${b.payment.account})` : 'Offre gratuite'}{b.payment?.paidAt ? ` · ${dateFr(b.payment.paidAt)}` : ''}</span>
-          <span className="text-xl font-bold">{b.payment ? fcfa(b.payment.amountFcfa) : 'Gratuit'}</span>
+          <span className="text-zinc-400">{b.payMethod === 'cash' && b.priceFcfa > 0 ? 'Paiement à la livraison : à régler directement au prestataire' : b.payment ? `Payé par ${METHOD[b.payment.operator] ?? b.payment.operator} (${b.payment.account})` : 'Offre gratuite'}{b.payment?.paidAt ? ` · ${dateFr(b.payment.paidAt)}` : ''}</span>
+          <span className="text-xl font-bold">{b.payment ? fcfa(b.payment.amountFcfa) : b.payMethod === 'cash' && b.priceFcfa > 0 ? fcfa(b.priceFcfa * b.seats) : 'Gratuit'}</span>
         </div>
       </section>
 

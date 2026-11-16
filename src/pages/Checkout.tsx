@@ -14,7 +14,7 @@ const NOUN: Record<string, string> = { transport: 'passager', hotel: 'occupant',
 
 interface Draft {
   seats: number; stop: string; name: string; phone: string; email: string; guests: string[]; note: string;
-  operator: string; account: string; accept: boolean;
+  mode: '' | 'cash' | 'digital'; operator: string; account: string; accept: boolean;
 }
 const key = (id: string) => `nx-checkout-${id}`;
 const load = (id: string): Partial<Draft> => { try { return JSON.parse(sessionStorage.getItem(key(id)) ?? '{}'); } catch { return {}; } };
@@ -28,7 +28,7 @@ export function Checkout() {
   const offer = useQuery({ queryKey: ['offer', offerId], queryFn: () => unwrap(api.offers[':id'].$get({ param: { id: offerId } })), retry: false });
   const methods = useQuery({ queryKey: ['pay-methods'], queryFn: () => unwrap(api.payments.methods.$get()), staleTime: 60_000 });
   const [step, setStep] = useState<Step>(1);
-  const [d, setD] = useState<Draft>(() => ({ seats: 1, stop: '', name: '', phone: '', email: '', guests: [], note: '', operator: '', account: '', accept: false, ...load(offerId) }));
+  const [d, setD] = useState<Draft>(() => ({ seats: 1, stop: '', name: '', phone: '', email: '', guests: [], note: '', mode: '', operator: '', account: '', accept: false, ...load(offerId) }));
   const [paying, setPaying] = useState<{ paymentId: string; bookingId: string } | null>(null);
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }));
 
@@ -51,7 +51,8 @@ export function Checkout() {
       offerId, seats: d.seats, ...(needsStop ? { stop: d.stop } : {}),
       contact: { name: d.name, phone: d.phone, email: d.email },
       guests: guests.map((g) => g.trim()).filter(Boolean), note: d.note, acceptTerms: true as const,
-      ...(paid ? { payment: { operator: d.operator as 'ORANGE', accountNumber: d.account } } : {}),
+      ...(paid ? { payMode: d.mode === 'cash' ? 'cash' as const : 'digital' as const } : {}),
+      ...(paid && d.mode === 'digital' ? { payment: { operator: d.operator as 'ORANGE', accountNumber: d.account } } : {}),
     } })),
     onSuccess: (r) => {
       try { sessionStorage.removeItem(key(offerId)); } catch { /* ignore */ }
@@ -68,6 +69,8 @@ export function Checkout() {
   const next = (e: FormEvent, to: Step) => { e.preventDefault(); book.reset(); setStep(to); window.scrollTo({ top: 0 }); };
   const pay = (e: FormEvent) => { e.preventDefault(); book.mutate(); };
   const methodsOk = methods.data?.available !== false;
+  const online = paid && d.mode === 'digital';
+  const canSubmit = !paid || (d.mode === 'cash') || (d.mode === 'digital' && methodsOk && !!d.operator && d.account.replace(/\D/g, '').length >= 8);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -147,21 +150,40 @@ export function Checkout() {
               </div>
               {paid ? (
                 <>
-                  {!methodsOk && <p role="alert" className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Le paiement en ligne est momentanément indisponible. Réessayez plus tard.</p>}
                   <fieldset className="space-y-2">
-                    <legend className="text-sm font-medium">Moyen de paiement ORZAYAH</legend>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(methods.data?.methods ?? []).map((m) => (
-                        <label key={m.id} className={`cursor-pointer rounded-lg border px-3 py-3 text-center text-sm font-medium ${d.operator === m.id ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
-                          <input type="radio" name="op" className="sr-only" required checked={d.operator === m.id} onChange={() => set('operator', m.id)} />{m.label}
-                        </label>
-                      ))}
+                    <legend className="text-sm font-medium">Comment souhaitez-vous payer ?</legend>
+                    <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.mode === 'cash' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+                      <input type="radio" name="mode" className="mt-1" required checked={d.mode === 'cash'} onChange={() => set('mode', 'cash')} />
+                      <span><span className="block text-sm font-semibold">Payer à la livraison</span><span className="block text-xs text-zinc-400">Vous réglez {fcfa(total)} directement au prestataire. Votre réservation est confirmée tout de suite.</span></span>
+                    </label>
+                    <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.mode === 'digital' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+                      <input type="radio" name="mode" className="mt-1" required checked={d.mode === 'digital'} onChange={() => set('mode', 'digital')} />
+                      <span><span className="block text-sm font-semibold">Mobile Money (ORZAYAH)</span><span className="block text-xs text-zinc-400">Orange Money, MTN MoMo, Moov Money, Wave : vous validez sur votre téléphone.</span></span>
+                    </label>
+                    <div aria-disabled className="flex items-start gap-3 rounded-lg border border-white/10 px-3 py-3 opacity-60">
+                      <input type="radio" disabled className="mt-1" aria-label="Carte bancaire (bientôt disponible)" />
+                      <span><span className="block text-sm font-semibold">Carte bancaire (Visa, Mastercard) <span className="ml-1 rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium">Bientôt disponible</span></span><span className="block text-xs text-zinc-400">Paiement sécurisé par carte via ORZAYAH.</span></span>
                     </div>
-                    <p className="text-xs text-zinc-500">Paiement sécurisé par ORZAYAH : vous validez la transaction sur votre téléphone.</p>
                   </fieldset>
-                  <Field id="p-acc" label="Numéro Mobile Money à débiter *">
-                    <input id="p-acc" className="input" inputMode="tel" required placeholder="Ex. 0707070707 (sans l'indicatif du pays)" value={d.account} onChange={(e) => set('account', e.target.value)} />
-                  </Field>
+                  {online && (
+                    <>
+                      {!methodsOk && <p role="alert" className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Le paiement en ligne est momentanément indisponible. Choisissez le paiement à la livraison ou réessayez plus tard.</p>}
+                      <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium">Opérateur Mobile Money</legend>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(methods.data?.methods ?? []).map((m) => (
+                            <label key={m.id} className={`cursor-pointer rounded-lg border px-3 py-3 text-center text-sm font-medium ${d.operator === m.id ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+                              <input type="radio" name="op" className="sr-only" required checked={d.operator === m.id} onChange={() => set('operator', m.id)} />{m.label}
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-zinc-500">Paiement sécurisé par ORZAYAH : vous validez la transaction sur votre téléphone.</p>
+                      </fieldset>
+                      <Field id="p-acc" label="Numéro Mobile Money à débiter *">
+                        <input id="p-acc" className="input" inputMode="tel" required placeholder="Ex. 0707070707 (sans l'indicatif du pays)" value={d.account} onChange={(e) => set('account', e.target.value)} />
+                      </Field>
+                    </>
+                  )}
                 </>
               ) : <p className="text-sm text-zinc-300">Cette offre est gratuite : aucun paiement n'est demandé.</p>}
               <label className="flex items-start gap-2 text-sm">
@@ -173,8 +195,8 @@ export function Checkout() {
               <div className="flex justify-between gap-2">
                 <button type="button" className="btn-ghost" onClick={() => setStep(2)}>Retour</button>
                 {user ? (
-                  <button className="btn" disabled={book.isPending || (paid && (!methodsOk || d.account.replace(/\D/g, '').length < 8 || !d.operator))}>
-                    {book.isPending ? 'Un instant…' : paid ? `Payer ${fcfa(total)}` : 'Confirmer ma réservation'}
+                  <button className="btn" disabled={book.isPending || !canSubmit}>
+                    {book.isPending ? 'Un instant…' : online ? `Payer ${fcfa(total)}` : 'Confirmer ma réservation'}
                   </button>
                 ) : (
                   <Link className="btn" to="/login" state={{ from: `/reserver/${offerId}` }}>Se connecter pour finaliser</Link>
@@ -197,7 +219,7 @@ export function Checkout() {
               <Row k="Places" v={String(d.seats)} />
               <Row k="Prix unitaire" v={price ? fcfa(price) : 'Gratuit'} />
             </dl>
-            <div className="flex items-baseline justify-between border-t border-white/10 pt-3"><span className="text-sm text-zinc-400">Total à payer</span><span className="text-xl font-bold">{paid ? fcfa(total) : 'Gratuit'}</span></div>
+            <div className="flex items-baseline justify-between border-t border-white/10 pt-3"><span className="text-sm text-zinc-400">{paid && d.mode === 'cash' ? 'À payer à la livraison' : 'Total à payer'}</span><span className="text-xl font-bold">{paid ? fcfa(total) : 'Gratuit'}</span></div>
           </div>
         </aside>
       </div>

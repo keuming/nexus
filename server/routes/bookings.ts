@@ -20,6 +20,8 @@ const body = z.object({
   offerId: z.string().uuid(),
   seats: z.number().int().min(1).max(20).default(1),
   stop: z.string().trim().max(100).optional(),
+  // « cash » : paiement à la livraison (réservation confirmée tout de suite) ; « digital » : Mobile Money ORZAYAH.
+  payMode: z.enum(['cash', 'digital']).default('digital'),
   payment: z.object({ operator: z.enum(PAYMENT_OPERATORS), accountNumber: z.string().trim().max(30) }).optional(),
   // Informations du réservant (obligatoires) : le fournisseur doit pouvoir le joindre.
   contact: z.object({ name: z.string().trim().min(2, 'Indiquez votre nom complet').max(100), phone: phoneField, email: z.string().trim().toLowerCase().email('E-mail invalide').max(200) }),
@@ -36,7 +38,7 @@ export const bookingRoutes = new Hono<Env>()
    * paiement Mobile Money ORZAYAH ; ils sont rendus si le paiement échoue ou expire. Gardes dans les UPDATE (WHERE).
    */
   .post('/', v('json', body), async (c) => {
-    const { offerId, seats, stop, payment, contact, guests, note } = c.req.valid('json');
+    const { offerId, seats, stop, payMode, payment, contact, guests, note } = c.req.valid('json');
     const user = c.get('user')!;
     const db = c.get('db');
     const orz = c.get('orz');
@@ -47,7 +49,9 @@ export const bookingRoutes = new Hono<Env>()
     const [pre] = await db.select({ price: offers.priceFcfa }).from(offers).where(eq(offers.id, offerId)).limit(1);
     if (!pre) throw notFound('Offre');
     const totalFcfa = pre.price * seats;
-    const paid = totalFcfa > 0;
+    const priced = totalFcfa > 0;
+    const paid = priced && payMode === 'digital'; // paiement en ligne (sinon gratuit ou à la livraison)
+    const payMethod = priced && payMode === 'cash' ? 'cash' : 'digital';
 
     let account = '';
     if (paid) {
@@ -82,13 +86,13 @@ export const bookingRoutes = new Hono<Env>()
       const [act] = await tx.select({ activity: companies.activity }).from(companies).where(eq(companies.id, o.companyId)).limit(1);
       if (act?.activity === 'transport' ? guests.length !== seats : guests.length > seats) throw new AppError(400, 'invalid', act?.activity === 'transport' ? 'Indiquez le nom de chaque passager' : 'Trop de noms de participants par rapport au nombre de places');
       // Le prix peut avoir changé entre la lecture et le verrou : on ne débite jamais un montant différent.
-      if ((o.price * seats > 0) !== paid || o.price * seats !== totalFcfa) throw conflict('price_changed', "Le prix de l'offre vient de changer, réessayez");
+      if ((o.price * seats > 0) !== priced || o.price * seats !== totalFcfa) throw conflict('price_changed', "Le prix de l'offre vient de changer, réessayez");
       const [co] = await tx.update(companies)
         .set({ credits: sql`${companies.credits} - 1` })
         .where(and(eq(companies.id, o.companyId), eq(companies.status, 'active'), sql`${companies.credits} >= 1`))
         .returning({ id: companies.id });
       if (!co) throw new AppError(409, 'company_unavailable', "Cette entreprise ne peut pas accepter de réservation pour le moment");
-      const [b] = await tx.insert(bookings).values({ offerId, companyId: o.companyId, userId: user.id, seats, stop: chosenStop, status: paid ? 'pending_payment' : 'confirmed', contactName: contact.name, contactPhone: contact.phone, contactEmail: contact.email, guests, note, termsAcceptedAt: new Date() }).returning();
+      const [b] = await tx.insert(bookings).values({ offerId, companyId: o.companyId, userId: user.id, seats, stop: chosenStop, status: paid ? 'pending_payment' : 'confirmed', payMethod, contactName: contact.name, contactPhone: contact.phone, contactEmail: contact.email, guests, note, termsAcceptedAt: new Date() }).returning();
       await tx.insert(creditLedger).values({ companyId: o.companyId, delta: -1, reason: 'booking', bookingId: b.id });
       if (paid) {
         await tx.insert(payments).values({
@@ -119,7 +123,7 @@ export const bookingRoutes = new Hono<Env>()
   })
   .get('/mine', async (c) => {
     const rows = await c.get('db')
-      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, payMethod: bookings.payMethod, priceFcfa: offers.priceFcfa, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -133,7 +137,7 @@ export const bookingRoutes = new Hono<Env>()
   .get('/:id', v('param', id), async (c) => {
     const user = c.get('user')!;
     const [r] = await c.get('db').select({
-      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
+      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
       contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,
       offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, destCity: offers.destCity, destCountry: offers.destCountry, priceFcfa: offers.priceFcfa, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,
       companyName: companies.name, companyPhone: companies.phone, companyAddress: companies.address,
