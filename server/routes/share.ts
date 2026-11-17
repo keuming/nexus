@@ -36,6 +36,22 @@ const fcfa = (n: number) => `${new Intl.NumberFormat('fr-FR').format(n).replace(
 
 /** Aperçu de partage d'une offre (`/offre/:id`), servi uniquement aux robots via la règle de vercel.json. Le site lui-même est décrit dans index.html. */
 export const shareRoutes = (getDb: () => Db) => new Hono()
+  /** Aperçu de partage d'une boutique (`/boutique/:id`) : nom, ville et logo du marchand. */
+  .get('/boutique/:id', async (c) => {
+    const base = siteUrl(c.req.raw);
+    const id = c.req.param('id');
+    const site = { title: SITE.shareTitle, description: SITE.shareDescription, url: `${base}/`, image: `${base}/og.png` };
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return c.html(html(site));
+    const [co] = await getDb().select({ name: companies.name, logoUrl: companies.logoUrl, city: companies.city, activity: companies.activity })
+      .from(companies).where(and(eq(companies.id, id), eq(companies.status, 'active'))).limit(1);
+    if (!co) return c.html(html(site));
+    const image = co.logoUrl?.includes('/image/upload/') ? co.logoUrl.replace('/image/upload/', '/image/upload/f_jpg,q_auto,w_1200,h_630,c_pad,b_white/') : `${base}/og.png`;
+    return c.html(html({
+      title: cut(`${co.name} : commandez et réservez en ligne`, 90),
+      description: cut(`${co.name}, ${co.city}. Découvrez tous nos articles et réservez en 1 clic sur ${SITE.name} : paiement à la livraison ou en ligne.`, 200),
+      url: `${base}/boutique/${id}`, image,
+    }), 200, { 'cache-control': 'public, s-maxage=300' });
+  })
   .get('/offre/:id', async (c) => {
     const base = siteUrl(c.req.raw);
     const id = c.req.param('id');

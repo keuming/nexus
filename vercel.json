@@ -25,6 +25,17 @@
       "destination": "/api"
     },
     {
+      "source": "/boutique/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(facebookexternalhit|facebot|whatsapp|twitterbot|linkedinbot|telegrambot|slackbot|discordbot|pinterest|skypeuripreview|googlebot|bingbot|applebot|snapchat|viber|line|vkshare|embedly).*"
+        }
+      ],
+      "destination": "/api"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

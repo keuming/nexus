@@ -6,18 +6,21 @@ import { useAuth, type User } from '../lib/auth';
 import { InstallButton } from '../lib/pwa';
 import { NotificationBell } from './NotificationBell';
 import { Footer } from './Footer';
+import { useMyCompany } from '../lib/company';
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const mine = useMyCompany();
+  const home = user?.role === 'owner' && mine.data ? `/boutique/${mine.data.id}` : '/';
   const pending = useQuery({ queryKey: ['admin-stats'], enabled: user?.role === 'admin', queryFn: () => unwrap(api.admin.stats.$get()), refetchInterval: 60_000 });
   const link = ({ isActive }: { isActive: boolean }) => `text-sm ${isActive ? 'text-brand' : 'text-zinc-300 hover:text-white'}`;
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-10 print:hidden border-b border-white/10 bg-ink/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
-          <Link to="/" className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
+          <Link to={home} className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
           <nav className="order-last flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-1 sm:order-none sm:w-auto">
-            <NavLink to="/" className={link} end>Catalogue</NavLink>
+            <NavLink to={home} className={link} end>{home === '/' ? 'Catalogue' : 'Ma boutique'}</NavLink>
             {!user && <NavLink to="/souscription" className={link}>Devenir partenaire</NavLink>}
             {user?.role === 'customer' && <NavLink to="/account" className={link}>Mes réservations</NavLink>}
             {user?.role === 'owner' && <NavLink to="/company" className={link}>Mon entreprise</NavLink>}

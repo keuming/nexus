@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError, dateFr, fcfa, unwrap } from '../lib/api';
+import { Link } from 'react-router-dom';
+import { ShareButton, absUrl } from '../components/ShareButton';
 import { Err } from '../components/Layout';
 import { PhotoPicker, compress, upload } from '../components/PhotoPicker';
 import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
@@ -53,6 +55,12 @@ export function CompanyDashboard() {
             <p className="text-sm text-zinc-400">{ACTIVITY_LABEL[c.activity] ?? c.activity} · {c.city}, {countryName(c.country)}</p>
           </div>
         </div>
+        {c.status === 'active' && (
+          <div className="flex gap-2">
+            <Link className="btn-ghost" to={`/boutique/${c.id}`}>Voir ma boutique</Link>
+            <ShareButton className="btn" label="Partager ma boutique" url={absUrl(`/boutique/${c.id}`)} title={`${c.name} : commandez et réservez en ligne`} text={`Tous les articles de ${c.name} sur BackMarket`} />
+          </div>
+        )}
       </header>
       {c.status === 'pending' && <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-300">Votre demande est en cours d’examen par BackMarket. Vos offres seront visibles une fois votre entreprise validée.</p>}
       {c.status === 'rejected' && (

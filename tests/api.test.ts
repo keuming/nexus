@@ -1130,3 +1130,37 @@ describe('pays du marchand, portée nationale / internationale', () => {
     expect((await ci.o.patch('/company/profile', { name: 'Resto CI', phone: '+225 07 00 00 00 00', email: '', logoUrl: null, scopes: ['national', 'international'] })).status).toBe(200);
   });
 });
+
+describe('boutique du marchand (catalogue individuel)', () => {
+  it("la vitrine d'un marchand ne contient que ses articles, visible depuis n'importe quel pays, masquée si inactive", async () => {
+    const a = await setup(5, 5, 1000); // Bus Abidjan (CI)
+    const b = await register('owner', 'b2@x.test');
+    const cb = (await b.post('/company', { name: 'Autre Boutique', activity: 'transport', country: 'SN', city: 'Dakar', serviceCities: [], phone: '+225 07 00 00 00 00', ...geo })).json.company;
+    await a.adm.post(`/admin/companies/${cb.id}/review`, { decision: 'approve' });
+    await b.post('/company/offers', { title: 'Dakar → Thiès', country: 'SN', city: 'Dakar', destCountry: 'SN', destCity: 'Thiès', priceFcfa: 2000, capacity: 5 });
+    const anon = new Client(ctx.app);
+    const sa = (await anon.get(`/offers/companies/${a.co.id}`)).json;
+    expect(sa.company).toMatchObject({ id: a.co.id, name: 'Bus Abidjan', country: 'CI' });
+    expect(sa.offers.map((o: any) => o.title)).toEqual(['Abidjan → Bouaké']);
+    const sb = (await anon.get(`/offers/companies/${cb.id}`)).json;
+    expect(sb.offers.map((o: any) => o.title)).toEqual(['Dakar → Thiès']);
+    // ne fuit ni les autres marchands ni de données internes
+    expect(JSON.stringify(sa)).not.toContain('Dakar');
+    expect(JSON.stringify(sa)).not.toContain('credits');
+    // offre désactivée : absente de la vitrine ; marchand inconnu ou non validé : 404
+    await a.owner.patch(`/company/offers/${a.offer.id}`, { active: false });
+    expect((await anon.get(`/offers/companies/${a.co.id}`)).json.offers).toHaveLength(0);
+    expect((await anon.get('/offers/companies/11111111-1111-1111-1111-111111111111')).status).toBe(404);
+  });
+
+  it("l'aperçu de partage d'une boutique affiche le nom du marchand (HTML échappé), sinon retombe sur le site", async () => {
+    const { co } = await setup(5, 5, 1000);
+    const app = shareRoutes(() => ctx.db);
+    const r = await app.request(`https://www.backmarket-ci.com/boutique/${co.id}`, { headers: { host: 'www.backmarket-ci.com' } });
+    const html = await r.text();
+    expect(html).toContain('Bus Abidjan : commandez et réservez en ligne');
+    expect(html).toContain(`https://www.backmarket-ci.com/boutique/${co.id}`);
+    const none = await (await app.request('https://www.backmarket-ci.com/boutique/pas-un-id', { headers: { host: 'www.backmarket-ci.com' } })).text();
+    expect(none).toContain('BackMarket : réservez');
+  });
+});

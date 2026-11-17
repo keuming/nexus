@@ -94,6 +94,21 @@ export const catalogRoutes = new Hono<Env>()
       return c.json({ offers: rows, market: m.market, marketSource: m.source });
     },
   )
+  /**
+   * Vitrine d'un marchand : uniquement SES offres visibles (mêmes règles d'affichage, sans filtre de pays : le lien est partageable
+   * depuis n'importe quel pays). Renvoie aussi la fiche publique du marchand.
+   */
+  .get('/companies/:id', v('param', z.object({ id: z.string().uuid() })), async (c) => {
+    const db = c.get('db');
+    const id = c.req.valid('param').id;
+    const [company] = await db.select({ id: companies.id, name: companies.name, logoUrl: companies.logoUrl, activity: companies.activity, country: companies.country, city: companies.city })
+      .from(companies).where(and(eq(companies.id, id), eq(companies.status, 'active'))).limit(1);
+    if (!company) throw notFound('Boutique');
+    const rows = await db.select(cols).from(offers).innerJoin(companies, eq(companies.id, offers.companyId))
+      .where(and(eq(offers.companyId, id), eq(offers.active, true), eq(companies.status, 'active'), displayRules()))
+      .orderBy(desc(offers.startsAt)).limit(100);
+    return c.json({ company, offers: rows });
+  })
   .get('/activities', async (c) => {
     const rows = await c.get('db').select().from(activityDisplay);
     const now = Date.now();

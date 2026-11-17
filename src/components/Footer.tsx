@@ -3,6 +3,7 @@ import { useAuth } from '../lib/auth';
 import { PAYMENT_METHODS } from '../../shared/constants';
 import { SITE } from '../../shared/site';
 import { ShareButton, absUrl } from './ShareButton';
+import { useMyCompany } from '../lib/company';
 
 const H = ({ children }: { children: React.ReactNode }) => <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">{children}</h3>;
 const L = ({ to, children }: { to: string; children: React.ReactNode }) => <li><Link to={to} className="text-sm text-zinc-300 hover:text-white">{children}</Link></li>;
@@ -10,6 +11,8 @@ const L = ({ to, children }: { to: string; children: React.ReactNode }) => <li><
 /** Pied de page : marque, navigation, aide, moyens de paiement, informations légales. */
 export function Footer() {
   const { user } = useAuth();
+  const mine = useMyCompany();
+  const shop = user?.role === 'owner' ? mine.data : null; // un partenaire ne partage que sa boutique
   return (
     <footer className="mt-10 border-t border-white/10 bg-[#090b0f] relative z-10 print:hidden">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1fr_1.5fr]">
@@ -21,7 +24,7 @@ export function Footer() {
         <nav aria-label="Navigation">
           <H>Découvrir</H>
           <ul className="space-y-2">
-            <L to="/">Catalogue</L>
+            <L to={shop ? `/boutique/${shop.id}` : '/'}>{shop ? 'Ma boutique' : 'Catalogue'}</L>
             {user?.role === 'customer' && <L to="/account">Mes réservations</L>}
             {!user && <L to="/login">Connexion</L>}
             {!user && <L to="/register">Créer un compte</L>}

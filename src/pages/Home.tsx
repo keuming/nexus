@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useMyCompany } from '../lib/company';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { CountrySelect } from '../components/ChipInput';
@@ -59,6 +60,7 @@ export function Home() {
   const [guests, setGuests, dGuests] = useUrlInput('guests');
   const [budget, setBudget, dBudget] = useUrlInput('budget');
   const { user } = useAuth();
+  const myCompany = useMyCompany();
   const nav = useNavigate();
   const form: SearchForm | undefined = SEARCH_FORMS[activity as Activity];
   const cat = CATEGORIES[activity as Activity];
@@ -108,6 +110,10 @@ export function Home() {
   const african = !!market && COUNTRIES.some((c) => c.code === market);
   const shownCountry = country || (african ? market! : '');
   const cols = form ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3';
+
+  // Partenaire : son « catalogue » est sa boutique (ses articles uniquement), pas l'ensemble de BackMarket.
+  if (user?.role === 'owner' && myCompany.isLoading) return <p className="text-center text-zinc-400">Chargement…</p>;
+  if (user?.role === 'owner' && myCompany.data) return <Navigate to={`/boutique/${myCompany.data.id}`} replace />;
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
@@ -188,10 +194,10 @@ export function Home() {
   );
 }
 
-interface OfferItem { scope?: string; category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string }
+export interface OfferItem { scope?: string; category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string }
 
 /** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
-function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
+export function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
   const hasDetails = !!o.description || o.stops.length > 0;
