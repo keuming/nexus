@@ -170,7 +170,7 @@ export function Home() {
             {filtered && <button className="btn" onClick={reset}>Voir toutes les offres</button>}
           </div>
         ) : (
-          <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${list.isFetching ? 'opacity-60' : ''}`}>
+          <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 ${list.isFetching ? 'opacity-60' : ''}`}>
             {offers.map((o) => <OfferCard key={o.id} o={o} onBook={() => nav(`/reserver/${o.id}`)} />)}
           </div>
         )}
@@ -199,8 +199,8 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         <h2 className="line-clamp-2 text-base font-semibold leading-snug"><Link to={`/offre/${o.id}`} className="hover:underline">{o.title}</Link></h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
-        <p className="text-xs text-zinc-500">
-          <span className={low ? 'font-medium text-amber-400' : ''}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : `${o.remaining} disponibles`}</span>
+        <p className="pt-1">
+          <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${o.remaining < 1 ? 'bg-red-500/15 text-red-300' : low ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : `${o.remaining} disponibles`}</span>
         </p>
         {hasDetails && (
           <>
@@ -215,11 +215,11 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
             )}
           </>
         )}
-        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-          <span className="text-base font-bold">{o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}</span>
+        <div className="mt-auto space-y-3 border-t border-white/10 pt-3">
+          <p className="text-xl font-extrabold leading-none">{o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}</p>
           <div className="flex gap-2">
-            <ShareButton className="btn-ghost !px-3" label="Partager" url={absUrl(`/offre/${o.id}`)} title={`${o.title} · ${o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}`} text={`${o.companyName} sur ${SITE.name}`} />
-            <button className="btn" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
+            <button className="btn flex-1" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
+            <ShareButton iconOnly className="btn-ghost !px-3" label="Partager cette offre" url={absUrl(`/offre/${o.id}`)} title={`${o.title} · ${o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}`} text={`${o.companyName} sur ${SITE.name}`} />
           </div>
         </div>
       </div>

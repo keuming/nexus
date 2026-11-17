@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-interface Props { url: string; title: string; text?: string; label?: string; className?: string }
+interface Props { url: string; title: string; text?: string; label?: string; className?: string; iconOnly?: boolean }
 
 /** Adresse absolue d'une page du site (le lien partagé doit fonctionner hors du site). */
 export const absUrl = (path: string) => new URL(path, window.location.origin).toString();
@@ -10,7 +10,7 @@ export const absUrl = (path: string) => new URL(path, window.location.origin).to
  * sinon fenêtre avec WhatsApp, Facebook, LinkedIn, X, Telegram, e-mail, SMS et copie du lien.
  * Instagram et TikTok n'ont pas de lien de partage web : on copie le lien à coller dans une story, un message ou la bio.
  */
-export function ShareButton({ url, title, text = '', label = 'Partager', className = 'btn-ghost' }: Props) {
+export function ShareButton({ url, title, text = '', label = 'Partager', className = 'btn-ghost', iconOnly = false }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -47,7 +47,11 @@ export function ShareButton({ url, title, text = '', label = 'Partager', classNa
 
   return (
     <>
-      <button type="button" className={className} onClick={start}>{label}</button>
+      <button type="button" className={className} onClick={start} aria-label={iconOnly ? label : undefined} title={label}>
+        {iconOnly ? (
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+        ) : label}
+      </button>
       {open && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/80 p-4 sm:items-center" onClick={() => setOpen(false)}>
           <div role="dialog" aria-modal="true" aria-label="Partager" className="card w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
