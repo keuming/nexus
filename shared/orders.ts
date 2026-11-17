@@ -3,7 +3,7 @@ export const FULFILLMENT = ['new', 'accepted', 'preparing', 'ready', 'completed'
 export type Fulfillment = (typeof FULFILLMENT)[number];
 
 export const FULFILLMENT_LABEL: Record<Fulfillment, string> = {
-  new: 'Nouvelle', accepted: 'Acceptée', preparing: 'En préparation', ready: 'Prête', completed: 'Terminée', no_show: 'Client absent',
+  new: 'Nouvelle', accepted: 'Acceptée', preparing: 'En préparation', ready: 'Prête', completed: 'Livrée', no_show: 'Client absent',
 };
 
 /** Motifs proposés pour une annulation par le fournisseur. */

@@ -22,7 +22,7 @@ const STEP_CLS: Record<string, string> = {
 /** Étape suivante proposée en un clic dans la liste. */
 const NEXT: Partial<Record<Fulfillment, { to: Fulfillment; label: string }>> = {
   new: { to: 'accepted', label: 'Accepter' }, accepted: { to: 'preparing', label: 'Préparer' },
-  preparing: { to: 'ready', label: 'Prête' }, ready: { to: 'completed', label: 'Terminée' },
+  preparing: { to: 'ready', label: 'Prête' }, ready: { to: 'completed', label: 'Livrée' },
 };
 const STEPS: Fulfillment[] = ['new', 'accepted', 'preparing', 'ready', 'completed', 'no_show'];
 
@@ -32,9 +32,9 @@ const FILTERS: { id: string; label: string; test: (b: OrderRow) => boolean }[] =
   { id: 'new', label: 'À traiter', test: (b) => b.status === 'confirmed' && b.fulfillment === 'new' },
   { id: 'doing', label: 'En cours', test: (b) => b.status === 'confirmed' && (b.fulfillment === 'accepted' || b.fulfillment === 'preparing') },
   { id: 'ready', label: 'Prêtes', test: (b) => b.status === 'confirmed' && b.fulfillment === 'ready' },
-  { id: 'done', label: 'Terminées', test: (b) => b.status === 'confirmed' && b.fulfillment === 'completed' },
+  { id: 'done', label: 'Livrées', test: (b) => b.status === 'confirmed' && b.fulfillment === 'completed' },
   { id: 'cash', label: 'À encaisser', test: toCollect },
-  { id: 'wait', label: 'Paiement en attente', test: (b) => b.status === 'pending_payment' },
+  { id: 'wait', label: 'Paiement en attente', test: (b) => b.status === 'pending_payment' || toCollect(b) },
   { id: 'cancelled', label: 'Annulées / absents', test: (b) => b.status === 'cancelled' || b.fulfillment === 'no_show' },
 ];
 
@@ -97,9 +97,9 @@ export function CompanyOrders({ q }: { q: UseQueryResult<{ bookings: OrderRow[] 
   return (
     <section className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {[['new', 'À traiter', 'text-sky-300'], ['doing', 'En cours', 'text-amber-300'], ['ready', 'Prêtes', 'text-emerald-300'], ['cash', 'À encaisser', 'text-brand'], ['done', 'Terminées', 'text-zinc-300']].map(([id, label, cls]) => (
+        {[['new', 'À traiter', 'text-sky-300'], ['doing', 'En cours', 'text-amber-300'], ['ready', 'Prêtes', 'text-emerald-300'], ['cash', 'À encaisser', 'text-brand'], ['done', 'Livrées', 'text-zinc-300']].map(([id, label, cls]) => (
           <button key={id} type="button" onClick={() => setFilter(id)} className={`card !p-3 text-left transition hover:border-white/25 ${filter === id ? 'border-brand' : ''}`}>
-            <span className="block text-xs text-zinc-400">{label}</span><span className={`text-2xl font-bold ${cls}`}>{count(id)}</span>
+            <span className="block text-xs text-zinc-400">{label}</span><span className={`text-2xl font-bold ${cls}`}>{count(id)}</span>{id === 'cash' && count('cash') > 0 && <span className="block text-xs text-zinc-400">{fcfa(all.filter(toCollect).reduce((n, b) => n + b.dueFcfa, 0))}</span>}
           </button>
         ))}
       </div>

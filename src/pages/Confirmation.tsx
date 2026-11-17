@@ -28,7 +28,7 @@ export function Confirmation() {
     <div className="mx-auto max-w-2xl space-y-5">
       <div className={`rounded-2xl px-5 py-6 text-center ${confirmed ? 'bg-emerald-500/10' : pending ? 'bg-amber-500/10' : 'bg-white/5'}`}>
         <p className={`text-xl font-bold ${confirmed ? 'text-emerald-300' : pending ? 'text-amber-300' : 'text-zinc-300'}`}>
-          {confirmed ? (b.fulfillment === 'ready' ? '✓ Votre commande est prête' : b.fulfillment === 'completed' ? '✓ Commande terminée' : b.fulfillment === 'accepted' || b.fulfillment === 'preparing' ? '✓ Réservation acceptée par le prestataire' : '✓ Réservation confirmée') : pending ? 'Paiement en attente' : b.cancelledBy === 'merchant' ? 'Réservation annulée par le prestataire' : 'Réservation annulée'}
+          {confirmed ? (b.fulfillment === 'ready' ? '✓ Votre commande est prête' : b.fulfillment === 'completed' ? '✓ Commande livrée' : b.fulfillment === 'accepted' || b.fulfillment === 'preparing' ? '✓ Réservation acceptée par le prestataire' : '✓ Réservation confirmée') : pending ? 'Paiement en attente' : b.cancelledBy === 'merchant' ? 'Réservation annulée par le prestataire' : 'Réservation annulée'}
         </p>
         <p className="mt-2 text-sm text-zinc-400">Numéro de réservation</p>
         <p className="font-mono text-3xl font-extrabold tracking-wider" aria-label="Numéro de réservation">{b.reference}</p>
