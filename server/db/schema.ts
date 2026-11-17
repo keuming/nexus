@@ -17,6 +17,9 @@ export const users = pgTable('users', {
 
 export const companies = pgTable('companies', {
   id: uuid('id').primaryKey().defaultRandom(),
+  orzApiKeyEnc: text('orz_api_key_enc'),
+  orzWebhookSecretEnc: text('orz_webhook_secret_enc'),
+  orzConnectedAt: timestamp('orz_connected_at', { withTimezone: true }),
   ownerId: uuid('owner_id').notNull().references(() => users.id),
   name: text('name').notNull(),
   activity: text('activity').notNull(),
@@ -127,6 +130,7 @@ export const payments = pgTable('payments', {
   lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
   paidAt: timestamp('paid_at', { withTimezone: true }),
   reversedAt: timestamp('reversed_at', { withTimezone: true }),
+  orzScope: text('orz_scope').notNull().default('platform'),
   payUrl: text('pay_url'),
   returnUrl: text('return_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

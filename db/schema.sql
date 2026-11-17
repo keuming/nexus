@@ -225,6 +225,11 @@ alter table companies add column if not exists logo_url text;
 alter table bookings add column if not exists pay_method text not null default 'digital';
 -- Prix unitaire figé à la réservation (un changement de prix ultérieur ne modifie pas les commandes existantes).
 alter table bookings add column if not exists unit_price_fcfa integer;
+-- Paiement direct au marchand : chaque marchand relie son propre compte ORZAYAH (clés chiffrées par l'application).
+alter table companies add column if not exists orz_api_key_enc text;
+alter table companies add column if not exists orz_webhook_secret_enc text;
+alter table companies add column if not exists orz_connected_at timestamptz;
+alter table payments add column if not exists orz_scope text not null default 'platform';
 update bookings b set unit_price_fcfa = o.price_fcfa from offers o where o.id = b.offer_id and b.unit_price_fcfa is null;
 
 -- v35 : le fournisseur autorise (ou non) le paiement à la livraison pour chaque offre

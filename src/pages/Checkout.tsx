@@ -27,7 +27,6 @@ export function Checkout() {
   const { user, loading, refresh } = useAuth();
   const nav = useNavigate();
   const offer = useQuery({ queryKey: ['offer', offerId], queryFn: () => unwrap(api.offers[':id'].$get({ param: { id: offerId } })), retry: false });
-  const methods = useQuery({ queryKey: ['pay-methods'], queryFn: () => unwrap(api.payments.methods.$get()), staleTime: 60_000 });
   const [step, setStep] = useState<Step>(1);
   const [d, setD] = useState<Draft>(() => ({ seats: 1, stop: '', name: '', phone: '', email: '', guests: [], note: '', mode: '', accept: false, signup: '', password: '', ...load(offerId) }));
   const [paying, setPaying] = useState<{ paymentId: string; bookingId: string } | null>(null);
@@ -38,6 +37,8 @@ export function Checkout() {
   useEffect(() => { save(offerId, d); }, [offerId, d]);
   const allowCash = offer.data?.offer.allowCash;
   useEffect(() => { if (allowCash === false) setD((x) => (x.mode === 'cash' ? { ...x, mode: '' } : x)); }, [allowCash]);
+  const onlineOk = offer.data?.offer.canPayOnline === true;
+  useEffect(() => { if (offer.data && !onlineOk) setD((x) => (x.mode === 'digital' ? { ...x, mode: '' } : x)); }, [offer.data, onlineOk]);
 
   const o = offer.data?.offer;
   const price = o?.priceFcfa ?? 0;
@@ -80,7 +81,7 @@ export function Checkout() {
 
   const next = (e: FormEvent, to: Step) => { e.preventDefault(); book.reset(); setStep(to); window.scrollTo({ top: 0 }); };
   const pay = (e: FormEvent) => { e.preventDefault(); book.mutate(); };
-  const methodsOk = methods.data?.available !== false;
+  const methodsOk = o.canPayOnline === true; // le marchand a relié son compte ORZAYAH
   const cashOk = o.allowCash !== false;
   const online = paid && d.mode === 'digital';
   const canSubmit = !paid || (d.mode === 'cash' && cashOk) || (d.mode === 'digital' && methodsOk);
@@ -169,12 +170,12 @@ export function Checkout() {
                       <input type="radio" name="mode" className="mt-1" required checked={d.mode === 'cash'} onChange={() => set('mode', 'cash')} />
                       <span><span className="block text-sm font-semibold">Payer à la livraison</span><span className="block text-xs text-zinc-400">Vous réglez {fcfa(total)} directement au prestataire. Votre réservation est confirmée tout de suite.</span></span>
                     </label>}
-                    <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${d.mode === 'digital' ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
-                      <input type="radio" name="mode" className="mt-1" required checked={d.mode === 'digital'} onChange={() => set('mode', 'digital')} />
+                    <label className={`flex items-start gap-3 rounded-lg border px-3 py-3 ${!methodsOk ? 'cursor-not-allowed border-white/10 opacity-50' : d.mode === 'digital' ? 'cursor-pointer border-brand bg-brand/10' : 'cursor-pointer border-white/15 hover:bg-white/5'}`}>
+                      <input type="radio" name="mode" className="mt-1" required disabled={!methodsOk} checked={d.mode === 'digital'} onChange={() => set('mode', 'digital')} />
                       <span><span className="block text-sm font-semibold">Payer en ligne (ORZAYAH)</span><span className="block text-xs text-zinc-400">Mobile Money (Orange, MTN, Moov, Wave), carte Visa / Mastercard ou wallet ORZAYAH. Vous êtes redirigé vers la page de paiement sécurisée, puis revenez ici.</span></span>
                     </label>
                   </fieldset>
-                  {online && !methodsOk && <p role="alert" className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Le paiement en ligne est momentanément indisponible. Choisissez le paiement à la livraison ou réessayez plus tard.</p>}
+                  {!methodsOk && <p role="alert" className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">{cashOk ? "Ce prestataire n'a pas encore activé le paiement en ligne : choisissez le paiement à la livraison." : "Ce prestataire n'accepte pas encore de paiement pour cette offre. Contactez-le ou réessayez plus tard."}</p>}
                 </>
               ) : <p className="text-sm text-zinc-300">Cette offre est gratuite : aucun paiement n'est demandé.</p>}
               <label className="flex items-start gap-2 text-sm">

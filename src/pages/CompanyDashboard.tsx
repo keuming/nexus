@@ -9,6 +9,7 @@ import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
 import { CompanyFields, ScopeField, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
 import { CompanyOrders } from '../components/CompanyOrders';
+import { CompanyPayments } from '../components/CompanyPayments';
 import { placeLabel } from '../lib/place';
 import { CATEGORIES, ROUTE_ACTIVITIES, SEARCH_FORMS } from '../../shared/search';
 import { ACTIVITIES } from '../../shared/constants';
@@ -33,6 +34,7 @@ export function CompanyDashboard() {
     },
   });
   const active = co.data?.status === 'active' || co.data?.status === 'suspended';
+  const setup = useQuery({ queryKey: ['payments-setup'], enabled: active, queryFn: () => unwrap(api.company['payments-setup'].$get()) });
   const bookings = useQuery({ queryKey: ['company-bookings'], enabled: active, queryFn: () => unwrap(api.company.bookings.$get()), refetchInterval: 30_000 });
   const offers = useQuery({ queryKey: ['company-offers'], enabled: active, queryFn: () => unwrap(api.company.offers.$get()) });
   const refresh = () => { setEditing(false); qc.invalidateQueries({ queryKey: ['company'] }); };
@@ -85,9 +87,12 @@ export function CompanyDashboard() {
                 className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${tab === t.id ? 'border-brand text-white' : 'border-transparent text-zinc-400 hover:text-white'}`}>{t.label}</button>
             ))}
           </div>
+          {tab !== 'settings' && setup.data && !setup.data.connected && (
+            <p className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Vos clients ne peuvent pas encore payer en ligne : reliez votre compte ORZAYAH pour recevoir vos paiements directement. <button type="button" className="btn-ghost" onClick={() => setTab('settings')}>Relier mon compte</button></p>
+          )}
           {tab === 'bookings' && <CompanyOrders q={bookings} />}
           {tab === 'offers' && <Offers company={{ country: c.country, city: c.city, activity: c.activity, serviceCities: c.serviceCities, scopes: c.scopes }} />}
-          {tab === 'settings' && <><Profile company={c} /><ServiceCities country={c.country} cities={c.serviceCities} /></>}
+          {tab === 'settings' && <><CompanyPayments /><Profile company={c} /><ServiceCities country={c.country} cities={c.serviceCities} /></>}
         </>
       )}
     </div>

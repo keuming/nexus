@@ -35,6 +35,7 @@ async function setup(credits: number, capacity: number, priceFcfa = 0) {
   const adm = await admin();
   await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
   if (credits) await adm.post(`/admin/companies/${co.id}/credits`, { credits });
+  await owner.put('/company/payments-setup', { apiKey: 'test-key-0123456789' }); // relie le compte ORZAYAH (sans effet si ORZAYAH n'est pas simulé)
   const offer = (await owner.post('/company/offers', { title: 'Abidjan → Bouaké', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', stops: [], priceFcfa, capacity, startsAt: future() })).json.offer;
   return { owner, adm, co, offer };
 }
@@ -307,11 +308,13 @@ describe('paiement ORZAYAH', () => {
     expect(orz.links).toHaveLength(0);
   });
 
-  it("répond 503 sans bloquer de places quand ORZAYAH n'est pas configuré", async () => {
+  it("refuse le paiement en ligne sans bloquer de places quand le marchand n'a pas relié son compte ORZAYAH", async () => {
     ctx = await makeApp(null);
     const { offer, co } = await setup(5, 5, 5000);
     const cust = await register('customer', 'c@x.test');
-    expect((await cust.post('/bookings', { ...BK, offerId: offer.id })).status).toBe(503);
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id });
+    expect(r.status).toBe(400);
+    expect(r.json.error.code).toBe('online_not_available');
     expect(await state(offer.id, co.id)).toEqual({ booked: 0, credits: 5 });
   });
 
@@ -336,8 +339,9 @@ describe('paiement ORZAYAH', () => {
     expect((await cust.get('/bookings/mine')).json.bookings[0]).toMatchObject({ status: 'confirmed', paymentStatus: 'paid' });
     expect(await state(offer.id, co.id)).toEqual({ booked: 2, credits: 4 }); // rien n'a bougé au 2e passage
     expect((await owner.get('/company/bookings')).json.bookings[0].paymentStatus).toBe('paid');
-    expect((await adm.get('/admin/payouts')).json.payouts[0]).toMatchObject({ totalFcfa: 10000 });
-    expect((await adm.post(`/admin/companies/${co.id}/payouts`)).json).toMatchObject({ count: 1, totalFcfa: 10000 });
+    // Paiement direct : l'argent est allé sur le compte ORZAYAH du marchand, BackMarket n'a rien à reverser.
+    expect((await adm.get('/admin/payouts')).json.payouts).toHaveLength(0);
+    expect((await adm.post(`/admin/companies/${co.id}/payouts`)).json).toMatchObject({ count: 0, totalFcfa: 0 });
     expect((await adm.get('/admin/payouts')).json.payouts).toHaveLength(0);
   });
 
@@ -637,11 +641,10 @@ describe('parcours de réservation : informations du réservant', () => {
 
   it('indique si le paiement en ligne est disponible', async () => {
     ctx = await makeApp(new FakeOrz());
-    const cust = await register('customer', 'c@x.test');
-    expect((await cust.get('/payments/methods')).json.available).toBe(true);
-    ctx = await makeApp(null);
-    const c2 = await register('customer', 'e@x.test');
-    expect((await c2.get('/payments/methods')).json.available).toBe(false);
+    const { owner, offer } = await setup(5, 5, 5000);
+    expect((await owner.get('/offers/' + offer.id)).json.offer.canPayOnline).toBe(true);
+    await owner.delete('/company/payments-setup');
+    expect((await owner.get('/offers/' + offer.id)).json.offer.canPayOnline).toBe(false);
   });
 
   it("planifie l'affichage : type d'activité, offre, fenêtre de dates", async () => {
@@ -766,8 +769,8 @@ describe('paiement à la livraison', () => {
     const offers = (await owner.get('/company/offers')).json.offers;
     const offerId = offers[0].id;
     const cust = await register('customer', 'cod@x.test');
-    // sans mode : le paiement en ligne est le défaut (ici ORZAYAH n'est pas configuré → 503)
-    expect((await cust.post('/bookings', { ...BK, offerId })).status).toBe(503);
+    // sans mode : le paiement en ligne est le défaut (ici le marchand n'a pas relié ORZAYAH → refusé)
+    expect((await cust.post('/bookings', { ...BK, offerId })).status).toBe(400);
     const r = await cust.post('/bookings', { ...BK, offerId, seats: 1, payMode: 'cash' });
     expect(r.status).toBe(201);
     expect(r.json.payment).toBeNull();
@@ -833,17 +836,67 @@ describe('paiement à la livraison autorisé par offre', () => {
 });
 
 
+describe('compte ORZAYAH du marchand (paiement direct)', () => {
+  it('relie, vérifie et chiffre la clé ; ne la renvoie jamais ; déconnexion refusée tant qu\'un paiement est en cours', async () => {
+    const orz = new FakeOrz(); ctx = await makeApp(orz);
+    const { owner, co, offer } = await setup(5, 5, 5000);
+    const r0 = (await owner.get('/company/payments-setup')).json;
+    expect(r0.connected).toBe(true); // setup() relie déjà un compte de test
+    await owner.delete('/company/payments-setup');
+    const st = (await owner.get('/company/payments-setup')).json;
+    expect(st).toMatchObject({ connected: false, webhookConfigured: false });
+    expect(st.webhookUrl).toContain(`/api/orzayah/webhook/${co.id}`);
+    expect((await owner.put('/company/payments-setup', { apiKey: 'court' })).status).toBe(400);
+    expect((await owner.put('/company/payments-setup', { apiKey: 'test-key-0123456789', webhookSecret: 'pas-un-secret' })).status).toBe(400);
+    expect((await owner.put('/company/payments-setup', { apiKey: 'test-key-0123456789', webhookSecret: 'whsec_abcdef123456' })).status).toBe(200);
+    const [row] = await ctx.db.select().from(companies).where(eq(companies.id, co.id));
+    expect(row.orzApiKeyEnc).toMatch(/^v1\./);
+    expect(row.orzApiKeyEnc).not.toContain('test-key');
+    expect(JSON.stringify((await owner.get('/company/payments-setup')).json)).not.toContain('test-key');
+    expect(JSON.stringify((await owner.get('/company')).json)).not.toContain(row.orzApiKeyEnc!);
+    const cust = await register('customer', 'c@x.test');
+    const b = await cust.post('/bookings', { ...BK, offerId: offer.id });
+    expect(b.status).toBe(201);
+    expect((await owner.delete('/company/payments-setup')).status).toBe(409); // paiement en attente
+    expect((await ctx.db.select().from(payments))[0].orzScope).toBe('merchant');
+  });
+
+  it('refuse une clé rejetée par ORZAYAH', async () => {
+    const orz = new FakeOrz(); ctx = await makeApp(orz);
+    const { owner } = await setup(5, 5, 5000);
+    orz.rejectKey = true;
+    const r = await owner.put('/company/payments-setup', { apiKey: 'mauvaise-cle-0123456789' });
+    expect(r.status).toBe(400);
+    expect(r.json.error.code).toBe('invalid_key');
+  });
+
+  it('un client ne peut payer en ligne que chez un marchand relié ; le paiement à la livraison reste possible', async () => {
+    ctx = await makeApp(new FakeOrz());
+    const { owner, offer } = await setup(5, 5, 5000);
+    await owner.delete('/company/payments-setup');
+    const cust = await register('customer', 'c@x.test');
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payMode: 'digital' })).json.error.code).toBe('online_not_available');
+    expect((await cust.post('/bookings', { ...BK, offerId: offer.id, payMode: 'cash' })).status).toBe(201);
+  });
+});
+
 describe('webhook ORZAYAH', () => {
   const SECRET = 'whsec_test_secret';
   let orz: FakeOrz;
   const sign = (raw: string, t = Math.floor(Date.now() / 1000), secret = SECRET) => `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${raw}`).digest('hex')}`;
-  const hook = (raw: string, headers: Record<string, string>) => ctx.app.request('http://localhost/api/orzayah/webhook', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: raw });
+  let hookPath = '/webhook';
+  const hook = (raw: string, headers: Record<string, string>) => ctx.app.request(`http://localhost/api/orzayah${hookPath}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: raw });
   const evt = (slug: string, ref: string) => JSON.stringify({ id: 'evt_1', type: 'payment.succeeded', data: { slug, externalReference: ref, amount: '500000' } });
   beforeEach(async () => { process.env.ORZAYAH_WEBHOOK_SECRET = SECRET; resetConfig(); orz = new FakeOrz(); ctx = await makeApp(orz); });
   afterEach(() => { delete process.env.ORZAYAH_WEBHOOK_SECRET; resetConfig(); });
 
+  const connectHook = async (owner: Client, co: { id: string }) => {
+    expect((await owner.put('/company/payments-setup', { apiKey: 'test-key-0123456789', webhookSecret: SECRET })).status).toBe(200);
+    hookPath = `/webhook/${co.id}`;
+  };
   const booked = async () => {
-    const { offer } = await setup(5, 5, 5000);
+    const { offer, owner, co } = await setup(5, 5, 5000);
+    await connectHook(owner, co);
     const cust = await register('customer', 'c@x.test');
     const r = await cust.post('/bookings', { ...BK, offerId: offer.id });
     return { cust, r, slug: orz.ops.get(`bm-${r.json.payment.id}`)!.id };
@@ -877,15 +930,20 @@ describe('webhook ORZAYAH', () => {
 
   it('webhook.test répond 200 ; paiement inconnu → 503 pour un nouvel essai ; sans secret → 503', async () => {
     const t = JSON.stringify({ type: 'webhook.test', data: {} });
+    const s0 = await setup(5, 5, 5000);
+    hookPath = `/webhook/${s0.co.id}`;
+    expect((await hook(t, { 'x-orzayah-event': 'webhook.test', 'x-orzayah-signature': sign(t) })).status).toBe(503); // secret de webhook pas encore enregistré
+    await connectHook(s0.owner, s0.co);
     expect((await hook(t, { 'x-orzayah-event': 'webhook.test', 'x-orzayah-signature': sign(t) })).status).toBe(200);
     const u = evt('INCONNU1', 'NX-ZZZZZZZZ');
     expect((await hook(u, { 'x-orzayah-event': 'payment.succeeded', 'x-orzayah-signature': sign(u) })).status).toBe(503);
-    delete process.env.ORZAYAH_WEBHOOK_SECRET; resetConfig();
-    expect((await hook(t, { 'x-orzayah-signature': sign(t) })).status).toBe(503);
+    hookPath = '/webhook/00000000-0000-4000-8000-000000000000';
+    expect((await hook(t, { 'x-orzayah-signature': sign(t) })).status).toBe(503); // marchand inconnu
   });
 
   it('montant payé différent : pas de confirmation, alerte administrateur', async () => {
-    const { offer, adm } = await setup(5, 5, 5000);
+    const { offer, adm, owner, co } = await setup(5, 5, 5000);
+    await connectHook(owner, co);
     const cust = await register('customer', 'c@x.test');
     const r = await cust.post('/bookings', { ...BK, offerId: offer.id });
     const k = `bm-${r.json.payment.id}`;
@@ -1044,7 +1102,8 @@ describe('gestion des commandes par le fournisseur', () => {
     expect(c.json.refundDue).toBe(true);
     expect((await adm.get('/admin/payments')).json.payments[0].status).toBe('needs_refund');
     expect((await adm.get('/admin/stats')).json.needsRefund).toBe(1);
-    expect((await adm.get('/notifications')).json.notifications.some((n: any) => n.kind === 'needs_refund')).toBe(true);
+    // L'argent est chez le marchand : c'est à lui de rembourser, pas d'alerte au back-office.
+    expect((await adm.get('/notifications')).json.notifications.some((n: any) => n.kind === 'needs_refund')).toBe(false);
   });
 });
 

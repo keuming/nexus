@@ -88,3 +88,9 @@ export function defaultOrzayah(): OrzayahClient | null {
   }
   return cached;
 }
+
+/**
+ * Choisit le compte ORZAYAH d'un paiement : « merchant » = clé du marchand (l'argent lui arrive directement),
+ * « platform » = ancienne clé BackMarket (paiements créés avant le paiement direct).
+ */
+export type OrzResolver = (companyId: string, scope: string) => Promise<OrzayahClient | null>;

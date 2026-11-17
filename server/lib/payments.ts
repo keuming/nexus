@@ -2,11 +2,11 @@ import { and, eq, inArray, isNull, lt, or, gt, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { bookings, companies, creditLedger, offers, payments } from '../db/schema.js';
 import { notifyAdmins, notifyBookingConfirmed } from './notify.js';
-import { OrzayahError, type OrzayahClient, type OrzOp } from './orzayah.js';
+import { OrzayahError, type OrzResolver, type OrzOp } from './orzayah.js';
 
 export type PaymentRow = typeof payments.$inferSelect;
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
-export interface PayCtx { db: Db; orz: OrzayahClient | null }
+export interface PayCtx { db: Db; orzFor: OrzResolver }
 
 const FAILED = new Set(['FAILED', 'CANCELLED', 'EXPIRED']);
 const POLL_MIN_MS = 3000;     // l'API ORZAYAH limite à 120 requêtes/min par IP : on espace les relectures
@@ -123,8 +123,10 @@ export async function applyLink(db: Db, paymentId: string, op: OrzOp): Promise<v
 
 /** Relit le lien chez ORZAYAH (GET /payment-links/{slug}, source de vérité) et applique l'état. Tolérant aux pannes. */
 export async function syncPayment(ctx: PayCtx, p: PaymentRow, force = false): Promise<PaymentRow> {
-  const { db, orz } = ctx;
-  if (!orz || (p.status !== 'pending' && p.status !== 'expired')) return p;
+  const { db } = ctx;
+  if (p.status !== 'pending' && p.status !== 'expired') return p;
+  const orz = await ctx.orzFor(p.companyId, p.orzScope);
+  if (!orz) return p;
   if (!force && p.lastCheckedAt && Date.now() - p.lastCheckedAt.getTime() < POLL_MIN_MS) return p;
   try {
     let op: OrzOp | null;
@@ -151,7 +153,6 @@ export async function sweepExpired(ctx: PayCtx, limit = 5): Promise<void> {
     const fresh = await syncPayment(ctx, p, true);
     if (fresh.status === 'pending') await closePayment(ctx.db, p.id, 'expired', 'Délai de paiement dépassé');
   }
-  if (!ctx.orz) return;
   const recheck = await ctx.db.select().from(payments).where(and(
     eq(payments.status, 'expired'), gt(payments.createdAt, new Date(Date.now() - 48 * 3600_000)),
     or(isNull(payments.lastCheckedAt), lt(payments.lastCheckedAt, new Date(Date.now() - 60_000))))).limit(Math.max(1, limit - late.length));

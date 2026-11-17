@@ -16,6 +16,8 @@ const schema = z.object({
   // Secret de signature des webhooks ORZAYAH (whsec_…) et URL publique du site (adresse de retour https).
   ORZAYAH_WEBHOOK_SECRET: z.string().optional(),
   APP_URL: z.string().url().optional(),
+  // Clé de chiffrement (base64, 32 octets) des clés ORZAYAH des marchands. Sans elle, dérivée de JWT_SECRET.
+  SECRETS_KEY: z.string().optional(),
   HOLD_MINUTES: z.coerce.number().int().min(5).max(120).default(15),
 });
 

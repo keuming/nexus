@@ -7,7 +7,7 @@ import { bookings, companies, creditLedger, offers, payments } from '../db/schem
 import { AppError, conflict, notFound } from '../lib/errors.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
-import { OrzayahError } from '../lib/orzayah.js';
+import { OrzayahError, type OrzayahClient } from '../lib/orzayah.js';
 import { notify, notifyBookingConfirmed } from '../lib/notify.js';
 import { phoneField } from '../lib/schemas.js';
 import { applyLink, closePayment, linkInput, publicPayment, sweepExpired, syncPayment } from '../lib/payments.js';
@@ -39,12 +39,11 @@ export const bookingRoutes = new Hono<Env>()
     const { offerId, seats, stop, payMode, contact, guests, note } = c.req.valid('json');
     const user = c.get('user')!;
     const db = c.get('db');
-    const orz = c.get('orz');
-    const ctx = { db, orz };
+    const ctx = { db, orzFor: c.get('orzFor') };
 
     try { await sweepExpired(ctx, 3); } catch (e) { console.error('[sweep]', e); }
 
-    const [pre] = await db.select({ price: offers.priceFcfa, allowCash: offers.allowCash }).from(offers).where(eq(offers.id, offerId)).limit(1);
+    const [pre] = await db.select({ price: offers.priceFcfa, allowCash: offers.allowCash, companyId: offers.companyId }).from(offers).where(eq(offers.id, offerId)).limit(1);
     if (!pre) throw notFound('Offre');
     if (pre.price > 0 && payMode === 'cash' && !pre.allowCash) throw new AppError(400, 'cash_not_allowed', "Ce prestataire n'accepte pas le paiement à la livraison pour cette offre");
     const totalFcfa = pre.price * seats;
@@ -52,8 +51,11 @@ export const bookingRoutes = new Hono<Env>()
     const paid = priced && payMode === 'digital'; // paiement en ligne (sinon gratuit ou à la livraison)
     const payMethod = priced && payMode === 'cash' ? 'cash' : 'digital';
 
+    let orz: OrzayahClient | null = null;
     if (paid) {
-      if (!orz) throw new AppError(503, 'payments_unavailable', 'Le paiement en ligne est momentanément indisponible');
+      // L'argent va directement sur le compte ORZAYAH du marchand : sans compte relié, le paiement en ligne est impossible.
+      orz = await ctx.orzFor(pre.companyId, 'merchant');
+      if (!orz) throw new AppError(400, 'online_not_available', "Ce prestataire n'a pas encore activé le paiement en ligne : choisissez le paiement à la livraison ou contactez-le");
       const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(payments).where(and(eq(payments.userId, user.id), eq(payments.status, 'pending')));
       if (n >= MAX_PENDING) throw new AppError(429, 'too_many_pending', 'Trop de paiements en attente : terminez-les ou attendez leur expiration');
     }
@@ -92,7 +94,7 @@ export const bookingRoutes = new Hono<Env>()
       await tx.insert(creditLedger).values({ companyId: o.companyId, delta: -1, reason: 'booking', bookingId: b.id });
       if (paid) {
         await tx.insert(payments).values({
-          id: paymentId, bookingId: b.id, companyId: o.companyId, userId: user.id, amountFcfa: totalFcfa,
+          id: paymentId, orzScope: 'merchant', bookingId: b.id, companyId: o.companyId, userId: user.id, amountFcfa: totalFcfa,
           idempotencyKey: `bm-${paymentId}`, returnUrl: `${appUrl}/reservation/${b.id}`,
           expiresAt: new Date(Date.now() + config().HOLD_MINUTES * 60_000),
         });
@@ -136,7 +138,7 @@ export const bookingRoutes = new Hono<Env>()
     const db = c.get('db');
     // Retour de la page de paiement : on relit le lien chez ORZAYAH (espacé de 3 s) pour afficher l'état réel.
     const [open] = await db.select().from(payments).where(and(eq(payments.bookingId, c.req.valid('param').id), eq(payments.userId, user.id))).limit(1);
-    if (open) await syncPayment({ db, orz: c.get('orz') }, open);
+    if (open) await syncPayment({ db, orzFor: c.get('orzFor') }, open);
     const [r] = await db.select({
       id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
       contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,

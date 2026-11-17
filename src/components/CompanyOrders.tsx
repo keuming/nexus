@@ -217,7 +217,7 @@ function OrderDetail({ b, onClose, onChanged }: { b: OrderRow; onClose: () => vo
             </div>
           </div>
         ) : b.status === 'cancelled' ? (
-          <p className="rounded-lg bg-white/5 px-3 py-2 text-sm text-zinc-300">Annulée {b.cancelledBy === 'merchant' ? 'par vous' : 'par le client'}{b.cancelReason ? ` · ${b.cancelReason}` : ''}.{b.paymentStatus === 'needs_refund' ? ' Remboursement du client en cours côté BackMarket.' : ''}</p>
+          <p className="rounded-lg bg-white/5 px-3 py-2 text-sm text-zinc-300">Annulée {b.cancelledBy === 'merchant' ? 'par vous' : 'par le client'}{b.cancelReason ? ` · ${b.cancelReason}` : ''}.{b.paymentStatus === 'needs_refund' ? ' Le client a payé en ligne : à rembourser depuis votre compte ORZAYAH.' : ''}</p>
         ) : <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-300">Paiement en attente : la commande sera actionnable dès que le client aura payé.</p>}
 
         <div className="space-y-2">
@@ -238,7 +238,7 @@ function OrderDetail({ b, onClose, onChanged }: { b: OrderRow; onClose: () => vo
               {CANCEL_REASONS.map((r) => <option key={r}>{r}</option>)}
             </select>
             {reason === 'Autre' && <input className="input" maxLength={150} placeholder="Précisez le motif" value={other} onChange={(e) => setOther(e.target.value)} />}
-            {b.paymentStatus === 'paid' && <p className="text-xs text-amber-300">Le client a déjà payé en ligne : BackMarket sera alerté pour le rembourser.</p>}
+            {b.paymentStatus === 'paid' && <p className="text-xs text-amber-300">Le client a déjà payé en ligne sur votre compte ORZAYAH : vous devrez le rembourser vous-même depuis ORZAYAH.</p>}
             <div className="flex gap-2">
               <button className="btn-ghost" onClick={() => setCancelling(false)}>Retour</button>
               <button className="btn !bg-red-500 !text-white" disabled={!reasonOk || cancel.isPending} onClick={() => cancel.mutate()}>Confirmer l'annulation</button>

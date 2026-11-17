@@ -14,14 +14,32 @@ import { adminRoutes } from './routes/admin.js';
 import { paymentRoutes } from './routes/payments.js';
 import { orzayahRoutes } from './routes/orzayah.js';
 import { notificationRoutes } from './routes/notifications.js';
-import { defaultOrzayah, type OrzayahClient } from './lib/orzayah.js';
+import { defaultOrzayah, HttpOrzayah, type OrzayahClient, type OrzResolver } from './lib/orzayah.js';
+import { decryptSecret } from './lib/secrets.js';
+import { config } from './config.js';
+import { companies } from './db/schema.js';
+import { eq } from 'drizzle-orm';
 
 /** `getDb` est injecté : pg Pool en production, PGlite dans les tests. */
 export function createApp(getDb: () => Db, deps: { orzayah?: OrzayahClient | null } = {}) {
   const app = new Hono<Env>().basePath('/api');
 
   app.use('*', secureHeaders());
-  app.use('*', async (c, next) => { c.set('db', getDb()); c.set('orz', deps.orzayah !== undefined ? deps.orzayah : defaultOrzayah()); await next(); });
+  app.use('*', async (c, next) => {
+    const db = getDb();
+    const platform = deps.orzayah !== undefined ? deps.orzayah : defaultOrzayah();
+    const orzFor: OrzResolver = async (companyId, scope) => {
+      if (scope !== 'merchant') return platform;
+      const [co] = await db.select({ enc: companies.orzApiKeyEnc }).from(companies).where(eq(companies.id, companyId)).limit(1);
+      if (!co?.enc) return null;
+      // Tests : le faux ORZAYAH injecté joue le rôle du compte du marchand.
+      if (deps.orzayah !== undefined) return deps.orzayah;
+      try { return new HttpOrzayah(decryptSecret(co.enc), config().ORZAYAH_API_URL); } catch { return null; }
+    };
+    c.set('db', db); c.set('orz', platform); c.set('orzFor', orzFor);
+    c.set('orzMake', (apiKey: string) => (deps.orzayah !== undefined ? deps.orzayah : new HttpOrzayah(apiKey, config().ORZAYAH_API_URL)));
+    await next();
+  });
   app.use('*', sameOrigin);
   app.use('*', session);
 

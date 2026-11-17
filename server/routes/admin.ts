@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { safeCompany } from '../lib/secrets.js';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -66,7 +67,7 @@ export const adminRoutes = new Hono<Env>()
       .select({ companyId: payments.companyId, companyName: companies.name, count: count(), totalFcfa: sql<number>`sum(${payments.amountFcfa})::int` })
       .from(payments)
       .innerJoin(companies, eq(companies.id, payments.companyId))
-      .where(and(eq(payments.status, 'paid'), sql`${payments.reversedAt} is null`))
+      .where(and(eq(payments.status, 'paid'), eq(payments.orzScope, 'platform'), sql`${payments.reversedAt} is null`))
       .groupBy(payments.companyId, companies.name)
       .orderBy(desc(sql`sum(${payments.amountFcfa})`));
     return c.json({ payouts: rows });
@@ -74,7 +75,7 @@ export const adminRoutes = new Hono<Env>()
   /** Marque les paiements encaissés comme reversés (le virement est fait hors plateforme). */
   .post('/companies/:id/payouts', v('param', id), async (c) => {
     const rows = await c.get('db').update(payments).set({ reversedAt: new Date() })
-      .where(and(eq(payments.companyId, c.req.valid('param').id), eq(payments.status, 'paid'), sql`${payments.reversedAt} is null`))
+      .where(and(eq(payments.companyId, c.req.valid('param').id), eq(payments.orzScope, 'platform'), eq(payments.status, 'paid'), sql`${payments.reversedAt} is null`))
       .returning({ amount: payments.amountFcfa });
     return c.json({ count: rows.length, totalFcfa: rows.reduce((a, r) => a + r.amount, 0) });
   })
@@ -104,7 +105,7 @@ export const adminRoutes = new Hono<Env>()
       if (!exists) throw notFound('Entreprise');
       throw conflict('invalid_state', "Cette demande a déjà été traitée ou n'est plus dans un état valide");
     }
-    return c.json({ company: co });
+    return c.json({ company: safeCompany(co) });
   })
   /** Suspension / réactivation d'une entreprise déjà validée (ne contourne pas la validation). */
   .post('/companies/:id/status', v('param', id), v('json', z.object({ status: z.enum(['active', 'suspended']) })), async (c) => {
@@ -115,7 +116,7 @@ export const adminRoutes = new Hono<Env>()
       if (!exists) throw notFound('Entreprise');
       throw conflict('invalid_state', "Cette entreprise doit d'abord être validée");
     }
-    return c.json({ company: co });
+    return c.json({ company: safeCompany(co) });
   })
   /** Recharge de crédits (après paiement hors-ligne / mobile money). 1 crédit = 125 FCFA. */
   .post('/companies/:id/credits', v('param', id), v('json', z.object({ credits: z.number().int().min(1).max(100_000) })), async (c) => {
@@ -126,5 +127,5 @@ export const adminRoutes = new Hono<Env>()
       await tx.insert(creditLedger).values({ companyId: row.id, delta: credits, reason: 'topup' });
       return row;
     });
-    return c.json({ company: co, amountFcfa: credits * CREDIT_PRICE_FCFA });
+    return c.json({ company: safeCompany(co), amountFcfa: credits * CREDIT_PRICE_FCFA });
   });

@@ -9,6 +9,8 @@ import type { Activity } from '../../shared/constants.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
 import { notify, notifyAdmins, sendMail } from '../lib/notify.js';
+import { encryptSecret, safeCompany } from '../lib/secrets.js';
+import { OrzayahError } from '../lib/orzayah.js';
 import { FULFILLMENT, FULFILLMENT_LABEL } from '../../shared/orders.js';
 import { cityName, companyInput, countryCode, phoneField, placeList } from '../lib/schemas.js';
 import type { Db } from '../db/client.js';
@@ -63,7 +65,7 @@ async function myCompany(db: Db, ownerId: string) {
 
 export const companyRoutes = new Hono<Env>()
   .use(requireRole('owner'))
-  .get('/', async (c) => c.json({ company: await myCompany(c.get('db'), c.get('user')!.id) }))
+  .get('/', async (c) => c.json({ company: safeCompany(await myCompany(c.get('db'), c.get('user')!.id)) }))
   .post('/', v('json', companyInput), async (c) => {
     const db = c.get('db');
     const ownerId = c.get('user')!.id;
@@ -71,19 +73,19 @@ export const companyRoutes = new Hono<Env>()
     if (dup) throw conflict('company_exists', 'Vous avez déjà une entreprise');
     const [co] = await db.insert(companies).values({ ...c.req.valid('json'), ownerId }).returning();
     await notifyAdmins(db, { kind: 'company_request', refId: co.id, title: `Nouvelle demande partenaire : ${co.name}`, body: co.city, link: '/admin' });
-    return c.json({ company: co }, 201);
+    return c.json({ company: safeCompany(co) }, 201);
   })
   /** Correction d'une demande refusée : repasse en attente de validation. */
   .post('/resubmit', v('json', companyInput), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     if (co.status !== 'rejected') throw conflict('invalid_state', "Seule une demande refusée peut être corrigée et renvoyée");
     const [row] = await c.get('db').update(companies).set({ ...c.req.valid('json'), status: 'pending' }).where(eq(companies.id, co.id)).returning();
-    return c.json({ company: row });
+    return c.json({ company: safeCompany(row) });
   })
   .patch('/', v('json', z.object({ serviceCities: placeList(30) })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const [row] = await c.get('db').update(companies).set({ serviceCities: c.req.valid('json').serviceCities }).where(eq(companies.id, co.id)).returning();
-    return c.json({ company: row });
+    return c.json({ company: safeCompany(row) });
   })
   /** Profil : nom, téléphone, e-mail de contact et logo (modifiables à tout moment). */
   .patch('/profile', v('json', z.object({
@@ -109,7 +111,7 @@ export const companyRoutes = new Hono<Env>()
       logoUrl = parsePhoto(b.logoUrl).url;
     }
     const [row] = await c.get('db').update(companies).set({ name: b.name, phone: b.phone, email: b.email, logoUrl, ...(b.scopes ? { scopes: b.scopes } : {}) }).where(eq(companies.id, co.id)).returning();
-    return c.json({ company: row });
+    return c.json({ company: safeCompany(row) });
   })
   /** Paramètres d'envoi direct des photos (publics par nature : nom du compte et preset non signé). */
   .get('/upload-config', (c) => {
@@ -252,13 +254,53 @@ export const companyRoutes = new Hono<Env>()
       await tx.update(companies).set({ credits: sql`${companies.credits} + 1` }).where(eq(companies.id, b.companyId));
       await tx.insert(creditLedger).values({ companyId: b.companyId, delta: 1, reason: 'refund', bookingId: b.id });
       const [pay] = await tx.update(payments).set({ status: 'needs_refund', failureReason: `Annulée par le fournisseur (${reason}) : remboursement du client à effectuer` })
-        .where(and(eq(payments.bookingId, b.id), eq(payments.status, 'paid'))).returning({ id: payments.id, amount: payments.amountFcfa });
+        .where(and(eq(payments.bookingId, b.id), eq(payments.status, 'paid'))).returning({ id: payments.id, amount: payments.amountFcfa, scope: payments.orzScope });
       const [o] = await tx.select({ title: offers.title }).from(offers).where(eq(offers.id, b.offerId));
       return { b, pay, title: o?.title ?? '' };
     });
     await tellCustomer(db, r.b, { kind: 'booking_cancelled_merchant', title: `Réservation annulée : ${r.title}`, body: `${co.name} a annulé votre réservation ${r.b.reference}. Motif : ${reason}.${r.pay ? ' Vous serez remboursé.' : ''}` });
-    if (r.pay) await notifyAdmins(db, { kind: 'needs_refund', refId: r.pay.id, title: 'Remboursement à effectuer', body: `${co.name} a annulé ${r.b.reference} (${new Intl.NumberFormat('fr-FR').format(r.pay.amount)} FCFA déjà payés).`, link: '/admin' });
+    if (r.pay && r.pay.scope !== 'merchant') await notifyAdmins(db, { kind: 'needs_refund', refId: r.pay.id, title: 'Remboursement à effectuer', body: `${co.name} a annulé ${r.b.reference} (${new Intl.NumberFormat('fr-FR').format(r.pay.amount)} FCFA déjà payés).`, link: '/admin' });
     return c.json({ ok: true, refundDue: !!r.pay });
+  })
+  /**
+   * Paiement direct : le marchand relie SON compte ORZAYAH. Les liens de paiement de ses clients sont créés avec sa clé,
+   * l'argent arrive donc sur son compte sans passer par BackMarket. Les clés sont chiffrées et ne sont jamais renvoyées.
+   */
+  .get('/payments-setup', async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const [r] = await c.get('db').select({ key: companies.orzApiKeyEnc, hook: companies.orzWebhookSecretEnc, at: companies.orzConnectedAt }).from(companies).where(eq(companies.id, co.id));
+    const base = (config().APP_URL ?? '').replace(/\/$/, '');
+    return c.json({ connected: !!r?.key, connectedAt: r?.at ?? null, webhookConfigured: !!r?.hook, webhookUrl: `${base || 'https://www.backmarket-ci.com'}/api/orzayah/webhook/${co.id}` });
+  })
+  .put('/payments-setup', v('json', z.object({
+    apiKey: z.string().trim().min(10, 'Collez la clé API ORZAYAH complète').max(200),
+    webhookSecret: z.string().trim().max(200).optional(),
+  })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const { apiKey, webhookSecret } = c.req.valid('json');
+    if (webhookSecret && !/^whsec_[A-Za-z0-9_-]{8,}$/.test(webhookSecret)) throw new AppError(400, 'invalid', 'Le secret du webhook commence par « whsec_ »');
+    const client = c.get('orzMake')(apiKey);
+    if (!client) throw new AppError(503, 'payments_unavailable', 'Le paiement en ligne est momentanément indisponible');
+    // Contrôle de la clé : un lien inexistant doit répondre « introuvable » (clé valide) ; 401/403 = clé refusée par ORZAYAH.
+    try { await client.getPaymentLink('bm-verification'); }
+    catch (e) {
+      if (e instanceof OrzayahError && (e.status === 401 || e.status === 403)) throw new AppError(400, 'invalid_key', 'Clé API refusée par ORZAYAH : vérifiez-la (elle doit avoir la permission de créer des liens de paiement)');
+      throw new AppError(503, 'payments_unavailable', 'ORZAYAH est injoignable pour le moment, réessayez dans un instant');
+    }
+    await c.get('db').update(companies).set({
+      orzApiKeyEnc: encryptSecret(apiKey), orzConnectedAt: new Date(),
+      ...(webhookSecret ? { orzWebhookSecretEnc: encryptSecret(webhookSecret) } : {}),
+    }).where(eq(companies.id, co.id));
+    return c.json({ ok: true });
+  })
+  /** Déconnexion : impossible tant que des paiements en ligne sont en attente (ils seraient perdus de vue). */
+  .delete('/payments-setup', async (c) => {
+    const db = c.get('db');
+    const co = await myCompany(db, c.get('user')!.id);
+    const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(payments).where(and(eq(payments.companyId, co.id), eq(payments.orzScope, 'merchant'), eq(payments.status, 'pending')));
+    if (n > 0) throw conflict('payments_pending', `${n} paiement(s) en ligne sont en cours : attendez qu'ils se terminent avant de déconnecter votre compte`);
+    await db.update(companies).set({ orzApiKeyEnc: null, orzWebhookSecretEnc: null, orzConnectedAt: null }).where(eq(companies.id, co.id));
+    return c.json({ ok: true });
   })
   .get('/ledger', async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);

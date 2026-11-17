@@ -87,20 +87,17 @@ Paiement mobile money (webhook → `credit_ledger`) · notifications e-mail/SMS 
 - Pas de vérification d'e-mail ni de réinitialisation de mot de passe.
 - Le paiement des crédits est manuel (admin).
 
-## Paiement des réservations (API ORZAYAH)
+## Paiement des réservations (liens de paiement ORZAYAH, paiement direct au marchand)
 
-**Principe** : BackMarket encaisse via un compte partenaire ORZAYAH unique (clé `ORZAYAH_API_KEY`, permission DEPOSIT, côté serveur uniquement). Le client paie en **Mobile Money** (Orange, MTN, Moov, Wave) : l'API publique ORZAYAH ne propose pas de paiement par carte/portefeuille. Les sommes encaissées sont suivies par fournisseur (`GET /admin/payouts`) et reversées manuellement (`POST /admin/companies/:id/payouts` pour tracer le reversement).
+**Principe** : chaque marchand relie **son propre compte ORZAYAH** (Paramètres > « Recevoir mes paiements en ligne » : clé API + secret de webhook). Le lien de paiement d'un client est créé avec la clé du marchand : l'argent arrive directement sur son compte, BackMarket ne touche rien (0 % de commission pour l'instant). Les clés sont chiffrées en AES-256-GCM (`SECRETS_KEY`, sinon dérivée de `JWT_SECRET`) et ne sont jamais renvoyées par l'API. Sans compte relié, une offre n'accepte que le paiement à la livraison (`canPayOnline` = false, erreur `online_not_available`).
 
-**Flux** `POST /bookings` avec `payment {operator, accountNumber}` :
-1. Offre gratuite → confirmée immédiatement. Offre payante → transaction : places + 1 crédit bloqués, réservation `pending_payment`, ligne `payments` (clé d'idempotence `nx-<uuid>`, expire après `HOLD_MINUTES`, 15 par défaut).
-2. `POST /deposits` (montant en centimes = FCFA × 100). Le client valide sur son téléphone.
-3. Pas de webhook : le front interroge `GET /payments/:id` toutes les 4 s ; le serveur relit `GET /transactions/{clé}` (espacement ≥ 3 s, limite ORZAYAH 120 req/min/IP).
-4. `SUCCESS` → réservation confirmée. `FAILED/CANCELLED/EXPIRED` ou délai dépassé → places et crédit rendus.
-5. Paiement tardif après expiration : réservation rétablie si les places existent encore, sinon statut `needs_refund` (à rembourser, visible en admin).
+**Flux** `POST /bookings` avec `payMode: 'digital' | 'cash'` : offre gratuite → confirmée. Paiement à la livraison → confirmée, encaissement suivi par le marchand. Paiement en ligne → places + 1 crédit bloqués, réservation `pending_payment`, `payments.orz_scope = 'merchant'`, lien créé chez ORZAYAH avec la clé du marchand (clé d'idempotence `bm-<paymentId>`), le client est redirigé vers `payUrl` puis revient sur `/reservation/:id`.
 
-**Robustesse** : toute erreur ORZAYAH incertaine (réseau, 429, 5xx) laisse le paiement `pending` et la même clé est rejouée → pas de double débit. Erreurs 400/401/403 = définitives → annulation. Nettoyage des paiements expirés « paresseux » (catalogue, réservation, suivi), sans cron. Max 3 paiements en attente par client.
+**Confirmation** : webhook `POST /api/orzayah/webhook/:companyId` signé avec le secret propre au marchand (`t=<unix>,v1=HMAC-SHA256`, ±300 s), toujours suivi d'une relecture `GET /payment-links/:slug` (source de vérité) ; en complément, relecture à chaque visite de la page de réservation et avant expiration. Un webhook ne peut confirmer que les paiements de son marchand. L'ancien webhook `/api/orzayah/webhook` (clé BackMarket, `orz_scope = 'platform'`) ne sert plus qu'aux paiements créés avant le paiement direct.
 
-**Limites connues** : Mobile Money uniquement ; les frais ORZAYAH (`fee_centimes`) sont enregistrés mais leur prise en charge reste à décider ; reversements et remboursements `needs_refund` sont manuels ; un paiement `paid` n'est plus relu (un remboursement fait côté ORZAYAH n'est pas répercuté automatiquement) ; non testé contre le vrai ORZAYAH (faux serveur conforme à la documentation).
+**Remboursement** : si un marchand annule une commande payée en ligne, le paiement passe en `needs_refund` et le marchand rembourse lui-même depuis ORZAYAH (aucune alerte back-office, l'argent est chez lui). Déconnexion du compte refusée tant que des paiements en ligne sont en attente.
+
+**Limites connues** : la vérification de la clé suppose qu'ORZAYAH répond 404 pour un lien inconnu et 401/403 pour une clé refusée (à confirmer en conditions réelles) ; frais ORZAYAH à la charge du marchand ; pas de commission BackMarket automatique ; les remboursements ne sont pas automatisés.
 
 ## Photos des offres
 4 photos max par offre. Avec `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_UPLOAD_PRESET` (preset non signé) le navigateur envoie directement chaque photo à Cloudinary ; seule l'URL est enregistrée (`offer_photos.url`). Le serveur n'accepte que des URL `https://res.cloudinary.com/<notre compte>/image/upload/…`. `GET /api/offers/:id/photos/:n` redirige vers une version optimisée (`f_auto,q_auto,w_900`). Sans ces variables : repli JPEG en base64 dans Neon (`offer_photos.data`). Limite connue : pas de modification des photos après publication.

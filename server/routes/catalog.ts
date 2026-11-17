@@ -25,6 +25,7 @@ const cols = {
   destCity: offers.destCity,
   category: offers.category,
   allowCash: offers.allowCash,
+  canPayOnline: sql<boolean>`${companies.orzApiKeyEnc} is not null`.as('can_pay_online'),
   scope: offers.scope,
   companyCountry: companies.country,
   stops: offers.stops,
@@ -70,7 +71,7 @@ export const catalogRoutes = new Hono<Env>()
       const { activity, country, city, destCountry, destCity, category, maxPrice, guests, q, limit } = c.req.valid('query');
       const m = visitorMarket(country, c.req.header('x-vercel-ip-country'));
       // Libère les places des paiements expirés (pas de cron) ; ne doit jamais bloquer le catalogue.
-      try { await sweepExpired({ db: c.get('db'), orz: c.get('orz') }, 3); } catch (e) { console.error('[sweep]', e); }
+      try { await sweepExpired({ db: c.get('db'), orzFor: c.get('orzFor') }, 3); } catch (e) { console.error('[sweep]', e); }
       const rows = await c.get('db')
         .select(cols)
         .from(offers)

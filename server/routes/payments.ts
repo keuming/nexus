@@ -9,13 +9,11 @@ import { requireRole, type Env } from '../middleware/auth.js';
 
 export const paymentRoutes = new Hono<Env>()
   .use(requireRole('customer', 'owner', 'admin'))
-  /** Disponibilité du paiement en ligne (clé ORZAYAH configurée). */
-  .get('/methods', (c) => c.json({ available: c.get('orz') !== null }))
   /** Suivi d'un paiement : relit le lien chez ORZAYAH (en complément du webhook) puis renvoie la vue publique. */
   .get('/:id', v('param', z.object({ id: z.string().uuid() })), async (c) => {
     const user = c.get('user')!;
     const db = c.get('db');
-    const ctx = { db, orz: c.get('orz') };
+    const ctx = { db, orzFor: c.get('orzFor') };
     const [p] = await db.select().from(payments).where(eq(payments.id, c.req.valid('param').id)).limit(1);
     if (!p || (p.userId !== user.id && user.role !== 'admin')) throw notFound('Paiement');
     let fresh = await syncPayment(ctx, p);

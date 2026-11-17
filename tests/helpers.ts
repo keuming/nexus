@@ -30,7 +30,10 @@ export class FakeOrz implements OrzayahClient {
     this.ops.set(i.idempotencyKey, op);
     return op;
   }
-  async getPaymentLink(slug: string) { return [...this.ops.values()].find((o) => o.id === slug) ?? null; }
+  rejectKey = false;                         // simule une clé API refusée (401)
+  async getPaymentLink(slug: string) {
+    if (this.rejectKey) throw new OrzayahError(401, 'Clé invalide', true);
+    return [...this.ops.values()].find((o) => o.id === slug) ?? null; }
   set(key: string, status: string, failureReason: string | null = null) { const o = this.ops.get(key)!; this.ops.set(key, { ...o, status, failureReason }); }
 }
 
