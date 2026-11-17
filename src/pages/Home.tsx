@@ -170,7 +170,7 @@ export function Home() {
             {filtered && <button className="btn" onClick={reset}>Voir toutes les offres</button>}
           </div>
         ) : (
-          <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 ${list.isFetching ? 'opacity-60' : ''}`}>
+          <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${list.isFetching ? 'opacity-60' : ''}`}>
             {offers.map((o) => <OfferCard key={o.id} o={o} onBook={() => nav(`/reserver/${o.id}`)} />)}
           </div>
         )}
