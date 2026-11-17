@@ -233,3 +233,11 @@ alter table payments add column if not exists return_url text;
 alter table payments drop constraint if exists payments_operator_check;
 alter table payments alter column operator set default 'ORZAYAH';
 alter table payments alter column account_number set default '';
+
+-- v45 : suivi de commande par le fournisseur (préparation, retrait/livraison, encaissement, notes, annulation motivée).
+alter table bookings add column if not exists fulfillment text not null default 'new';
+alter table bookings add column if not exists merchant_note text not null default '';
+alter table bookings add column if not exists cancel_reason text;
+alter table bookings add column if not exists cancelled_by text;
+alter table bookings add column if not exists cash_collected_at timestamptz;
+alter table bookings add column if not exists updated_at timestamptz not null default now();

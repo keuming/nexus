@@ -6,6 +6,7 @@ import { PhotoPicker, compress, upload } from '../components/PhotoPicker';
 import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
 import { CompanyFields, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
+import { CompanyOrders } from '../components/CompanyOrders';
 import { placeLabel } from '../lib/place';
 import { CATEGORIES, ROUTE_ACTIVITIES, SEARCH_FORMS } from '../../shared/search';
 import { ACTIVITIES } from '../../shared/constants';
@@ -39,6 +40,7 @@ export function CompanyDashboard() {
   const c = co.data;
   if (c.status === 'rejected' && editing) return <CompanyForm mode="resubmit" initial={c} onDone={refresh} />;
   const confirmed = bookings.data?.bookings.filter((b) => b.status === 'confirmed').length ?? 0;
+  const toProcess = bookings.data?.bookings.filter((b) => b.status === 'confirmed' && b.fulfillment === 'new').length ?? 0;
   const waiting = bookings.data?.bookings.filter((b) => b.status === 'pending_payment').length ?? 0;
   const liveOffers = offers.data?.offers.filter((o) => o.active && o.booked < o.capacity).length ?? 0;
   return (
@@ -65,7 +67,7 @@ export function CompanyDashboard() {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Crédits restants" value={c.credits} hint="1 réservation = 1 crédit" accent />
-            <Stat label="Réservations confirmées" value={confirmed} />
+            <Stat label="Réservations confirmées" value={confirmed} hint={toProcess ? `${toProcess} à traiter` : undefined} />
             <Stat label="En attente de paiement" value={waiting} />
             <Stat label="Offres en ligne" value={liveOffers} />
           </div>
@@ -75,7 +77,7 @@ export function CompanyDashboard() {
                 className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${tab === t.id ? 'border-brand text-white' : 'border-transparent text-zinc-400 hover:text-white'}`}>{t.label}</button>
             ))}
           </div>
-          {tab === 'bookings' && <Bookings q={bookings} />}
+          {tab === 'bookings' && <CompanyOrders q={bookings} />}
           {tab === 'offers' && <Offers company={{ country: c.country, city: c.city, activity: c.activity, serviceCities: c.serviceCities }} />}
           {tab === 'settings' && <><Profile company={c} /><ServiceCities country={c.country} cities={c.serviceCities} /></>}
         </>
@@ -344,55 +346,3 @@ function Offers({ company }: { company: { country: string; city: string; activit
   );
 }
 
-const BOOKING_STATUS: Record<string, { label: string; cls: string }> = {
-  confirmed: { label: 'Confirmée', cls: 'bg-emerald-500/15 text-emerald-300' },
-  pending_payment: { label: 'Paiement en attente', cls: 'bg-amber-500/15 text-amber-300' },
-  cancelled: { label: 'Annulée', cls: 'bg-white/10 text-zinc-400' },
-};
-const FILTERS = [{ id: '', label: 'Toutes' }, { id: 'confirmed', label: 'Confirmées' }, { id: 'pending_payment', label: 'En attente' }, { id: 'cancelled', label: 'Annulées' }];
-
-function Bookings({ q }: { q: { data?: { bookings: { id: string; seats: number; stop: string | null; status: string; createdAt: string; offerTitle: string; customerName: string; reference: string; contactPhone: string | null; guests: string[]; note: string; paymentStatus: string | null; amountFcfa: number | null; payMethod: string; dueFcfa: number }[] }; isLoading: boolean; error: unknown } }) {
-  const [filter, setFilter] = useState('');
-  const rows = (q.data?.bookings ?? []).filter((b) => !filter || b.status === filter);
-  return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Historique des réservations</h2>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrer par statut">
-          {FILTERS.map((x) => (
-            <button key={x.id} aria-pressed={filter === x.id} onClick={() => setFilter(x.id)}
-              className={`rounded-full border px-3 py-1 text-xs ${filter === x.id ? 'border-brand bg-brand text-black' : 'border-white/15 text-zinc-300 hover:bg-white/5'}`}>{x.label}</button>
-          ))}
-        </div>
-      </div>
-      <Err e={q.error} />
-      {q.isLoading ? <p className="text-zinc-400">Chargement…</p> : !rows.length ? (
-        <p className="card text-center text-sm text-zinc-400">{filter ? 'Aucune réservation dans cette catégorie.' : 'Aucune réservation pour le moment.'}</p>
-      ) : (
-        <div className="card overflow-x-auto !p-0">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-zinc-500">
-              <tr><th className="px-4 py-3 font-medium">Date</th><th className="px-4 py-3 font-medium">Réf.</th><th className="px-4 py-3 font-medium">Client</th><th className="px-4 py-3 font-medium">Offre</th><th className="px-4 py-3 font-medium">Places</th><th className="px-4 py-3 font-medium">Montant</th><th className="px-4 py-3 font-medium">Statut</th></tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {rows.map((b) => {
-                const st = BOOKING_STATUS[b.status] ?? { label: b.status, cls: 'bg-white/10' };
-                return (
-                  <tr key={b.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-zinc-400">{dateFr(b.createdAt)}</td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{b.reference}</td>
-                    <td className="px-4 py-3 font-medium">{b.customerName}{b.contactPhone && <span className="block text-xs font-normal text-zinc-400">{b.contactPhone}</span>}{b.guests.length > 0 && <span className="block text-xs font-normal text-zinc-500">{b.guests.join(', ')}</span>}{b.note && <span className="block text-xs font-normal italic text-zinc-500">« {b.note} »</span>}</td>
-                    <td className="px-4 py-3">{b.offerTitle}{b.stop && <span className="block text-xs text-zinc-500">Arrêt : {b.stop}</span>}</td>
-                    <td className="px-4 py-3">{b.seats}</td>
-                    <td className="whitespace-nowrap px-4 py-3">{b.amountFcfa ? fcfa(b.amountFcfa) : b.payMethod === 'cash' && b.dueFcfa > 0 ? <>{fcfa(b.dueFcfa)}<span className="block text-xs text-amber-300">À encaisser à la livraison</span></> : <span className="text-zinc-500">Gratuit</span>}</td>
-                    <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs ${st.cls}`}>{st.label}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}

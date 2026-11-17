@@ -86,6 +86,12 @@ export const bookings = pgTable('bookings', {
   guests: text('guests').array().notNull().default(sql`'{}'`),
   note: text('note').notNull().default(''),
   termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
+  fulfillment: text('fulfillment').notNull().default('new'),
+  merchantNote: text('merchant_note').notNull().default(''),
+  cancelReason: text('cancel_reason'),
+  cancelledBy: text('cancelled_by'),
+  cashCollectedAt: timestamp('cash_collected_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   payMethod: text('pay_method').notNull().default('digital'),
 });
 

@@ -8,7 +8,8 @@ import { CATEGORIES, ROUTE_ACTIVITIES } from '../../shared/search.js';
 import type { Activity } from '../../shared/constants.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { config } from '../config.js';
-import { notifyAdmins } from '../lib/notify.js';
+import { notify, notifyAdmins, sendMail } from '../lib/notify.js';
+import { FULFILLMENT, FULFILLMENT_LABEL } from '../../shared/orders.js';
 import { cityName, companyInput, countryCode, phoneField, placeList } from '../lib/schemas.js';
 import type { Db } from '../db/client.js';
 
@@ -172,7 +173,7 @@ export const companyRoutes = new Hono<Env>()
   .get('/bookings', async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const rows = await c.get('db')
-      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, customerName: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, reference: bookings.reference, contactPhone: bookings.contactPhone, guests: bookings.guests, note: bookings.note, paymentStatus: payments.status, amountFcfa: payments.amountFcfa, payMethod: bookings.payMethod, dueFcfa: sql<number>`${offers.priceFcfa} * ${bookings.seats}` })
+      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, customerName: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, reference: bookings.reference, contactPhone: bookings.contactPhone, guests: bookings.guests, note: bookings.note, paymentStatus: payments.status, amountFcfa: payments.amountFcfa, payMethod: bookings.payMethod, dueFcfa: sql<number>`${offers.priceFcfa} * ${bookings.seats}` , contactEmail: bookings.contactEmail, fulfillment: bookings.fulfillment, merchantNote: bookings.merchantNote, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, updatedAt: bookings.updatedAt, offerId: offers.id })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(users, eq(users.id, bookings.userId))
@@ -181,7 +182,69 @@ export const companyRoutes = new Hono<Env>()
       .orderBy(desc(bookings.createdAt)).limit(200);
     return c.json({ bookings: rows });
   })
+  /** Suivi de commande : fait avancer (ou corrige) l'étape d'une réservation confirmée. Alerte le client aux étapes clés. */
+  .post('/bookings/:id/status', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ fulfillment: z.enum(FULFILLMENT) })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const { fulfillment } = c.req.valid('json');
+    const db = c.get('db');
+    const [b] = await db.update(bookings).set({ fulfillment, updatedAt: new Date() })
+      .where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id), eq(bookings.status, 'confirmed'))).returning();
+    if (!b) throw conflict('not_confirmed', 'Seules les réservations confirmées peuvent changer d\'étape');
+    const [offer] = await db.select({ title: offers.title }).from(offers).where(eq(offers.id, b.offerId)).limit(1);
+    const msg = fulfillment === 'accepted' ? { kind: 'booking_accepted', title: `Réservation acceptée : ${offer?.title}`, body: `${co.name} a accepté votre réservation ${b.reference}.` }
+      : fulfillment === 'ready' ? { kind: 'booking_ready', title: `Votre commande est prête : ${offer?.title}`, body: `${co.name} : votre commande ${b.reference} est prête. Présentez cette référence.` } : null;
+    if (msg) await tellCustomer(db, b, msg);
+    return c.json({ ok: true, fulfillment: b.fulfillment, label: FULFILLMENT_LABEL[fulfillment] });
+  })
+  /** Encaissement d'un paiement à la livraison (ou annulation de la mention en cas d'erreur). */
+  .post('/bookings/:id/cash', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ collected: z.boolean() })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const [b] = await c.get('db').update(bookings).set({ cashCollectedAt: c.req.valid('json').collected ? new Date() : null, updatedAt: new Date() })
+      .where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id), eq(bookings.status, 'confirmed'), eq(bookings.payMethod, 'cash'))).returning({ id: bookings.id, at: bookings.cashCollectedAt });
+    if (!b) throw conflict('not_cash', 'Cette réservation n\'est pas un paiement à la livraison confirmé');
+    return c.json({ ok: true, cashCollectedAt: b.at });
+  })
+  /** Note interne (visible du fournisseur uniquement). */
+  .patch('/bookings/:id/note', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ note: z.string().trim().max(500) })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const [b] = await c.get('db').update(bookings).set({ merchantNote: c.req.valid('json').note, updatedAt: new Date() })
+      .where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id))).returning({ id: bookings.id });
+    if (!b) throw notFound('Réservation');
+    return c.json({ ok: true });
+  })
+  /**
+   * Annulation par le fournisseur (motif obligatoire) : libère les places, rend le crédit, prévient le client.
+   * Si le client avait payé en ligne, le paiement passe en « remboursement à effectuer » et le back-office est alerté.
+   */
+  .post('/bookings/:id/cancel', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ reason: z.string().trim().min(3, 'Indiquez le motif de l\'annulation').max(200) })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const db = c.get('db');
+    const { reason } = c.req.valid('json');
+    const r = await db.transaction(async (tx) => {
+      const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id), eq(bookings.status, 'confirmed'))).for('update');
+      if (!b) throw conflict('not_confirmed', 'Seules les réservations confirmées peuvent être annulées (une réservation en attente de paiement expire d\'elle-même)');
+      await tx.update(bookings).set({ status: 'cancelled', cancelReason: reason, cancelledBy: 'merchant', updatedAt: new Date() }).where(eq(bookings.id, b.id));
+      await tx.update(offers).set({ booked: sql`${offers.booked} - ${b.seats}` }).where(eq(offers.id, b.offerId));
+      await tx.update(companies).set({ credits: sql`${companies.credits} + 1` }).where(eq(companies.id, b.companyId));
+      await tx.insert(creditLedger).values({ companyId: b.companyId, delta: 1, reason: 'refund', bookingId: b.id });
+      const [pay] = await tx.update(payments).set({ status: 'needs_refund', failureReason: `Annulée par le fournisseur (${reason}) : remboursement du client à effectuer` })
+        .where(and(eq(payments.bookingId, b.id), eq(payments.status, 'paid'))).returning({ id: payments.id, amount: payments.amountFcfa });
+      const [o] = await tx.select({ title: offers.title }).from(offers).where(eq(offers.id, b.offerId));
+      return { b, pay, title: o?.title ?? '' };
+    });
+    await tellCustomer(db, r.b, { kind: 'booking_cancelled_merchant', title: `Réservation annulée : ${r.title}`, body: `${co.name} a annulé votre réservation ${r.b.reference}. Motif : ${reason}.${r.pay ? ' Vous serez remboursé.' : ''}` });
+    if (r.pay) await notifyAdmins(db, { kind: 'needs_refund', refId: r.pay.id, title: 'Remboursement à effectuer', body: `${co.name} a annulé ${r.b.reference} (${new Intl.NumberFormat('fr-FR').format(r.pay.amount)} FCFA déjà payés).`, link: '/admin' });
+    return c.json({ ok: true, refundDue: !!r.pay });
+  })
   .get('/ledger', async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     return c.json({ ledger: await c.get('db').select().from(creditLedger).where(eq(creditLedger.companyId, co.id)).orderBy(desc(creditLedger.createdAt)).limit(200) });
   });
+
+/** Alerte le client (dans l'application + e-mail de contact de la réservation). Ne lève jamais. */
+async function tellCustomer(db: Db, b: { id: string; userId: string; contactEmail: string | null; reference: string }, m: { kind: string; title: string; body: string }) {
+  await notify(db, [{ userId: b.userId, kind: m.kind, refId: b.id, title: m.title, body: m.body, link: `/reservation/${b.id}` }]);
+  // notify() écrit déjà à l'e-mail du compte : on n'écrit à l'e-mail de la réservation que s'il est différent (invité, autre adresse).
+  const [u] = await db.select({ email: users.email }).from(users).where(eq(users.id, b.userId)).limit(1);
+  if (b.contactEmail && b.contactEmail.toLowerCase() !== u?.email.toLowerCase()) await sendMail(b.contactEmail, m.title, `${m.body}\n\nDétail : réservation ${b.reference} sur BackMarket.`).catch(() => undefined);
+}

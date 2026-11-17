@@ -928,3 +928,97 @@ describe('aperçu de partage (WhatsApp, Facebook…)', () => {
     }
   });
 });
+
+describe('gestion des commandes par le fournisseur', () => {
+  const cashBooking = async (price = 3000) => {
+    const s = await setup(5, 5, price);
+    const cust = await register('customer', 'cl@x.test');
+    const r = await cust.post('/bookings', { ...BK, offerId: s.offer.id, seats: 1, payMode: 'cash' });
+    expect(r.status).toBe(201);
+    return { ...s, cust, id: r.json.booking.id as string };
+  };
+  const kinds = async (c: Client) => (await c.get('/notifications')).json.notifications.map((n: any) => n.kind);
+
+  it("fait avancer l'étape, prévient le client à « acceptée » et « prête » (une fois), l'historique reste visible", async () => {
+    const { owner, cust, id } = await cashBooking();
+    expect((await owner.get('/company/bookings')).json.bookings[0].fulfillment).toBe('new');
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'accepted' })).status).toBe(200);
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'preparing' })).status).toBe(200);
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'ready' })).status).toBe(200);
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'preparing' })).status).toBe(200); // correction d'erreur
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'ready' })).status).toBe(200);
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'completed' })).status).toBe(200);
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'inconnu' })).status).toBe(400);
+    const k = await kinds(cust);
+    expect(k.filter((x: string) => x === 'booking_accepted')).toHaveLength(1);
+    expect(k.filter((x: string) => x === 'booking_ready')).toHaveLength(1);
+    expect((await cust.get('/bookings/mine')).json.bookings[0].fulfillment).toBe('completed');
+    expect((await cust.get(`/bookings/${id}`)).json.booking.fulfillment).toBe('completed');
+  });
+
+  it("isole les fournisseurs : un autre partenaire ne peut ni modifier, ni annoter, ni annuler", async () => {
+    const { id } = await cashBooking();
+    const other = await register('owner', 'other@x.test');
+    await other.post('/company', { name: 'Autre', activity: 'transport', country: 'CI', city: 'Abidjan', serviceCities: [], phone: '+225 07 00 00 00 01', ...geo });
+    expect((await other.post(`/company/bookings/${id}/status`, { fulfillment: 'accepted' })).status).not.toBe(200);
+    expect((await other.patch(`/company/bookings/${id}/note`, { note: 'x' })).status).toBe(404);
+    expect((await other.post(`/company/bookings/${id}/cancel`, { reason: 'Test motif' })).status).not.toBe(200);
+    expect((await other.get('/company/bookings')).json.bookings).toHaveLength(0); // ne voit pas les commandes d'autrui
+  });
+
+  it("suit l'encaissement du paiement à la livraison (réservations à la livraison uniquement)", async () => {
+    const { owner, id } = await cashBooking();
+    expect((await owner.post(`/company/bookings/${id}/cash`, { collected: true })).status).toBe(200);
+    expect((await owner.get('/company/bookings')).json.bookings[0].cashCollectedAt).toBeTruthy();
+    expect((await owner.post(`/company/bookings/${id}/cash`, { collected: false })).status).toBe(200);
+    expect((await owner.get('/company/bookings')).json.bookings[0].cashCollectedAt).toBeNull();
+    const fo = (await owner.post('/company/offers', { title: 'Gratuit', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', priceFcfa: 0, capacity: 3 })).json.offer;
+    const cust2 = await register('customer', 'cl2@x.test');
+    const fb = await cust2.post('/bookings', { ...BK, offerId: fo.id, payMode: 'cash' });
+    expect(fb.status).toBe(201);
+    expect((await owner.post(`/company/bookings/${fb.json.booking.id}/cash`, { collected: true })).status).toBe(409);
+  });
+
+  it('enregistre une note interne, jamais visible du client', async () => {
+    const { owner, cust, id } = await cashBooking();
+    expect((await owner.patch(`/company/bookings/${id}/note`, { note: 'Client rappelé, livrer demain 10 h' })).status).toBe(200);
+    expect((await owner.get('/company/bookings')).json.bookings[0].merchantNote).toBe('Client rappelé, livrer demain 10 h');
+    expect(JSON.stringify((await cust.get(`/bookings/${id}`)).json)).not.toContain('Client rappelé');
+    expect(JSON.stringify((await cust.get('/bookings/mine')).json)).not.toContain('Client rappelé');
+    expect((await owner.patch(`/company/bookings/${id}/note`, { note: 'x'.repeat(501) })).status).toBe(400);
+  });
+
+  it("annule avec motif : rend la place et le crédit, prévient le client ; motif obligatoire ; pas de double annulation", async () => {
+    const { owner, cust, id, offer, co } = await cashBooking();
+    expect((await owner.post(`/company/bookings/${id}/cancel`, { reason: '' })).status).toBe(400);
+    const r = await owner.post(`/company/bookings/${id}/cancel`, { reason: 'Rupture de stock / indisponible' });
+    expect(r.status).toBe(200);
+    expect(r.json.refundDue).toBe(false);
+    const [o] = await ctx.db.select().from(offers).where(eq(offers.id, offer.id));
+    const [c] = await ctx.db.select().from(companies).where(eq(companies.id, co.id));
+    expect({ booked: o.booked, credits: c.credits }).toEqual({ booked: 0, credits: 5 });
+    const b = (await cust.get(`/bookings/${id}`)).json.booking;
+    expect(b).toMatchObject({ status: 'cancelled', cancelledBy: 'merchant', cancelReason: 'Rupture de stock / indisponible' });
+    const n = (await cust.get('/notifications')).json.notifications.find((x: any) => x.kind === 'booking_cancelled_merchant');
+    expect(n.body).toContain('Rupture de stock');
+    expect((await owner.post(`/company/bookings/${id}/cancel`, { reason: 'Encore une fois' })).status).toBe(409);
+    expect((await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'accepted' })).status).toBe(409);
+  });
+
+  it("annulation d'une réservation payée en ligne : remboursement à effectuer, alerte administrateur", async () => {
+    const orz = new FakeOrz(); ctx = await makeApp(orz);
+    const { owner, adm, offer } = await setup(5, 5, 5000);
+    const cust = await register('customer', 'cl@x.test');
+    const r = await cust.post('/bookings', { ...BK, offerId: offer.id });
+    expect((await owner.post(`/company/bookings/${r.json.booking.id}/cancel`, { reason: 'Test motif' })).status).toBe(409); // paiement en attente : actionnable seulement après paiement
+    orz.set(`bm-${r.json.payment.id}`, 'SUCCESS');
+    await ctx.db.update(payments).set({ lastCheckedAt: null });
+    await cust.get(`/payments/${r.json.payment.id}`);
+    const c = await owner.post(`/company/bookings/${r.json.booking.id}/cancel`, { reason: 'Rupture de stock / indisponible' });
+    expect(c.status).toBe(200);
+    expect(c.json.refundDue).toBe(true);
+    expect((await adm.get('/admin/payments')).json.payments[0].status).toBe('needs_refund');
+    expect((await adm.get('/admin/stats')).json.needsRefund).toBe(1);
+    expect((await adm.get('/notifications')).json.notifications.some((n: any) => n.kind === 'needs_refund')).toBe(true);
+  });
+});

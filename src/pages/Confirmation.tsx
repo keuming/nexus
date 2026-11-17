@@ -28,11 +28,12 @@ export function Confirmation() {
     <div className="mx-auto max-w-2xl space-y-5">
       <div className={`rounded-2xl px-5 py-6 text-center ${confirmed ? 'bg-emerald-500/10' : pending ? 'bg-amber-500/10' : 'bg-white/5'}`}>
         <p className={`text-xl font-bold ${confirmed ? 'text-emerald-300' : pending ? 'text-amber-300' : 'text-zinc-300'}`}>
-          {confirmed ? '✓ Réservation confirmée' : pending ? 'Paiement en attente' : 'Réservation annulée'}
+          {confirmed ? (b.fulfillment === 'ready' ? '✓ Votre commande est prête' : b.fulfillment === 'completed' ? '✓ Commande terminée' : b.fulfillment === 'accepted' || b.fulfillment === 'preparing' ? '✓ Réservation acceptée par le prestataire' : '✓ Réservation confirmée') : pending ? 'Paiement en attente' : b.cancelledBy === 'merchant' ? 'Réservation annulée par le prestataire' : 'Réservation annulée'}
         </p>
         <p className="mt-2 text-sm text-zinc-400">Numéro de réservation</p>
         <p className="font-mono text-3xl font-extrabold tracking-wider" aria-label="Numéro de réservation">{b.reference}</p>
         {confirmed && <p className="mt-2 text-sm text-zinc-400">Présentez ce numéro au prestataire. Un e-mail de confirmation est envoyé à {b.contactEmail ?? 'votre adresse'} lorsque le service d'e-mails est actif.</p>}
+        {!confirmed && !pending && b.cancelReason && b.cancelledBy === 'merchant' && <p className="mt-2 text-sm text-zinc-300">Motif : {b.cancelReason}</p>}
         {pending && <div className="mt-3 flex flex-wrap justify-center gap-2 print:hidden">
           {b.payment?.payUrl && /^https:\/\//.test(b.payment.payUrl) && <a className="btn" href={b.payment.payUrl}>Payer maintenant</a>}
           <button className="btn-ghost" onClick={() => setTrack(true)}>Suivre le paiement</button>

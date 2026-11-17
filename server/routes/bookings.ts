@@ -120,7 +120,7 @@ export const bookingRoutes = new Hono<Env>()
   })
   .get('/mine', async (c) => {
     const rows = await c.get('db')
-      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, payMethod: bookings.payMethod, priceFcfa: offers.priceFcfa, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, payMethod: bookings.payMethod, priceFcfa: offers.priceFcfa, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -138,7 +138,7 @@ export const bookingRoutes = new Hono<Env>()
     const [open] = await db.select().from(payments).where(and(eq(payments.bookingId, c.req.valid('param').id), eq(payments.userId, user.id))).limit(1);
     if (open) await syncPayment({ db, orz: c.get('orz') }, open);
     const [r] = await db.select({
-      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
+      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
       contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,
       offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, destCity: offers.destCity, destCountry: offers.destCountry, priceFcfa: offers.priceFcfa, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,
       companyName: companies.name, companyPhone: companies.phone, companyAddress: companies.address,
@@ -160,7 +160,7 @@ export const bookingRoutes = new Hono<Env>()
       if (!b) throw notFound('Réservation');
       const [pay] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.bookingId, b.id)).limit(1);
       if (pay) throw conflict('paid_booking', "Cette réservation a été payée : contactez le fournisseur pour l'annuler et être remboursé");
-      await tx.update(bookings).set({ status: 'cancelled' }).where(eq(bookings.id, b.id));
+      await tx.update(bookings).set({ status: 'cancelled', cancelledBy: 'customer', cancelReason: 'Annulée par le client', updatedAt: new Date() }).where(eq(bookings.id, b.id));
       await tx.update(offers).set({ booked: sql`${offers.booked} - ${b.seats}` }).where(eq(offers.id, b.offerId));
       await tx.update(companies).set({ credits: sql`${companies.credits} + 1` }).where(eq(companies.id, b.companyId));
       await tx.insert(creditLedger).values({ companyId: b.companyId, delta: 1, reason: 'refund', bookingId: b.id });

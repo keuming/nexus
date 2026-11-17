@@ -1,4 +1,5 @@
 import { placeLabel } from '../lib/place';
+import { FULFILLMENT_LABEL, type Fulfillment } from '../../shared/orders';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
@@ -26,6 +27,8 @@ export function Account() {
               <div>
                 <p className="font-semibold">{b.offerTitle} <span className="ml-1 font-mono text-xs text-zinc-500">{b.reference}</span></p>
                 <p className="text-sm text-zinc-400">{b.companyName} · {placeLabel(b)}{b.stop ? ` · arrêt : ${b.stop}` : ''}</p>
+                {b.status === 'confirmed' && b.fulfillment !== 'new' && <p className="text-sm font-medium text-emerald-300">{FULFILLMENT_LABEL[b.fulfillment as Fulfillment] ?? b.fulfillment}</p>}
+                {b.status === 'cancelled' && b.cancelledBy === 'merchant' && <p className="text-sm text-red-300">Annulée par le prestataire{b.cancelReason ? ` : ${b.cancelReason}` : ''}</p>}
                 <p className="text-sm text-zinc-500">{b.seats} place(s){b.payMethod === 'cash' && b.priceFcfa > 0 ? ` · ${fcfa(b.priceFcfa * b.seats)} à payer à la livraison` : ''} · <Link className="underline" to={`/reservation/${b.id}`}>Voir le reçu</Link></p>
               </div>
               {b.status === 'pending_payment' && b.paymentId
