@@ -40,12 +40,12 @@ export const shareRoutes = (getDb: () => Db) => new Hono()
   .get('/boutique/:id', async (c) => {
     const base = siteUrl(c.req.raw);
     const id = c.req.param('id');
-    const site = { title: SITE.shareTitle, description: SITE.shareDescription, url: `${base}/`, image: `${base}/og.png` };
+    const site = { title: SITE.shareTitle, description: SITE.shareDescription, url: `${base}/`, image: `${base}/og.jpg` };
     if (!/^[0-9a-f-]{36}$/i.test(id)) return c.html(html(site));
     const [co] = await getDb().select({ name: companies.name, logoUrl: companies.logoUrl, city: companies.city, activity: companies.activity })
       .from(companies).where(and(eq(companies.id, id), eq(companies.status, 'active'))).limit(1);
     if (!co) return c.html(html(site));
-    const image = co.logoUrl?.includes('/image/upload/') ? co.logoUrl.replace('/image/upload/', '/image/upload/f_jpg,q_auto,w_1200,h_630,c_pad,b_white/') : `${base}/og.png`;
+    const image = co.logoUrl?.includes('/image/upload/') ? co.logoUrl.replace('/image/upload/', '/image/upload/f_jpg,q_auto,w_1200,h_630,c_pad,b_white/') : `${base}/og.jpg`;
     return c.html(html({
       title: cut(`${co.name} : commandez et réservez en ligne`, 90),
       description: cut(`${co.name}, ${co.city}. Découvrez tous nos articles et réservez en 1 clic sur ${SITE.name} : paiement à la livraison ou en ligne.`, 200),
@@ -55,7 +55,7 @@ export const shareRoutes = (getDb: () => Db) => new Hono()
   .get('/offre/:id', async (c) => {
     const base = siteUrl(c.req.raw);
     const id = c.req.param('id');
-    const fallback = html({ title: SITE.shareTitle, description: SITE.shareDescription, url: `${base}/`, image: `${base}/og.png` });
+    const fallback = html({ title: SITE.shareTitle, description: SITE.shareDescription, url: `${base}/`, image: `${base}/og.jpg` });
     if (!/^[0-9a-f-]{36}$/i.test(id)) return c.html(fallback);
     const [o] = await getDb().select({
       title: offers.title, description: offers.description, price: offers.priceFcfa, city: offers.city, destCity: offers.destCity,
@@ -68,7 +68,7 @@ export const shareRoutes = (getDb: () => Db) => new Hono()
     const place = o.destCity ? `${o.city} → ${o.destCity}` : o.city;
     const price = o.price > 0 ? fcfa(o.price) : 'Gratuit';
     const image = o.photoUrl ? o.photoUrl.replace('/image/upload/', '/image/upload/f_jpg,q_auto,w_1200,h_630,c_fill/')
-      : o.hasPhoto ? `${base}/api/offers/${id}/photos/0` : `${base}/og.png`;
+      : o.hasPhoto ? `${base}/api/offers/${id}/photos/0` : `${base}/og.jpg`;
     return c.html(html({
       title: cut(`${o.title} · ${price} · ${place}`, 90),
       description: cut(`${o.company} sur ${SITE.name}. ${o.description ? `${o.description} ` : ''}Réservez en ligne en 1 clic.`, 200),

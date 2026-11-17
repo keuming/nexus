@@ -925,7 +925,7 @@ describe('aperçu de partage (WhatsApp, Facebook…)', () => {
       const r = await page(id);
       expect(r.status).toBe(200);
       expect(r.html).toContain('BackMarket : réservez');
-      expect(r.html).toContain('/og.png');
+      expect(r.html).toContain('/og.jpg');
     }
   });
 });

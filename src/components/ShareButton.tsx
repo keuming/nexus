@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { absUrl, shareTargets } from '../lib/share';
+
+export { absUrl };
 
 interface Props { url: string; title: string; text?: string; label?: string; className?: string; iconOnly?: boolean }
-
-/** Adresse absolue d'une page du site (le lien partagé doit fonctionner hors du site). */
-export const absUrl = (path: string) => new URL(path, window.location.origin).toString();
 
 /**
  * Bouton « Partager » : menu natif du téléphone s'il existe (Instagram, TikTok, Messenger, etc. y apparaissent),
@@ -13,8 +13,10 @@ export const absUrl = (path: string) => new URL(path, window.location.origin).to
 export function ShareButton({ url, title, text = '', label = 'Partager', className = 'btn-ghost', iconOnly = false }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
+    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -32,18 +34,7 @@ export function ShareButton({ url, title, text = '', label = 'Partager', classNa
     catch { window.prompt('Copiez ce lien :', url); }
   };
 
-  const u = encodeURIComponent(url);
-  const msg = encodeURIComponent(`${title}${text ? `\n${text}` : ''}\n${url}`);
-  const t = encodeURIComponent(title);
-  const targets = [
-    { name: 'WhatsApp', href: `https://wa.me/?text=${msg}` },
-    { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },
-    { name: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${u}` },
-    { name: 'X (Twitter)', href: `https://twitter.com/intent/tweet?text=${t}&url=${u}` },
-    { name: 'Telegram', href: `https://t.me/share/url?url=${u}&text=${t}` },
-    { name: 'E-mail', href: `mailto:?subject=${t}&body=${msg}` },
-    { name: 'SMS', href: `sms:?&body=${msg}` },
-  ];
+  const targets = shareTargets(url, title);
 
   return (
     <>
@@ -55,7 +46,7 @@ export function ShareButton({ url, title, text = '', label = 'Partager', classNa
       {open && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/80 p-4 sm:items-center" onClick={() => setOpen(false)}>
           <div role="dialog" aria-modal="true" aria-label="Partager" className="card w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between"><h2 className="text-base font-bold">Partager</h2><button type="button" aria-label="Fermer" className="text-xl leading-none text-zinc-400 hover:text-white" onClick={() => setOpen(false)}>×</button></div>
+            <div className="flex items-center justify-between"><h2 className="text-base font-bold">Partager</h2><button ref={closeRef} type="button" aria-label="Fermer" className="text-xl leading-none text-zinc-400 hover:text-white" onClick={() => setOpen(false)}>×</button></div>
             <p className="line-clamp-2 text-sm text-zinc-300">{title}</p>
             <div className="grid grid-cols-2 gap-2">
               {targets.map((x) => <a key={x.name} className="btn-ghost text-center" href={x.href} target="_blank" rel="noopener noreferrer">{x.name}</a>)}
