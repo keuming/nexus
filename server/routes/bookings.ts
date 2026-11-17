@@ -159,6 +159,7 @@ export const bookingRoutes = new Hono<Env>()
       const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.userId, user.id), eq(bookings.status, 'confirmed'))).for('update');
       if (!b) throw notFound('Réservation');
       const [pay] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.bookingId, b.id)).limit(1);
+      if (!['new', 'accepted'].includes(b.fulfillment) || b.cashCollectedAt) throw conflict('in_progress', 'Votre commande est déjà en préparation ou livrée : contactez le fournisseur pour toute modification')
       if (pay) throw conflict('paid_booking', "Cette réservation a été payée : contactez le fournisseur pour l'annuler et être remboursé");
       await tx.update(bookings).set({ status: 'cancelled', cancelledBy: 'customer', cancelReason: 'Annulée par le client', updatedAt: new Date() }).where(eq(bookings.id, b.id));
       await tx.update(offers).set({ booked: sql`${offers.booked} - ${b.seats}` }).where(eq(offers.id, b.offerId));

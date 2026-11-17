@@ -36,7 +36,9 @@ export function Account() {
                 : b.status === 'confirmed'
                   ? b.paymentStatus
                     ? <span className="text-sm text-emerald-400">Payée</span>
-                    : <button className="btn-ghost" disabled={cancel.isPending} onClick={() => confirm('Annuler cette réservation ?') && cancel.mutate(b.id)}>Annuler</button>
+                    : ['new', 'accepted'].includes(b.fulfillment)
+                      ? <button className="btn-ghost" disabled={cancel.isPending} onClick={() => confirm('Annuler cette réservation ?') && cancel.mutate(b.id)}>Annuler</button>
+                      : <span className="text-sm text-zinc-500">{b.fulfillment === 'completed' ? 'Livrée' : 'En préparation'}</span>
                   : <span className="text-sm text-zinc-500">{b.paymentStatus === 'needs_refund' ? 'Remboursement en cours' : 'Annulée'}</span>}
             </li>
           ))}

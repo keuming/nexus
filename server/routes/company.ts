@@ -208,7 +208,8 @@ export const companyRoutes = new Hono<Env>()
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const { fulfillment } = c.req.valid('json');
     const db = c.get('db');
-    const [b] = await db.update(bookings).set({ fulfillment, updatedAt: new Date() })
+    // Livrée = remise faite : pour un paiement à la livraison, l'argent est encaissé à ce moment (la mention peut être retirée ensuite).
+    const [b] = await db.update(bookings).set({ fulfillment, updatedAt: new Date(), ...(fulfillment === 'completed' ? { cashCollectedAt: sql`coalesce(${bookings.cashCollectedAt}, case when ${bookings.payMethod} = 'cash' then now() end)` } : {}) })
       .where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id), eq(bookings.status, 'confirmed'))).returning();
     if (!b) throw conflict('not_confirmed', 'Seules les réservations confirmées peuvent changer d\'étape');
     const [offer] = await db.select({ title: offers.title }).from(offers).where(eq(offers.id, b.offerId)).limit(1);
@@ -244,6 +245,8 @@ export const companyRoutes = new Hono<Env>()
     const r = await db.transaction(async (tx) => {
       const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id), eq(bookings.status, 'confirmed'))).for('update');
       if (!b) throw conflict('not_confirmed', 'Seules les réservations confirmées peuvent être annulées (une réservation en attente de paiement expire d\'elle-même)');
+      if (b.fulfillment === 'completed') throw conflict('delivered', 'Cette commande est déjà livrée : elle ne peut plus être annulée');
+      if (b.cashCollectedAt) throw conflict('cash_collected', 'Le paiement a déjà été encaissé : retirez d\'abord la mention « encaissé » avant d\'annuler');
       await tx.update(bookings).set({ status: 'cancelled', cancelReason: reason, cancelledBy: 'merchant', updatedAt: new Date() }).where(eq(bookings.id, b.id));
       await tx.update(offers).set({ booked: sql`${offers.booked} - ${b.seats}` }).where(eq(offers.id, b.offerId));
       await tx.update(companies).set({ credits: sql`${companies.credits} + 1` }).where(eq(companies.id, b.companyId));

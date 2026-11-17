@@ -980,6 +980,23 @@ describe('gestion des commandes par le fournisseur', () => {
     expect((await owner.post(`/company/bookings/${fb.json.booking.id}/cash`, { collected: true })).status).toBe(409);
   });
 
+  it("règles de fin de parcours : Livrée encaisse le cash, plus d'annulation après livraison ou encaissement, client bloqué en cours de préparation", async () => {
+    const a = await cashBooking();
+    expect((await a.owner.post(`/company/bookings/${a.id}/status`, { fulfillment: 'preparing' })).status).toBe(200);
+    expect((await a.cust.post(`/bookings/${a.id}/cancel`)).status).toBe(409); // en préparation : le client passe par le fournisseur
+    expect((await a.owner.post(`/company/bookings/${a.id}/status`, { fulfillment: 'completed' })).status).toBe(200);
+    expect((await a.owner.get('/company/bookings')).json.bookings[0].cashCollectedAt).toBeTruthy(); // livrée = encaissée
+    expect((await a.owner.post(`/company/bookings/${a.id}/cancel`, { reason: 'Test motif' })).status).toBe(409);
+  });
+
+  it("refuse l'annulation d'une commande déjà encaissée tant que la mention n'est pas retirée", async () => {
+    const b = await cashBooking();
+    expect((await b.owner.post(`/company/bookings/${b.id}/cash`, { collected: true })).status).toBe(200);
+    expect((await b.owner.post(`/company/bookings/${b.id}/cancel`, { reason: 'Test motif' })).status).toBe(409);
+    expect((await b.owner.post(`/company/bookings/${b.id}/cash`, { collected: false })).status).toBe(200);
+    expect((await b.owner.post(`/company/bookings/${b.id}/cancel`, { reason: 'Test motif' })).status).toBe(200);
+  });
+
   it('enregistre une note interne, jamais visible du client', async () => {
     const { owner, cust, id } = await cashBooking();
     expect((await owner.patch(`/company/bookings/${id}/note`, { note: 'Client rappelé, livrer demain 10 h' })).status).toBe(200);

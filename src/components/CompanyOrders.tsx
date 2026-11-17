@@ -228,7 +228,7 @@ function OrderDetail({ b, onClose, onChanged }: { b: OrderRow; onClose: () => vo
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
           <button className="btn-ghost" onClick={() => printSlip(b)}>Imprimer le bon</button>
-          {confirmed && !cancelling && <button className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10" onClick={() => setCancelling(true)}>Annuler la réservation</button>}
+          {confirmed && !cancelling && f !== 'completed' && !b.cashCollectedAt && <button className="rounded-lg border border-red-500/40 px-4 py-2 text-sm text-red-300 hover:bg-red-500/10" onClick={() => setCancelling(true)}>Annuler la réservation</button>}
         </div>
         {confirmed && cancelling && (
           <div className="space-y-2 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
