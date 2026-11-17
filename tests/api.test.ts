@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHmac } from 'node:crypto';
+import { shareRoutes } from '../server/routes/share.js';
 import { resetConfig } from '../server/config.js';
 import { eq } from 'drizzle-orm';
 import { Client, FakeOrz, makeApp } from './helpers.js';
@@ -892,5 +893,38 @@ describe('webhook ORZAYAH', () => {
     await cust.get(`/payments/${r.json.payment.id}`);
     expect((await cust.get('/bookings/mine')).json.bookings[0].status).toBe('pending_payment');
     expect((await adm.get('/notifications')).json.notifications.some((n: any) => n.kind === 'amount_mismatch')).toBe(true);
+  });
+});
+
+
+describe('aperçu de partage (WhatsApp, Facebook…)', () => {
+  const page = async (id: string) => {
+    const app = shareRoutes(() => ctx.db);
+    const res = await app.request(`https://www.backmarket-ci.com/offre/${id}`, { headers: { host: 'www.backmarket-ci.com' } });
+    return { status: res.status, html: await res.text() };
+  };
+
+  it("une offre visible a son titre, son prix, son lieu et son lien dans l'aperçu (HTML échappé)", async () => {
+    const { owner } = await setup(5, 5, 7500);
+    const o = (await owner.post('/company/offers', { destCountry: 'CI', destCity: 'Bouaké', title: 'Abidjan <script>x</script> Bouaké', description: 'Départ "7h"', country: 'CI', city: 'Abidjan', priceFcfa: 7500, capacity: 5 })).json.offer;
+    const r = await page(o.id);
+    expect(r.status).toBe(200);
+    expect(r.html).toContain('property="og:title"');
+    expect(r.html).toContain('7 500 FCFA');
+    expect(r.html).toContain('Abidjan → Bouaké');
+    expect(r.html).toContain(`https://www.backmarket-ci.com/offre/${o.id}`);
+    expect(r.html).toContain('og:image');
+    expect(r.html).not.toContain('<script>x');
+  });
+
+  it('une offre inconnue ou masquée retombe sur la présentation du site, sans fuite', async () => {
+    const { owner, offer } = await setup(5, 5, 5000);
+    await owner.patch(`/company/offers/${offer.id}`, { active: false });
+    for (const id of [offer.id, '11111111-1111-1111-1111-111111111111', 'pas-un-id']) {
+      const r = await page(id);
+      expect(r.status).toBe(200);
+      expect(r.html).toContain('BackMarket : réservez');
+      expect(r.html).toContain('/og.png');
+    }
   });
 });

@@ -8,6 +8,8 @@ import { ACTIVITIES, type Activity } from '../../shared/constants';
 import { CATEGORIES, SEARCH_FORMS, type SearchForm } from '../../shared/search';
 import { COUNTRIES, citiesOf } from '../../shared/geo';
 import { placeLabel } from '../lib/place';
+import { ShareButton, absUrl } from '../components/ShareButton';
+import { SITE } from '../../shared/site';
 
 export const ACTIVITY_LABEL: Record<string, string> = {
   transport: 'Transport', restauration: 'Restauration', expedition: 'Expédition', hotel: 'Hôtel', boutique: 'Boutique',
@@ -117,6 +119,7 @@ export function Home() {
         <section className="text-center">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
           <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.</p>
+          <div className="mt-3"><ShareButton label="Partager BackMarket" url={absUrl('/')} title={SITE.shareTitle} text={SITE.shareDescription} /></div>
 
           <form className={`card mt-5 grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `Recherche ${MENU.find((m) => m.id === activity)?.label}` : 'Recherche'}>
             <PlaceFields id="f-dep" countryLabel={form?.from?.country ?? 'Pays'} cityLabel={form?.from?.city ?? 'Ville ou arrêt'}
@@ -193,7 +196,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
       )}
       <div className="flex flex-1 flex-col gap-1 px-4 pb-4 pt-3">
         <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}{o.category ? ` · ${o.category}` : ''}</span>
-        <h2 className="line-clamp-2 text-base font-semibold leading-snug">{o.title}</h2>
+        <h2 className="line-clamp-2 text-base font-semibold leading-snug"><Link to={`/offre/${o.id}`} className="hover:underline">{o.title}</Link></h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
         <p className="text-xs text-zinc-500">
@@ -214,7 +217,10 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         )}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           <span className="text-base font-bold">{o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}</span>
-          <button className="btn" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
+          <div className="flex gap-2">
+            <ShareButton className="btn-ghost !px-3" label="Partager" url={absUrl(`/offre/${o.id}`)} title={`${o.title} · ${o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}`} text={`${o.companyName} sur ${SITE.name}`} />
+            <button className="btn" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
+          </div>
         </div>
       </div>
     </article>

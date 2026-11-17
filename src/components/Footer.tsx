@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { PAYMENT_METHODS } from '../../shared/constants';
 import { SITE } from '../../shared/site';
+import { ShareButton, absUrl } from './ShareButton';
 
 const H = ({ children }: { children: React.ReactNode }) => <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-400">{children}</h3>;
 const L = ({ to, children }: { to: string; children: React.ReactNode }) => <li><Link to={to} className="text-sm text-zinc-300 hover:text-white">{children}</Link></li>;

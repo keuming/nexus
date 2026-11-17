@@ -11,6 +11,7 @@ import { Subscribe } from './pages/Subscribe';
 import { Account } from './pages/Account';
 import { CompanyDashboard } from './pages/CompanyDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { OfferPage } from './pages/OfferPage';
 import { Checkout } from './pages/Checkout';
 import { Confirmation } from './pages/Confirmation';
 import { Conditions } from './pages/Conditions';
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="souscription" element={<Subscribe />} />
+              <Route path="offre/:id" element={<OfferPage />} />
               <Route path="reserver/:offerId" element={<Checkout />} />
               <Route path="reservation/:id" element={<Guard roles={['customer', 'owner', 'admin']}><Confirmation /></Guard>} />
               <Route path="conditions" element={<Conditions />} />
