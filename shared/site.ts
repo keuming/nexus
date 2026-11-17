@@ -5,8 +5,8 @@ export const SITE = {
   url: 'https://www.backmarket-ci.com',
   tagline: 'Réservez en Afrique, simplement.',
   /** Titre et description affichés quand le lien est partagé (WhatsApp, Facebook, LinkedIn…). */
-  shareTitle: 'BackMarket : réservez transport, hôtels, restaurants… en 1 clic !',
-  shareDescription: 'Les meilleures offres près de chez vous, auprès de prestataires validés. Payez à la livraison ou en ligne (Mobile Money, carte). Simple, rapide, sûr.',
+  shareTitle: 'BackMarket : vendez ou réservez, à votre façon, en 1 clic !',
+  shareDescription: 'Marchands : publiez vos offres, fixez vos conditions, encaissez en ligne ou à la livraison. Clients : transport, hôtels, restaurants… payez comme vous voulez. Une offre unique, zéro contrainte.',
   company: 'NEXUS',
   copyright: 'NEXUS Côte d’Ivoire',
   address: 'Cocody Riviera 2, Immeuble Paul, Abidjan, Côte d’Ivoire',

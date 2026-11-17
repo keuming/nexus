@@ -924,7 +924,7 @@ describe('aperçu de partage (WhatsApp, Facebook…)', () => {
     for (const id of [offer.id, '11111111-1111-1111-1111-111111111111', 'pas-un-id']) {
       const r = await page(id);
       expect(r.status).toBe(200);
-      expect(r.html).toContain('BackMarket : réservez');
+      expect(r.html).toContain('BackMarket : vendez ou réservez');
       expect(r.html).toContain('/og.jpg');
     }
   });
@@ -1185,6 +1185,6 @@ describe('boutique du marchand (catalogue individuel)', () => {
     expect(html).toContain('Bus Abidjan : commandez et réservez en ligne');
     expect(html).toContain(`https://www.backmarket-ci.com/boutique/${co.id}`);
     const none = await (await app.request('https://www.backmarket-ci.com/boutique/pas-un-id', { headers: { host: 'www.backmarket-ci.com' } })).text();
-    expect(none).toContain('BackMarket : réservez');
+    expect(none).toContain('BackMarket : vendez ou réservez');
   });
 });
