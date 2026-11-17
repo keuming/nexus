@@ -223,6 +223,9 @@ alter table companies add column if not exists logo_url text;
 
 -- v34 : mode de paiement de la réservation (digital = Mobile Money/carte via ORZAYAH ; cash = à la livraison)
 alter table bookings add column if not exists pay_method text not null default 'digital';
+-- Prix unitaire figé à la réservation (un changement de prix ultérieur ne modifie pas les commandes existantes).
+alter table bookings add column if not exists unit_price_fcfa integer;
+update bookings b set unit_price_fcfa = o.price_fcfa from offers o where o.id = b.offer_id and b.unit_price_fcfa is null;
 
 -- v35 : le fournisseur autorise (ou non) le paiement à la livraison pour chaque offre
 alter table offers add column if not exists allow_cash boolean not null default true;

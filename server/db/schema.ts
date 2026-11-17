@@ -96,6 +96,7 @@ export const bookings = pgTable('bookings', {
   cashCollectedAt: timestamp('cash_collected_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   payMethod: text('pay_method').notNull().default('digital'),
+  unitPriceFcfa: integer('unit_price_fcfa'),
 });
 
 export const creditLedger = pgTable('credit_ledger', {

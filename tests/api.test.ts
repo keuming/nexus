@@ -997,6 +997,13 @@ describe('gestion des commandes par le fournisseur', () => {
     expect((await b.owner.post(`/company/bookings/${b.id}/cancel`, { reason: 'Test motif' })).status).toBe(200);
   });
 
+  it("fige le prix à la réservation : un changement de prix ultérieur ne modifie pas le montant à encaisser", async () => {
+    const { owner, cust, id, offer } = await cashBooking(3000);
+    expect((await owner.patch(`/company/offers/${offer.id}`, { priceFcfa: 9000 })).status).toBe(200);
+    expect((await owner.get('/company/bookings')).json.bookings[0].dueFcfa).toBe(3000);
+    expect((await cust.get(`/bookings/${id}`)).json.booking.priceFcfa).toBe(3000);
+  });
+
   it('enregistre une note interne, jamais visible du client', async () => {
     const { owner, cust, id } = await cashBooking();
     expect((await owner.patch(`/company/bookings/${id}/note`, { note: 'Client rappelé, livrer demain 10 h' })).status).toBe(200);
