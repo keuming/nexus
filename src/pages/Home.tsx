@@ -63,6 +63,10 @@ export function Home() {
   const form: SearchForm | undefined = SEARCH_FORMS[activity as Activity];
   const cat = CATEGORIES[activity as Activity];
   const allCities = COUNTRIES.flatMap((c) => c.cities);
+  useEffect(() => {
+    if (params.get('pays')) return;
+    try { const m = localStorage.getItem('bm-market'); if (m && COUNTRIES.some((c) => c.code === m)) setParams((p) => { const n = new URLSearchParams(p); n.set('pays', m); return n; }, { replace: true }); } catch { /* ignore */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setFilter = (k: string, v: string) => setParams((p) => {
     const n = new URLSearchParams(p);
@@ -99,6 +103,10 @@ export function Home() {
   const filtered = !!(activity || country || destCountry || category || [city, destCity, q, guests, budget].some((x) => x.trim()));
   const reset = () => { setCity(''); setDestCity(''); setQ(''); setGuests(''); setBudget(''); setParams(new URLSearchParams(), { replace: true }); };
   const offers = list.data?.offers ?? [];
+  // Pays de navigation : choisi par le visiteur, sinon détecté (géolocalisation de la plateforme). Les offres affichées sont celles des marchands de ce pays + les offres internationales.
+  const market = list.data?.market ?? null;
+  const african = !!market && COUNTRIES.some((c) => c.code === market);
+  const shownCountry = country || (african ? market! : '');
   const cols = form ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3';
 
   return (
@@ -123,7 +131,8 @@ export function Home() {
 
           <form className={`card mt-5 grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `Recherche ${MENU.find((m) => m.id === activity)?.label}` : 'Recherche'}>
             <PlaceFields id="f-dep" countryLabel={form?.from?.country ?? 'Pays'} cityLabel={form?.from?.city ?? 'Ville ou arrêt'}
-              country={country} city={city} onCountry={(v) => setFilter('pays', v)} onCity={setCity} cities={country ? citiesOf(country) : allCities} />
+              country={shownCountry} city={city} onCountry={(v) => { setFilter('pays', v); try { localStorage.setItem('bm-market', v); } catch { /* ignore */ } }} onCity={setCity} cities={shownCountry ? citiesOf(shownCountry) : allCities}
+              allowAll={!african} allLabel={market && !african ? 'Autre pays : articles internationaux' : 'Tous les pays'} />
             {form?.to && (
               <PlaceFields id="f-arr" countryLabel={form.to.country} cityLabel={form.to.city}
                 country={destCountry} city={destCity} onCountry={(v) => setFilter('pays_arr', v)} onCity={setDestCity} cities={destCountry ? citiesOf(destCountry) : allCities} />
@@ -179,7 +188,7 @@ export function Home() {
   );
 }
 
-interface OfferItem { category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string }
+interface OfferItem { scope?: string; category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string }
 
 /** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
 function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
@@ -195,7 +204,7 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-brand/25 to-white/5 text-3xl font-extrabold text-brand/70" aria-hidden>{(ACTIVITY_LABEL[o.activity] ?? '?').charAt(0)}</div>
       )}
       <div className="flex flex-1 flex-col gap-1 px-4 pb-4 pt-3">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}{o.category ? ` · ${o.category}` : ''}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}{o.category ? ` · ${o.category}` : ''}{o.scope === 'international' ? ' · 🌍 International' : ''}</span>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug"><Link to={`/offre/${o.id}`} className="hover:underline">{o.title}</Link></h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
@@ -228,12 +237,12 @@ function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
 }
 
 /** Pays + ville : liste déroulante des villes si un pays est choisi, sinon saisie libre avec suggestions. */
-function PlaceFields({ id, countryLabel, cityLabel, country, city, onCountry, onCity, cities }: { id: string; countryLabel: string; cityLabel: string; country: string; city: string; onCountry: (v: string) => void; onCity: (v: string) => void; cities: string[] }) {
+function PlaceFields({ id, countryLabel, cityLabel, country, city, onCountry, onCity, cities, allowAll = true, allLabel }: { allowAll?: boolean; allLabel?: string; id: string; countryLabel: string; cityLabel: string; country: string; city: string; onCountry: (v: string) => void; onCity: (v: string) => void; cities: string[] }) {
   return (
     <>
       <div className="space-y-1">
         <label htmlFor={`${id}-country`} className="text-xs text-zinc-400">{countryLabel}</label>
-        <CountrySelect id={`${id}-country`} allowAll value={country} onChange={onCountry} />
+        <CountrySelect id={`${id}-country`} allowAll={allowAll} allLabel={allLabel} value={country} onChange={onCountry} />
       </div>
       <div className="space-y-1">
         <label htmlFor={`${id}-city`} className="text-xs text-zinc-400">{cityLabel}</label>

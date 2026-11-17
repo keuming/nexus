@@ -25,6 +25,8 @@ const cols = {
   destCity: offers.destCity,
   category: offers.category,
   allowCash: offers.allowCash,
+  scope: offers.scope,
+  companyCountry: companies.country,
   stops: offers.stops,
   photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`.as('photo_count'),
   companyName: companies.name,
@@ -41,7 +43,14 @@ const displayRules = () => and(
   sql`${offers.capacity} - ${offers.booked} > 0`, // stock épuisé : l'offre quitte le catalogue
 );
 
-/** Catalogue public : offres actives, d'entreprises validées, à venir. */
+/** Pays du visiteur : choisi par lui (paramètre), sinon détecté par la plateforme (en-tête de géolocalisation Vercel), sinon inconnu. */
+export function visitorMarket(chosen: string | undefined, header: string | undefined): { market: string | null; source: 'chosen' | 'detected' | 'none' } {
+  if (chosen) return { market: chosen, source: 'chosen' };
+  const h = (header ?? '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(h) ? { market: h, source: 'detected' } : { market: null, source: 'none' };
+}
+
+/** Catalogue public : offres actives, d'entreprises validées, visibles dans le pays du visiteur (pays du marchand) ou internationales. */
 export const catalogRoutes = new Hono<Env>()
   .get(
     '/',
@@ -59,6 +68,7 @@ export const catalogRoutes = new Hono<Env>()
     })),
     async (c) => {
       const { activity, country, city, destCountry, destCity, category, maxPrice, guests, q, limit } = c.req.valid('query');
+      const m = visitorMarket(country, c.req.header('x-vercel-ip-country'));
       // Libère les places des paiements expirés (pas de cron) ; ne doit jamais bloquer le catalogue.
       try { await sweepExpired({ db: c.get('db'), orz: c.get('orz') }, 3); } catch (e) { console.error('[sweep]', e); }
       const rows = await c.get('db')
@@ -70,7 +80,7 @@ export const catalogRoutes = new Hono<Env>()
           eq(companies.status, 'active'),
           displayRules(),
           activity ? inArray(companies.activity, activity) : undefined,
-          country ? eq(offers.country, country) : undefined,
+          m.market ? sql`(${companies.country} = ${m.market} or ${offers.scope} = 'international')` : undefined,
           city ? sql`(${offers.city} ilike ${like(city)} or exists (select 1 from unnest(${offers.stops}) as s where s ilike ${like(city)}))` : undefined,
           category ? eq(offers.category, category) : undefined,
           maxPrice !== undefined ? sql`${offers.priceFcfa} <= ${maxPrice}` : undefined,
@@ -81,7 +91,7 @@ export const catalogRoutes = new Hono<Env>()
         ))
         .orderBy(desc(offers.startsAt))
         .limit(limit);
-      return c.json({ offers: rows });
+      return c.json({ offers: rows, market: m.market, marketSource: m.source });
     },
   )
   .get('/activities', async (c) => {

@@ -4,7 +4,7 @@ import { api, ApiError, dateFr, fcfa, unwrap } from '../lib/api';
 import { Err } from '../components/Layout';
 import { PhotoPicker, compress, upload } from '../components/PhotoPicker';
 import { ChipInput, CitySelect, CountrySelect } from '../components/ChipInput';
-import { CompanyFields, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
+import { CompanyFields, ScopeField, coordsOk, draftFrom, emptyDraft, toPayload } from '../components/CompanyFields';
 import { ACTIVITY_LABEL } from './Home';
 import { CompanyOrders } from '../components/CompanyOrders';
 import { placeLabel } from '../lib/place';
@@ -78,7 +78,7 @@ export function CompanyDashboard() {
             ))}
           </div>
           {tab === 'bookings' && <CompanyOrders q={bookings} />}
-          {tab === 'offers' && <Offers company={{ country: c.country, city: c.city, activity: c.activity, serviceCities: c.serviceCities }} />}
+          {tab === 'offers' && <Offers company={{ country: c.country, city: c.city, activity: c.activity, serviceCities: c.serviceCities, scopes: c.scopes }} />}
           {tab === 'settings' && <><Profile company={c} /><ServiceCities country={c.country} cities={c.serviceCities} /></>}
         </>
       )}
@@ -116,20 +116,21 @@ function CompanyForm({ mode, initial, onDone }: { mode: 'create' | 'resubmit'; i
   );
 }
 
-function Profile({ company: c }: { company: { name: string; phone: string; email: string; logoUrl: string | null } }) {
+function Profile({ company: c }: { company: { name: string; phone: string; email: string; logoUrl: string | null; country: string; scopes: string[] } }) {
   const qc = useQueryClient();
   const [f, setF] = useState({ name: c.name, phone: c.phone, email: c.email });
   const [logo, setLogo] = useState<string | null>(c.logoUrl);
+  const [scopes, setScopes] = useState<string[]>(c.scopes);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const cfg = useQuery({ queryKey: ['upload-config'], queryFn: () => unwrap(api.company['upload-config'].$get()), staleTime: Infinity });
   const save = useMutation({
-    mutationFn: () => unwrap(api.company.profile.$patch({ json: { ...f, logoUrl: logo } })),
+    mutationFn: () => unwrap(api.company.profile.$patch({ json: { ...f, logoUrl: logo, scopes: scopes as ('national' | 'international')[] } })),
     onSuccess: () => { setSaved(true); qc.invalidateQueries({ queryKey: ['company'] }); },
   });
-  const dirty = f.name !== c.name || f.phone !== c.phone || f.email !== c.email || logo !== c.logoUrl;
+  const dirty = f.name !== c.name || f.phone !== c.phone || f.email !== c.email || logo !== c.logoUrl || [...scopes].sort().join() !== [...c.scopes].sort().join();
   const pick = async (files: FileList | null) => {
     const file = files?.[0]; if (!file || !cfg.data?.cloudinary) return;
     setErr(''); setBusy(true);
@@ -163,6 +164,7 @@ function Profile({ company: c }: { company: { name: string; phone: string; email
         <div className="space-y-1"><label htmlFor="p-email" className="text-sm font-medium">E-mail de contact</label>
           <input id="p-email" className="input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
       </div>
+      <ScopeField value={scopes} onChange={(v) => { setScopes(v); setSaved(false); }} country={c.country} />
       <Err e={err ? new Error(err) : save.error} />
       <div className="flex items-center gap-3">
         <button className="btn" disabled={!dirty || save.isPending || busy}>{save.isPending ? 'Enregistrement…' : 'Enregistrer'}</button>
@@ -199,10 +201,13 @@ const NOUN: Record<string, { a: string; the: string }> = {
 };
 const OWN_PHOTO = '/api/company/offers/';
 
-function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[] } }) {
+function Offers({ company }: { company: { country: string; city: string; activity: string; serviceCities: string[]; scopes: string[] } }) {
   const qc = useQueryClient();
   const list = useQuery({ queryKey: ['company-offers'], queryFn: () => unwrap(api.company.offers.$get()) });
-  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, available: true, allowCash: true };
+  const intl = company.scopes.includes('international');
+  const natl = company.scopes.includes('national');
+  const defaultScope = natl ? { scope: 'national' as 'national' | 'international', canShipInternational: false } : { scope: 'international' as 'national' | 'international', canShipInternational: true };
+  const blank = { title: '', description: '', country: company.country, city: company.city, destCountry: company.country, destCity: '', category: '', priceFcfa: 0, capacity: 1, available: true, allowCash: true, ...defaultScope };
   const [f, setF] = useState(blank);
   const [stops, setStops] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -234,7 +239,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
   });
   type Row = NonNullable<typeof list.data>['offers'][number];
   const load = (o: Row, copy: boolean) => {
-    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, available: copy ? true : o.active, allowCash: o.allowCash });
+    setF({ title: copy ? `${o.title} (copie)` : o.title, description: o.description, country: o.country, city: o.city, destCountry: o.destCountry ?? o.country, destCity: o.destCity ?? '', category: o.category ?? '', priceFcfa: o.priceFcfa, capacity: o.capacity, available: copy ? true : o.active, allowCash: o.allowCash, scope: o.scope as 'national' | 'international', canShipInternational: o.canShipInternational });
     setStops(o.stops);
     setPhotos(copy ? [] : Array.from({ length: o.photoCount }, (_, i) => `${OWN_PHOTO}${o.id}/photos/${i}`));
     setEditing(copy ? null : o.id);
@@ -274,7 +279,7 @@ function Offers({ company }: { company: { country: string; city: string; activit
             <li key={o.id} className={`card flex flex-wrap items-center justify-between gap-3 !py-3 ${o.active ? '' : 'opacity-70'}`}>
               {o.photoCount > 0 && <img src={`${OWN_PHOTO}${o.id}/photos/0`} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />}
               <div className="min-w-0 flex-1"><p className="font-medium">{o.title} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs ${o.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/10 text-zinc-300'}`}>{o.active ? 'Disponible' : 'Non disponible'}</span>{o.booked >= o.capacity && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300">Stock épuisé</span>}</p>
-                <p className="text-sm text-zinc-400">{placeLabel(o)} · {fcfa(o.priceFcfa)} · Stock : {Math.max(0, o.capacity - o.booked)} restant(s) sur {o.capacity} · {o.allowCash ? 'Paiement à la livraison autorisé' : 'Paiement en ligne uniquement'} · Ajouté le {dateFr(o.startsAt)}</p>
+                <p className="text-sm text-zinc-400">{placeLabel(o)} · {fcfa(o.priceFcfa)} · Stock : {Math.max(0, o.capacity - o.booked)} restant(s) sur {o.capacity} · {o.scope === 'international' ? 'International' : 'National'} · {o.allowCash ? 'Paiement à la livraison autorisé' : 'Paiement en ligne uniquement'} · Ajouté le {dateFr(o.startsAt)}</p>
                 {o.stops.length > 0 && <p className="text-xs text-zinc-500">Arrêts : {o.stops.join(' · ')}</p>}</div>
               <div className="flex flex-wrap gap-2" role="group" aria-label={`Actions pour ${o.title}`}>
                 <button className="btn-ghost" onClick={() => load(o, false)}>Modifier</button>
@@ -326,6 +331,22 @@ function Offers({ company }: { company: { country: string; city: string; activit
               <input id="o-price" className="input" type="number" min={0} required value={f.priceFcfa} onChange={(e) => setF({ ...f, priceFcfa: Number(e.target.value) })} /></div>
             <div className="space-y-1"><label htmlFor="o-cap" className="text-sm font-medium">Stock disponible</label>
               <input id="o-cap" className="input" type="number" min={1} required value={f.capacity} onChange={(e) => setF({ ...f, capacity: Number(e.target.value) })} /></div>
+            <fieldset className="space-y-2 rounded-lg border border-white/10 p-3 sm:col-span-2">
+              <legend className="px-1 text-sm font-medium">Zone de vente</legend>
+              <label className={`flex items-start gap-2 text-sm ${intl ? '' : 'opacity-60'}`}>
+                <input type="checkbox" className="mt-1" disabled={!intl} checked={f.canShipInternational}
+                  onChange={(e) => setF({ ...f, canShipInternational: e.target.checked, scope: e.target.checked ? f.scope : (natl ? 'national' : f.scope) })} />
+                <span><span className="font-medium">Capacité de livraison à l'international</span>
+                  <span className="block text-xs text-zinc-400">{intl ? "Cochez si vous pouvez livrer ou servir des clients hors de votre pays." : "Activez « International » dans Paramètres > Portée de l'activité pour publier à l'international."}</span></span>
+              </label>
+              <div className="space-y-1">
+                <label htmlFor="o-scope" className="text-sm font-medium">Article national ou international</label>
+                <select id="o-scope" className="input" value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value as 'national' | 'international' })}>
+                  {natl && <option value="national">National : visible dans {countryName(company.country)} uniquement</option>}
+                  <option value="international" disabled={!intl || !f.canShipInternational}>International : visible dans tous les pays</option>
+                </select>
+              </div>
+            </fieldset>
             <label className="flex items-start gap-2 text-sm sm:col-span-2">
               <input type="checkbox" className="mt-1" checked={f.allowCash} onChange={(e) => setF({ ...f, allowCash: e.target.checked })} />
               <span><span className="font-medium">Autoriser le paiement à la livraison</span><span className="block text-xs text-zinc-400">Si décoché, le client doit payer en ligne (Mobile Money). Sans effet sur les offres gratuites.</span></span>

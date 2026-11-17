@@ -28,4 +28,6 @@ export const companyInput = z.object({
   phone: phoneField,
   email: z.union([z.literal(''), z.string().trim().toLowerCase().email().max(200)]).default(''),
   rccm: z.string().trim().max(60).default(''),
+  // Portée de l'activité : national (pays du marchand), international, ou les deux.
+  scopes: z.array(z.enum(['national', 'international'])).min(1, 'Choisissez au moins une portée : national ou international').max(6).transform((a) => [...new Set(a)]).default(['national']),
 });

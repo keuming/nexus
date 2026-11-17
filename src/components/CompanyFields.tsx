@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChipInput, CitySelect, CountrySelect } from './ChipInput';
 import { ACTIVITIES } from '../../shared/constants';
-import { citiesOf } from '../../shared/geo';
+import { citiesOf, countryName } from '../../shared/geo';
 import { ACTIVITY_LABEL } from '../pages/Home';
 
 export type Activity = (typeof ACTIVITIES)[number];
@@ -9,18 +9,18 @@ export type Activity = (typeof ACTIVITIES)[number];
 /** Brouillon de formulaire : les coordonnées restent des textes saisissables, converties à l'envoi. */
 export interface CompanyDraft {
   name: string; activity: Activity; country: string; city: string; address: string;
-  latitude: string; longitude: string; phone: string; email: string; rccm: string; serviceCities: string[];
+  latitude: string; longitude: string; phone: string; email: string; rccm: string; serviceCities: string[]; scopes: string[];
 }
 
 export const emptyDraft = (): CompanyDraft => ({
-  name: '', activity: ACTIVITIES[0], country: 'CI', city: '', address: '', latitude: '', longitude: '', phone: '', email: '', rccm: '', serviceCities: [],
+  name: '', activity: ACTIVITIES[0], country: 'CI', city: '', address: '', latitude: '', longitude: '', phone: '', email: '', rccm: '', serviceCities: [], scopes: ['national'],
 });
 
-export const draftFrom = (c: { name: string; activity: string; country: string; city: string; address: string; latitude: number | null; longitude: number | null; phone: string; email: string; rccm: string; serviceCities: string[] }): CompanyDraft => ({
-  ...c, activity: c.activity as Activity, latitude: c.latitude?.toString() ?? '', longitude: c.longitude?.toString() ?? '',
+export const draftFrom = (c: { name: string; activity: string; country: string; city: string; address: string; latitude: number | null; longitude: number | null; phone: string; email: string; rccm: string; serviceCities: string[]; scopes?: string[] }): CompanyDraft => ({
+  ...c, scopes: c.scopes?.length ? c.scopes : ['national'], activity: c.activity as Activity, latitude: c.latitude?.toString() ?? '', longitude: c.longitude?.toString() ?? '',
 });
 
-export const toPayload = (d: CompanyDraft) => ({ ...d, latitude: Number(d.latitude), longitude: Number(d.longitude) });
+export const toPayload = (d: CompanyDraft) => ({ ...d, scopes: d.scopes as ('national' | 'international')[], latitude: Number(d.latitude), longitude: Number(d.longitude) });
 
 const validCoords = (lat: string, lng: string) =>
   lat.trim() !== '' && lng.trim() !== '' && Math.abs(Number(lat)) <= 90 && Math.abs(Number(lng)) <= 180 && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng));
@@ -71,11 +71,12 @@ export function CompanyFields({ value: f, onChange }: { value: CompanyDraft; onC
           {ACTIVITIES.map((a) => <option key={a} value={a}>{ACTIVITY_LABEL[a]}</option>)}
         </select></div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1"><label htmlFor="c-country" className="text-sm font-medium">Pays</label>
+        <div className="space-y-1"><label htmlFor="c-country" className="text-sm font-medium">Pays du marchand *</label>
           <CountrySelect id="c-country" value={f.country} onChange={(v) => onChange({ ...f, country: v, city: '' })} /></div>
         <div className="space-y-1"><label htmlFor="c-city" className="text-sm font-medium">Ville</label>
           <CitySelect key={f.country} id="c-city" required country={f.country} value={f.city} onChange={(v) => set('city', v)} /></div>
       </div>
+      <ScopeField value={f.scopes} onChange={(scopes) => set('scopes', scopes)} country={f.country} />
       <div className="space-y-1"><label htmlFor="c-addr" className="text-sm font-medium">Adresse (quartier, rue, repère)</label>
         <input id="c-addr" className="input" required minLength={3} maxLength={200} value={f.address} onChange={(e) => set('address', e.target.value)} /></div>
       <GeoField lat={f.latitude} lng={f.longitude} onChange={(latitude, longitude) => onChange({ ...f, latitude, longitude })} />
@@ -90,5 +91,24 @@ export function CompanyFields({ value: f, onChange }: { value: CompanyDraft; onC
       <ChipInput label="Villes de service" hint={f.activity === 'transport' ? 'Villes desservies par votre compagnie. Les arrêts se définissent pour chaque offre.' : 'Villes où vous proposez vos services.'}
         values={f.serviceCities} onChange={(v) => set('serviceCities', v)} suggestions={suggestions} max={30} placeholder="Ex. Bouaké" />
     </div>
+  );
+}
+
+/** Portée de l'activité : national, international, ou les deux (au moins un). */
+export function ScopeField({ value, onChange, country }: { value: string[]; onChange: (v: string[]) => void; country: string }) {
+  const toggle = (k: string) => {
+    const next = value.includes(k) ? value.filter((x) => x !== k) : [...value, k];
+    if (next.length) onChange(next);
+  };
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">Portée de votre activité * <span className="text-xs font-normal text-zinc-400">(plusieurs choix possibles)</span></legend>
+      {[['national', 'National', `Vos articles s'affichent aux clients connectés depuis ${countryName(country)}.`], ['international', 'International', "Vous pouvez publier des articles visibles dans tous les pays."]].map(([k, label, hint]) => (
+        <label key={k} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 ${value.includes(k) ? 'border-brand bg-brand/10' : 'border-white/15 hover:bg-white/5'}`}>
+          <input type="checkbox" className="mt-1" checked={value.includes(k)} onChange={() => toggle(k)} />
+          <span><span className="block text-sm font-semibold">{label}</span><span className="block text-xs text-zinc-400">{hint}</span></span>
+        </label>
+      ))}
+    </fieldset>
   );
 }

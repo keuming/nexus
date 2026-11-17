@@ -37,6 +37,8 @@ const offerFields = z.object({
   destCity: cityName.nullish(),
   category: z.string().trim().max(60).nullish(),
   allowCash: z.boolean().default(true), // paiement à la livraison autorisé
+  canShipInternational: z.boolean().default(false), // capacité de livraison à l'international
+  scope: z.enum(['national', 'international']).default('national'), // article visible dans son pays seulement, ou partout
   stops: placeList(20),
   priceFcfa: z.number().int().min(0).max(100_000_000),
   capacity: z.number().int().min(1).max(10_000),
@@ -44,6 +46,14 @@ const offerFields = z.object({
   // À la modification : « keep:N » conserve la photo N existante.
   photos: z.array(z.string().max(520_000)).max(4).default([]),
 });
+
+/** Un article international exige la capacité de livraison internationale ET un marchand déclaré « international » ; un marchand uniquement international ne publie que des articles internationaux. */
+function checkScope(co: { scopes: string[] }, scope: string, canShip: boolean) {
+  if (scope === 'international') {
+    if (!canShip) throw new AppError(400, 'invalid', "Cochez « capacité de livraison à l'international » pour publier un article international");
+    if (!co.scopes.includes('international')) throw new AppError(400, 'invalid', "Votre entreprise n'est pas déclarée « international » : modifiez la portée dans Paramètres");
+  } else if (!co.scopes.includes('national')) throw new AppError(400, 'invalid', "Votre entreprise n'est déclarée qu'« international » : publiez un article international");
+}
 
 async function myCompany(db: Db, ownerId: string) {
   const [co] = await db.select().from(companies).where(eq(companies.ownerId, ownerId)).limit(1);
@@ -81,15 +91,24 @@ export const companyRoutes = new Hono<Env>()
     phone: phoneField,
     email: z.union([z.literal(''), z.string().trim().toLowerCase().email().max(200)]),
     logoUrl: z.string().max(400).nullable(),
+    scopes: companyInput.shape.scopes.optional(),
   })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const b = c.req.valid('json');
+    if (b.scopes) {
+      // Retirer une portée alors que des articles actifs l'utilisent les rendrait incohérents : on demande de les modifier d'abord.
+      for (const sc of ['national', 'international'] as const) {
+        if (b.scopes.includes(sc)) continue;
+        const [{ n }] = await c.get('db').select({ n: sql<number>`count(*)::int` }).from(offers).where(and(eq(offers.companyId, co.id), eq(offers.scope, sc)));
+        if (n > 0) throw conflict('scope_in_use', `${n} article(s) ${sc === 'national' ? 'nationaux' : 'internationaux'} existent : modifiez-les avant de retirer cette portée`);
+      }
+    }
     let logoUrl: string | null = null;
     if (b.logoUrl) {
       if (!b.logoUrl.startsWith('https://')) throw new AppError(400, 'invalid', 'Logo invalide');
       logoUrl = parsePhoto(b.logoUrl).url;
     }
-    const [row] = await c.get('db').update(companies).set({ name: b.name, phone: b.phone, email: b.email, logoUrl }).where(eq(companies.id, co.id)).returning();
+    const [row] = await c.get('db').update(companies).set({ name: b.name, phone: b.phone, email: b.email, logoUrl, ...(b.scopes ? { scopes: b.scopes } : {}) }).where(eq(companies.id, co.id)).returning();
     return c.json({ company: row });
   })
   /** Paramètres d'envoi direct des photos (publics par nature : nom du compte et preset non signé). */
@@ -111,6 +130,7 @@ export const companyRoutes = new Hono<Env>()
     const cats = CATEGORIES[co.activity as Activity]?.options;
     if (input.category && !cats?.includes(input.category)) throw new AppError(400, 'invalid', 'Catégorie invalide');
     if (!cats) input.category = null;
+    checkScope(co, input.scope, input.canShipInternational);
     const rows = photos.map((p) => parsePhoto(p));
     const o = await c.get('db').transaction(async (tx) => {
       const [row] = await tx.insert(offers).values({ ...input, companyId: co.id, startsAt: new Date() }).returning();
@@ -127,6 +147,7 @@ export const companyRoutes = new Hono<Env>()
       const [cur] = await tx.select().from(offers).where(and(eq(offers.id, c.req.valid('param').id), eq(offers.companyId, co.id))).for('update');
       if (!cur) throw notFound('Offre');
       const set: Partial<typeof offers.$inferInsert> = { ...rest };
+      if (rest.scope !== undefined || rest.canShipInternational !== undefined) checkScope(co, rest.scope ?? cur.scope, rest.canShipInternational ?? cur.canShipInternational);
       if (rest.capacity !== undefined && rest.capacity < cur.booked) throw conflict('capacity_too_low', `${cur.booked} place(s) déjà réservée(s) : le stock ne peut pas descendre en dessous`);
       let photoCount: number | undefined;
       if (photos) {

@@ -178,9 +178,10 @@ describe('pays, villes et arrêts', () => {
   it('filtre le catalogue par pays et par ville ou arrêt', async () => {
     await transportOffer();
     const anon = new Client(ctx.app);
-    expect((await anon.get('/offers?country=BF')).json.offers).toHaveLength(1);
-    expect((await anon.get('/offers?country=CI')).json.offers).toHaveLength(0);
-    expect((await anon.get('/offers?country=BF&city=bobo-dioulasso')).json.offers).toHaveLength(1);
+    // « country » = pays de navigation du visiteur : on voit les offres des marchands de ce pays (le marchand de test est en CI).
+    expect((await anon.get('/offers?country=CI')).json.offers).toHaveLength(1);
+    expect((await anon.get('/offers?country=BF')).json.offers).toHaveLength(0);
+    expect((await anon.get('/offers?country=CI&city=bobo-dioulasso')).json.offers).toHaveLength(1);
     expect((await anon.get('/offers?city=bobo')).json.offers).toHaveLength(1); // recherche partielle
     expect((await anon.get('/offers?city=%25')).json.offers).toHaveLength(0); // « % » est littéral
     expect((await anon.get('/offers?city=Abidjan')).json.offers).toHaveLength(1);
@@ -1020,5 +1021,112 @@ describe('gestion des commandes par le fournisseur', () => {
     expect((await adm.get('/admin/payments')).json.payments[0].status).toBe('needs_refund');
     expect((await adm.get('/admin/stats')).json.needsRefund).toBe(1);
     expect((await adm.get('/notifications')).json.notifications.some((n: any) => n.kind === 'needs_refund')).toBe(true);
+  });
+});
+
+describe('isolation des commandes entre partenaires (audit)', () => {
+  const partner = async (email: string, name: string, country = 'CI') => {
+    const o = await register('owner', email);
+    const co = (await o.post('/company', { name, activity: 'transport', country, city: 'Ville', serviceCities: [], phone: '+225 07 00 00 00 00', ...geo })).json.company;
+    const adm = await admin().catch(async () => { const c = new Client(ctx.app); await c.post('/auth/login', { email: 'admin@backmarket.test', password: 'adminpass123' }); return c; });
+    await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
+    await adm.post(`/admin/companies/${co.id}/credits`, { credits: 10 });
+    const offer = (await o.post('/company/offers', { title: `Offre ${name}`, country, city: 'Ville', destCountry: country, destCity: 'Autre', priceFcfa: 1000, capacity: 5 })).json.offer;
+    return { o, co, offer };
+  };
+
+  it('une commande n\'apparaît que chez le partenaire concerné ; l\'autre ne peut ni la voir ni agir dessus', async () => {
+    const a = await partner('a@x.test', 'Alpha');
+    const b = await partner('b@x.test', 'Beta');
+    const cust = await register('customer', 'cl@x.test');
+    const r = await cust.post('/bookings', { ...BK, offerId: a.offer.id, payMode: 'cash' });
+    expect(r.status).toBe(201);
+    const id = r.json.booking.id;
+    expect((await a.o.get('/company/bookings')).json.bookings.map((x: any) => x.id)).toEqual([id]);
+    expect((await b.o.get('/company/bookings')).json.bookings).toHaveLength(0);
+    expect((await b.o.post(`/company/bookings/${id}/status`, { fulfillment: 'accepted' })).status).toBe(409);
+    expect((await b.o.post(`/company/bookings/${id}/cash`, { collected: true })).status).toBe(409);
+    expect((await b.o.patch(`/company/bookings/${id}/note`, { note: 'intrus' })).status).toBe(404);
+    expect((await b.o.post(`/company/bookings/${id}/cancel`, { reason: 'Intrusion' })).status).toBe(409);
+    expect((await b.o.get('/company/ledger')).json.ledger.some((l: any) => l.bookingId === id)).toBe(false);
+    // notifications : seul le propriétaire concerné est alerté
+    expect((await a.o.get('/notifications')).json.notifications.some((n: any) => n.kind === 'booking')).toBe(true);
+    expect((await b.o.get('/notifications')).json.notifications.some((n: any) => n.kind === 'booking')).toBe(false);
+    // la commande n'a pas bougé
+    expect((await a.o.get('/company/bookings')).json.bookings[0]).toMatchObject({ fulfillment: 'new', merchantNote: '', status: 'confirmed' });
+    // un autre client ne la voit pas non plus
+    const other = await register('customer', 'autre@x.test');
+    expect((await other.get(`/bookings/${id}`)).status).toBe(404);
+    expect((await other.get('/bookings/mine')).json.bookings).toHaveLength(0);
+  });
+});
+
+describe('pays du marchand, portée nationale / internationale', () => {
+  const geoHeader = (country?: string): RequestInit => ({ headers: country ? { 'x-vercel-ip-country': country } : {} });
+  const list = async (query = '', country?: string) => {
+    const res = await ctx.app.request(`http://localhost/api/offers${query}`, geoHeader(country));
+    return res.json() as Promise<{ offers: { title: string; scope: string }[]; market: string | null; marketSource: string }>;
+  };
+  const world = async () => {
+    const adm = await admin();
+    const mk = async (email: string, name: string, country: string, scopes: string[]) => {
+      const o = await register('owner', email);
+      const co = (await o.post('/company', { name, activity: 'restauration', country, city: 'Capitale', serviceCities: [], phone: '+225 07 00 00 00 00', scopes, ...geo })).json.company;
+      await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
+      return { o, co };
+    };
+    const ci = await mk('ci@x.test', 'Resto CI', 'CI', ['national', 'international']);
+    const sn = await mk('sn@x.test', 'Resto SN', 'SN', ['national']);
+    const post = (o: Client, title: string, extra: object = {}, country = 'CI') => o.post('/company/offers', { title, country, city: 'Capitale', priceFcfa: 1000, capacity: 5, ...extra });
+    await post(ci.o, 'Plat CI national');
+    await post(ci.o, 'Plat CI mondial', { scope: 'international', canShipInternational: true });
+    await post(sn.o, 'Plat SN national', {}, 'SN');
+    return { ci, sn, adm, post };
+  };
+
+  it("n'affiche que les articles des marchands du pays du visiteur, plus les articles internationaux", async () => {
+    await world();
+    const titles = (r: { offers: { title: string }[] }) => r.offers.map((o) => o.title).sort();
+    expect(titles(await list('', 'CI'))).toEqual(['Plat CI mondial', 'Plat CI national']);
+    expect(titles(await list('', 'SN'))).toEqual(['Plat CI mondial', 'Plat SN national']);
+    expect(titles(await list('', 'FR'))).toEqual(['Plat CI mondial']); // hors Afrique : international seulement
+    const r = await list('', 'CI');
+    expect(r).toMatchObject({ market: 'CI', marketSource: 'detected' });
+    // le visiteur peut changer de pays de navigation (paramètre explicite prioritaire sur la détection)
+    const chosen = await list('?country=SN', 'CI');
+    expect(titles(chosen)).toEqual(['Plat CI mondial', 'Plat SN national']);
+    expect(chosen.marketSource).toBe('chosen');
+    // sans géolocalisation (développement) : aucun filtre pays
+    const none = await list('');
+    expect(none.market).toBeNull();
+    expect(none.offers).toHaveLength(3);
+  });
+
+  it("valide la portée : article international seulement si capacité cochée ET marchand international", async () => {
+    const { ci, sn, post } = await world();
+    expect((await post(ci.o, 'Plat X', { scope: 'international', canShipInternational: false })).status).toBe(400);
+    expect((await post(sn.o, 'Plat Y', { scope: 'international', canShipInternational: true }, 'SN')).status).toBe(400); // marchand national seulement
+    expect((await post(ci.o, 'Plat Z', { scope: 'international', canShipInternational: true })).status).toBe(201);
+    const mine = (await ci.o.get('/company/offers')).json.offers;
+    expect(mine.find((o: any) => o.title === 'Plat CI national')).toMatchObject({ scope: 'national', canShipInternational: false });
+  });
+
+  it("exige au moins une portée à la création du marchand et accepte les 54 pays africains", async () => {
+    const o = await register('owner', 'p@x.test');
+    const base = { name: 'Test', activity: 'restauration', city: 'Ville', serviceCities: [], phone: '+225 07 00 00 00 00', ...geo };
+    expect((await o.post('/company', { ...base, country: 'CI', scopes: [] })).status).toBe(400);
+    const { COUNTRIES } = await import('../shared/geo.js');
+    expect(COUNTRIES).toHaveLength(54);
+    const za = await o.post('/company', { ...base, country: 'ZA', scopes: ['international', 'national', 'national'] });
+    expect(za.json.company).toMatchObject({ country: 'ZA', scopes: ['international', 'national'] });
+    const o2 = await register('owner', 'q@x.test');
+    expect((await o2.post('/company', { ...base, country: 'CI' })).json.company.scopes).toEqual(['national']); // défaut
+  });
+
+  it('retirer une portée utilisée par des articles est refusé', async () => {
+    const { ci } = await world();
+    const r = await ci.o.patch('/company/profile', { name: 'Resto CI', phone: '+225 07 00 00 00 00', email: '', logoUrl: null, scopes: ['national'] });
+    expect(r.status).toBe(409);
+    expect((await ci.o.patch('/company/profile', { name: 'Resto CI', phone: '+225 07 00 00 00 00', email: '', logoUrl: null, scopes: ['national', 'international'] })).status).toBe(200);
   });
 });

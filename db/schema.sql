@@ -241,3 +241,9 @@ alter table bookings add column if not exists cancel_reason text;
 alter table bookings add column if not exists cancelled_by text;
 alter table bookings add column if not exists cash_collected_at timestamptz;
 alter table bookings add column if not exists updated_at timestamptz not null default now();
+
+-- v46 : pays du marchand = marché ; portée nationale / internationale du marchand et de ses articles.
+alter table companies add column if not exists scopes text[] not null default '{national}';
+alter table offers add column if not exists scope text not null default 'national';
+alter table offers add column if not exists can_ship_international boolean not null default false;
+create index if not exists companies_country_idx on companies (country);

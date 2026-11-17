@@ -57,10 +57,10 @@ export function CitySelect({ id, country, value, onChange, extra = [], required 
   );
 }
 
-export function CountrySelect({ value, onChange, allowAll, id }: { value: string; onChange: (v: string) => void; allowAll?: boolean; id?: string }) {
+export function CountrySelect({ value, onChange, allowAll, allLabel = 'Tous les pays', id }: { value: string; onChange: (v: string) => void; allowAll?: boolean; allLabel?: string; id?: string }) {
   return (
     <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
-      {allowAll && <option value="">Tous les pays</option>}
+      {allowAll && <option value="">{allLabel}</option>}
       {SORTED.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
     </select>
   );
