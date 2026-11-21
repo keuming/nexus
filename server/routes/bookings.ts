@@ -122,7 +122,7 @@ export const bookingRoutes = new Hono<Env>()
   })
   .get('/mine', async (c) => {
     const rows = await c.get('db')
-      .select({ id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, payMethod: bookings.payMethod, priceFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa})`, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ offerId: bookings.offerId, myRating: sql<number | null>`(select r.rating from reviews r where r.booking_id = ${bookings.id})`, id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, payMethod: bookings.payMethod, priceFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa})`, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))

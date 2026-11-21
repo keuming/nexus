@@ -3,7 +3,7 @@ import { v } from '../lib/validate.js';
 import { z } from 'zod';
 import { and, asc, eq, ilike, inArray, sql, desc } from 'drizzle-orm';
 import { countryCode } from '../lib/schemas.js';
-import { activityDisplay, companies, offerPhotos, offers } from '../db/schema.js';
+import { activityDisplay, companies, featuredOffers, offerPhotos, offers, reviews, users } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
 import { sweepExpired } from '../lib/payments.js';
 import type { Env } from '../middleware/auth.js';
@@ -12,7 +12,7 @@ import { ACTIVITIES } from '../../shared/constants.js';
 /** Recherche partielle, caractères spéciaux de LIKE neutralisés. */
 const like = (v: string) => `%${v.replace(/[%_\\]/g, '\\$&')}%`;
 
-const cols = {
+export const cols = {
   id: offers.id,
   title: offers.title,
   description: offers.description,
@@ -29,6 +29,8 @@ const cols = {
   scope: offers.scope,
   companyCountry: companies.country,
   stops: offers.stops,
+  ratingAvg: sql<number | null>`(select round(avg(r.rating)::numeric, 1)::float from reviews r where r.offer_id = ${offers.id} and r.status = 'published')`.as('rating_avg'),
+  ratingCount: sql<number>`(select count(*)::int from reviews r where r.offer_id = ${offers.id} and r.status = 'published')`.as('rating_count'),
   photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`.as('photo_count'),
   companyName: companies.name,
   companyLogo: companies.logoUrl,
@@ -36,7 +38,7 @@ const cols = {
 };
 
 /** Règles d'affichage : planification admin (type d'activité, offre) et date de l'offre pour les activités datées. */
-const displayRules = () => and(
+export const displayRules = () => and(
   eq(offers.adminHidden, false),
   sql`(${offers.showFrom} is null or ${offers.showFrom} <= now())`,
   sql`(${offers.showUntil} is null or ${offers.showUntil} >= now())`,
@@ -110,6 +112,22 @@ export const catalogRoutes = new Hono<Env>()
       .orderBy(desc(offers.startsAt)).limit(100);
     return c.json({ company, offers: rows });
   })
+  /** « À la une » : offres choisies par l'admin, valides aujourd'hui, ciblées sur le pays du visiteur (vide = tous les pays). */
+  .get('/featured', v('query', z.object({ country: countryCode.optional() })), async (c) => {
+    const m = visitorMarket(c.req.valid('query').country, c.req.header('x-vercel-ip-country'));
+    const rows = await c.get('db').select(cols).from(featuredOffers)
+      .innerJoin(offers, eq(offers.id, featuredOffers.offerId))
+      .innerJoin(companies, eq(companies.id, offers.companyId))
+      .where(and(
+        eq(offers.active, true), eq(companies.status, 'active'), displayRules(),
+        sql`(${featuredOffers.startsAt} is null or ${featuredOffers.startsAt} <= now())`,
+        sql`(${featuredOffers.endsAt} is null or ${featuredOffers.endsAt} >= now())`,
+        m.market ? sql`(cardinality(${featuredOffers.countries}) = 0 or ${m.market} = any(${featuredOffers.countries}))` : undefined,
+        m.market ? sql`(${companies.country} = ${m.market} or ${offers.scope} = 'international')` : undefined,
+      ))
+      .orderBy(asc(featuredOffers.rank), desc(featuredOffers.createdAt)).limit(8);
+    return c.json({ offers: rows, market: m.market });
+  })
   .get('/activities', async (c) => {
     const rows = await c.get('db').select().from(activityDisplay);
     const now = Date.now();
@@ -125,6 +143,14 @@ export const catalogRoutes = new Hono<Env>()
       .limit(1);
     if (!row) throw notFound('Offre');
     return c.json({ offer: row });
+  })
+  /** Avis publiés d'une offre (prénom du client uniquement). */
+  .get('/:id/reviews', v('param', z.object({ id: z.string().uuid() })), async (c) => {
+    const id = c.req.valid('param').id;
+    const rows = await c.get('db').select({ id: reviews.id, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt, name: users.name })
+      .from(reviews).innerJoin(users, eq(users.id, reviews.userId))
+      .where(and(eq(reviews.offerId, id), eq(reviews.status, 'published'))).orderBy(desc(reviews.createdAt)).limit(30);
+    return c.json({ reviews: rows.map((r) => ({ ...r, name: r.name.trim().split(/\s+/)[0] || 'Client' })) });
   })
   /** Photo d'une offre visible au public (image JPEG, cache navigateur 1 jour). */
   .get('/:id/photos/:pos', v('param', z.object({ id: z.string().uuid(), pos: z.coerce.number().int().min(0).max(3) })), async (c) => {

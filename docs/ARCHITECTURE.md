@@ -113,3 +113,12 @@ Indicateurs (crédits, réservations confirmées, en attente de paiement, offres
 
 ## Pays et villes
 `shared/geo.ts` : 18 pays, villes principales classées par population (recensements/estimations nationales et ONU via Worldometers, nov. 2026). Choix du pays → liste déroulante de ses villes (souscription entreprise, formulaire d'offre) avec « Autre ville… » pour une saisie libre ; catalogue : liste des villes une fois un pays choisi. Ajouter un pays = une ligne dans `COUNTRIES`.
+
+## Back-office complet (backoffice.backmarket-ci.com)
+Menu vertical à gauche : tableau de bord KPI (période 7/30/90 j, filtre pays, alertes « À traiter »), demandes partenaires, boutiques par pays de création, paiements partenaires (paiement direct marchand, suivi ORZAYAH, remboursements), mise en avant (`featured_offers`, ciblage pays + dates + rang), publicités (`ads`, créées par l'admin uniquement, emplacements `home_top` / `home_inline`, ciblage pays, dates, vues/clics), avis clients (modération), affichage du site. API : `server/routes/backoffice.ts` (admin seulement).
+
+## Vitrine : engagement
+- « À la une » : `GET /offers/featured?country=` + badge sur la carte.
+- Publicités : `GET /ads?country=` (pays vide = tous ; pays inconnu = annonces non ciblées), vue comptée une fois par session au défilement, clic via `POST /ads/:id/click`, mention « Publicité / Sponsorisé ».
+- Favoris : table `favorites`, cœur sur chaque carte, page `/favoris`.
+- Avis : table `reviews` (un par réservation, uniquement commande livrée), étoiles sur les cartes, liste sur la page offre, formulaire dans « Mes réservations ».

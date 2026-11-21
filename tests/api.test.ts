@@ -1247,3 +1247,145 @@ describe('boutique du marchand (catalogue individuel)', () => {
     expect(none).toContain('BackMarket : vendez ou réservez');
   });
 });
+
+describe('back-office complet (KPI, partenaires, paiements, à la une, publicités, avis, favoris)', () => {
+  const cashBooking = async (price = 5000) => {
+    const s = await setup(5, 5, price);
+    const cust = await register('customer', 'cl@x.test');
+    const r = await cust.post('/bookings', { ...BK, guests: ['Passager A', 'Passager B'], offerId: s.offer.id, seats: 2, payMode: 'cash' });
+    expect(r.status).toBe(201);
+    return { ...s, cust, id: r.json.booking.id as string };
+  };
+
+  it('réservé aux administrateurs', async () => {
+    const owner = await register('owner', 'o@x.test');
+    expect((await new Client(ctx.app).get('/admin/kpis')).status).toBe(401);
+    for (const p of ['/admin/kpis', '/admin/partners', '/admin/partner-payments', '/admin/featured', '/admin/ads', '/admin/reviews']) expect((await owner.get(p)).status).toBe(403);
+    expect((await owner.post('/admin/ads', { advertiser: 'X', title: 'Titre', linkUrl: 'https://x.test' })).status).toBe(403);
+  });
+
+  it('KPI : ventes au prix figé, filtre par pays de création, ventilation par pays', async () => {
+    const { adm, owner, offer } = await cashBooking(5000);
+    await owner.patch(`/company/offers/${offer.id}`, { priceFcfa: 9000 }); // sans effet sur la vente déjà faite
+    const k = (await adm.get('/admin/kpis?days=30')).json;
+    expect(k.current).toMatchObject({ bookings: 1, gmv: 10000, cash: 10000, completed: 0 });
+    expect(k.totals).toMatchObject({ partners_active: 1, offers_active: 1, customers: 1 });
+    expect(k.series).toHaveLength(30);
+    expect(k.series.reduce((a: number, d: any) => a + d.gmv, 0)).toBe(10000);
+    expect(k.topPartners[0]).toMatchObject({ name: 'Bus Abidjan', gmv: 10000 });
+    expect(k.byCountry.find((r: any) => r.country === 'CI')).toMatchObject({ shops: 1, bookings: 1, gmv: 10000 });
+    expect((await adm.get('/admin/kpis?country=BJ')).json.current).toMatchObject({ bookings: 0, gmv: 0 });
+    expect((await adm.get('/admin/kpis?country=CI')).json.current.gmv).toBe(10000);
+  });
+
+  it('boutiques par pays de création : liste, filtres, chiffres', async () => {
+    const { adm } = await cashBooking();
+    const all = (await adm.get('/admin/partners')).json;
+    expect(all.partners).toHaveLength(1);
+    expect(all.partners[0]).toMatchObject({ name: 'Bus Abidjan', country: 'CI', status: 'active', offersActive: 1, bookings: 1, gmv: 10000 });
+    expect(all.countries).toEqual([{ country: 'CI', total: 1, active: 1, pending: 0 }]);
+    expect((await adm.get('/admin/partners?country=BJ')).json.partners).toHaveLength(0);
+    expect((await adm.get('/admin/partners?q=abidjan')).json.partners).toHaveLength(1);
+    expect((await adm.get('/admin/partners?status=pending')).json.partners).toHaveLength(0);
+  });
+
+  it('paiements partenaires : à la livraison dû puis encaissé, rappel ORZAYAH limité à 1 par jour', async () => {
+    const { adm, owner, co, id } = await cashBooking();
+    let r = (await adm.get('/admin/partner-payments')).json;
+    expect(r.partners[0]).toMatchObject({ name: 'Bus Abidjan', cashDue: 10000, cashCollected: 0 });
+    expect(r.totals).toMatchObject({ cashDue: 10000, cashCollected: 0 });
+    await owner.post(`/company/bookings/${id}/cash`, { collected: true });
+    r = (await adm.get('/admin/partner-payments')).json;
+    expect(r.partners[0]).toMatchObject({ cashDue: 0, cashCollected: 10000 });
+    const orzOk = r.partners[0].orzConnected;
+    if (!orzOk) {
+      expect(r.totals.notConnected).toBe(1);
+      expect((await adm.post(`/admin/partners/${co.id}/remind-orzayah`)).status).toBe(200);
+      expect((await adm.post(`/admin/partners/${co.id}/remind-orzayah`)).status).toBe(409);
+      expect((await owner.get('/notifications')).json.notifications.some((n: any) => n.kind === 'connect_orzayah')).toBe(true);
+    }
+  });
+
+  it('à la une : pays ciblés, dates, retrait ; seules les offres visibles apparaissent', async () => {
+    const { adm, offer } = await cashBooking();
+    const pub = new Client(ctx.app);
+    expect((await pub.get('/offers/featured?country=CI')).json.offers).toHaveLength(0);
+    expect((await adm.put(`/admin/featured/${offer.id}`, { countries: ['CI'], rank: 1 })).status).toBe(200);
+    expect((await pub.get('/offers/featured?country=CI')).json.offers.map((o: any) => o.id)).toEqual([offer.id]);
+    await adm.put(`/admin/featured/${offer.id}`, { countries: ['BJ'] });
+    expect((await pub.get('/offers/featured?country=CI')).json.offers).toHaveLength(0); // ciblée sur un autre pays
+    await adm.put(`/admin/featured/${offer.id}`, { countries: [], endsAt: new Date(Date.now() - 3600_000).toISOString() });
+    expect((await pub.get('/offers/featured?country=CI')).json.offers).toHaveLength(0); // expirée
+    expect((await adm.put(`/admin/featured/${offer.id}`, { startsAt: future(), endsAt: new Date(Date.now() + 1000).toISOString() })).status).toBe(400);
+    await adm.put(`/admin/featured/${offer.id}`, { countries: [] });
+    expect((await pub.get('/offers/featured?country=CI')).json.offers).toHaveLength(1);
+    expect((await adm.get('/admin/featured')).json.featured[0]).toMatchObject({ offerId: offer.id, live: true });
+    expect((await adm.get('/admin/offer-search?q=bou')).json.offers[0]).toMatchObject({ id: offer.id, featured: true });
+    expect((await adm.put(`/admin/featured/${offer.id}`, {})).status).toBe(200);
+    expect((await adm.delete(`/admin/featured/${offer.id}`)).status).toBe(200);
+    expect((await pub.get('/offers/featured?country=CI')).json.offers).toHaveLength(0);
+  });
+
+  it('publicités : ciblage par pays, fenêtre de dates, pause, compteurs, liens et images contrôlés', async () => {
+    const { adm } = await setup(0, 5, 0);
+    const pub = new Client(ctx.app);
+    const mk = async (b: Record<string, unknown>) => (await adm.post('/admin/ads', { advertiser: 'gaRAN', title: 'gaRAN, le registre IMEI', linkUrl: 'https://garan.solutions', ...b }));
+    const ci = await mk({ countries: ['CI'] });
+    expect(ci.status).toBe(201);
+    const all = await mk({ title: 'Pour tous les pays', countries: [] });
+    const past = await mk({ title: 'Terminée', endsAt: new Date(Date.now() - 1000).toISOString(), startsAt: new Date(Date.now() - 86400_000).toISOString() });
+    expect(past.status).toBe(201);
+    const titles = async (q: string) => (await pub.get(`/ads${q}`)).json.ads.map((a: any) => a.title).sort();
+    expect(await titles('?country=CI')).toEqual(['Pour tous les pays', 'gaRAN, le registre IMEI']);
+    expect(await titles('?country=BJ')).toEqual(['Pour tous les pays']);
+    expect(await titles('')).toEqual(['Pour tous les pays']); // pays inconnu : jamais de pub ciblée
+    await adm.patch(`/admin/ads/${all.json.ad.id}`, { active: false });
+    expect(await titles('?country=BJ')).toEqual([]);
+    await pub.post(`/ads/${ci.json.ad.id}/view`, {}); await pub.post(`/ads/${ci.json.ad.id}/view`, {}); await pub.post(`/ads/${ci.json.ad.id}/click`, {});
+    const row = (await adm.get('/admin/ads')).json.ads.find((a: any) => a.id === ci.json.ad.id);
+    expect(row).toMatchObject({ views: 2, clicks: 1, live: true });
+    expect((await adm.get('/admin/ads')).json.ads.find((a: any) => a.id === past.json.ad.id).live).toBe(false);
+    expect((await mk({ linkUrl: 'javascript:alert(1)' })).status).toBe(400);
+    expect((await mk({ linkUrl: 'http://x.test' })).status).toBe(400);
+    expect((await mk({ linkUrl: '/boutique/abc' })).status).toBe(201);
+    expect((await mk({ imageUrl: 'https://evil.test/x.png' })).status).toBe(400);
+    expect((await mk({ startsAt: future(), endsAt: new Date(Date.now() - 1000).toISOString() })).status).toBe(400);
+    expect((await adm.delete(`/admin/ads/${ci.json.ad.id}`)).status).toBe(200);
+    expect(await titles('?country=CI')).toEqual(['gaRAN, le registre IMEI']); // il ne reste que la publicité « /boutique/abc » (tous pays)
+  });
+
+  it('avis : seulement après livraison, un par commande, prénom seul, modération admin', async () => {
+    const { adm, owner, cust, id, offer } = await cashBooking();
+    expect((await cust.post('/reviews', { bookingId: id, rating: 5, comment: 'Top' })).status).toBe(409); // pas encore livrée
+    await owner.post(`/company/bookings/${id}/status`, { fulfillment: 'completed' });
+    const other = await register('customer', 'autre@x.test');
+    expect((await other.post('/reviews', { bookingId: id, rating: 1 })).status).toBe(404); // pas sa commande
+    expect((await cust.post('/reviews', { bookingId: id, rating: 6 })).status).toBe(400);
+    expect((await cust.post('/reviews', { bookingId: id, rating: 5, comment: 'Service impeccable' })).status).toBe(201);
+    expect((await cust.post('/reviews', { bookingId: id, rating: 4 })).status).toBe(409);
+    const pub = new Client(ctx.app);
+    const list = (await pub.get(`/offers/${offer.id}/reviews`)).json.reviews;
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ rating: 5, comment: 'Service impeccable', name: 'Test' });
+    expect((await pub.get(`/offers/${offer.id}`)).json.offer).toMatchObject({ ratingAvg: 5, ratingCount: 1 });
+    expect((await cust.get('/bookings/mine')).json.bookings[0].myRating).toBe(5);
+    expect((await adm.get('/admin/kpis')).json.totals).toMatchObject({ rating_count: 1, rating_avg: 5 });
+    const rid = (await adm.get('/admin/reviews')).json.reviews[0].id;
+    expect((await adm.post(`/admin/reviews/${rid}/status`, { status: 'hidden' })).status).toBe(200);
+    expect((await pub.get(`/offers/${offer.id}/reviews`)).json.reviews).toHaveLength(0);
+    expect((await pub.get(`/offers/${offer.id}`)).json.offer.ratingCount).toBe(0);
+  });
+
+  it('favoris : ajout, retrait, liste des offres visibles, connexion requise', async () => {
+    const { offer } = await setup(5, 5, 1000);
+    expect((await new Client(ctx.app).put(`/favorites/${offer.id}`, {})).status).toBe(401);
+    const cust = await register('customer', 'f@x.test');
+    expect((await cust.put(`/favorites/${offer.id}`, {})).status).toBe(200);
+    expect((await cust.put(`/favorites/${offer.id}`, {})).status).toBe(200); // idempotent
+    expect((await cust.get('/favorites/ids')).json.ids).toEqual([offer.id]);
+    expect((await cust.get('/favorites')).json.offers.map((o: any) => o.id)).toEqual([offer.id]);
+    expect((await cust.put('/favorites/00000000-0000-4000-8000-000000000000', {})).status).toBe(404);
+    expect((await cust.delete(`/favorites/${offer.id}`)).status).toBe(200);
+    expect((await cust.get('/favorites')).json.offers).toHaveLength(0);
+  });
+});

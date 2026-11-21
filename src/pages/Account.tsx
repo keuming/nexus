@@ -8,9 +8,26 @@ import { Err } from '../components/Layout';
 import { PaymentPanel } from '../components/PaymentPanel';
 import { countryName } from '../../shared/geo';
 
+function ReviewForm({ bookingId, onDone }: { bookingId: string; onDone: () => void }) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const m = useMutation({ mutationFn: () => unwrap(api.reviews.$post({ json: { bookingId, rating, comment } })), onSuccess: onDone });
+  return (
+    <form className="mt-2 space-y-2 rounded-lg bg-white/5 p-3" onSubmit={(e) => { e.preventDefault(); if (rating) m.mutate(); }}>
+      <div role="radiogroup" aria-label="Note" className="flex gap-1 text-2xl">
+        {[1, 2, 3, 4, 5].map((n) => <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={`${n} étoile${n > 1 ? 's' : ''}`} className={n <= rating ? 'text-amber-400' : 'text-zinc-600'} onClick={() => setRating(n)}>★</button>)}
+      </div>
+      <textarea className="input" rows={2} maxLength={600} placeholder="Votre avis (facultatif)" value={comment} onChange={(e) => setComment(e.target.value)} />
+      <Err e={m.error} />
+      <button className="btn" disabled={!rating || m.isPending}>Publier mon avis</button>
+    </form>
+  );
+}
+
 export function Account() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['my-bookings'], queryFn: () => unwrap(api.bookings.mine.$get()) });
+  const [reviewing, setReviewing] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
   const cancel = useMutation({
     mutationFn: (id: string) => unwrap(api.bookings[':id'].cancel.$post({ param: { id } })),
@@ -30,6 +47,11 @@ export function Account() {
                 {b.status === 'confirmed' && b.fulfillment !== 'new' && <p className="text-sm font-medium text-emerald-300">{FULFILLMENT_LABEL[b.fulfillment as Fulfillment] ?? b.fulfillment}</p>}
                 {b.status === 'cancelled' && b.cancelledBy === 'merchant' && <p className="text-sm text-red-300">Annulée par le prestataire{b.cancelReason ? ` : ${b.cancelReason}` : ''}</p>}
                 <p className="text-sm text-zinc-500">{b.seats} place(s){b.payMethod === 'cash' && b.priceFcfa > 0 ? ` · ${fcfa(b.priceFcfa * b.seats)} à payer à la livraison` : ''} · <Link className="underline" to={`/reservation/${b.id}`}>Voir le reçu</Link></p>
+                {b.status === 'confirmed' && b.fulfillment === 'completed' && (b.myRating
+                  ? <p className="text-sm text-amber-400" aria-label={`Votre note : ${b.myRating} sur 5`}>{'★'.repeat(b.myRating)} <span className="text-zinc-500">Merci pour votre avis</span></p>
+                  : reviewing === b.id
+                    ? <ReviewForm bookingId={b.id} onDone={() => { setReviewing(null); qc.invalidateQueries({ queryKey: ['my-bookings'] }); qc.invalidateQueries({ queryKey: ['offer-reviews'] }); }} />
+                    : <button type="button" className="mt-1 text-sm text-brand hover:underline" onClick={() => setReviewing(b.id)}>★ Laisser un avis</button>)}
               </div>
               {b.status === 'pending_payment' && b.paymentId
                 ? <button className="btn" onClick={() => setPaying(b.paymentId!)}>Suivre le paiement</button>

@@ -9,15 +9,16 @@ import { ACTIVITIES } from '../../shared/constants';
 
 const STATUS_FR: Record<string, string> = { pending: 'en attente', active: 'active', suspended: 'suspendue', rejected: 'refusée' };
 
-type Tab = 'pending' | 'active' | 'suspended' | 'rejected' | '' | 'payments' | 'display';
+export type Tab = 'pending' | 'active' | 'suspended' | 'rejected' | '' | 'payments' | 'display';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'pending', label: 'Demandes à valider' }, { id: 'active', label: 'Actives' },
   { id: 'suspended', label: 'Suspendues' }, { id: 'rejected', label: 'Refusées' }, { id: '', label: 'Toutes' }, { id: 'payments', label: 'Paiements' }, { id: 'display', label: 'Affichage' },
 ];
 
-export function AdminDashboard() {
+export function AdminDashboard({ fixed }: { fixed?: Tab } = {}) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>('pending');
+  const [tabState, setTab] = useState<Tab>('pending');
+  const tab = fixed ?? tabState;
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: () => unwrap(api.admin.stats.$get()) });
   const list = useQuery({ queryKey: ['admin-companies', tab], queryFn: () => unwrap(api.admin.companies.$get({ query: tab && tab !== 'payments' && tab !== 'display' ? { status: tab } : {} })), enabled: tab !== 'payments' && tab !== 'display' });
   const inv = () => { qc.invalidateQueries({ queryKey: ['admin-companies'] }); qc.invalidateQueries({ queryKey: ['admin-stats'] }); };
@@ -37,17 +38,17 @@ export function AdminDashboard() {
   const [note, setNote] = useState('');
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-center text-2xl font-bold">Administration</h1>
-      {stats.data && <p className="text-center text-sm text-zinc-400">{stats.data.users} utilisateurs · {stats.data.companies} entreprises · {stats.data.bookings} réservations</p>}
-      <div className="flex flex-wrap justify-center gap-2" role="tablist">
+    <div className={`mx-auto space-y-6 ${fixed ? 'max-w-5xl' : 'max-w-4xl'}`}>
+      {!fixed && <h1 className="text-center text-2xl font-bold">Administration</h1>}
+      {!fixed && stats.data && <p className="text-center text-sm text-zinc-400">{stats.data.users} utilisateurs · {stats.data.companies} entreprises · {stats.data.bookings} réservations</p>}
+      {!fixed && <div className="flex flex-wrap justify-center gap-2" role="tablist">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
             className={`rounded-full border px-3 py-1 text-sm ${tab === t.id ? 'border-brand bg-brand text-black' : 'border-white/15 text-zinc-300 hover:bg-white/5'}`}>
             {t.label}{t.id === 'pending' && stats.data?.pending ? ` (${stats.data.pending})` : ''}{t.id === 'payments' && stats.data?.needsRefund ? ` ⚠ ${stats.data.needsRefund}` : ''}
           </button>
         ))}
-      </div>
+      </div>}
       <Err e={list.error ?? review.error ?? setSt.error ?? topup.error} />
       {tab === 'payments' && <PaymentsAdmin />}
       {tab === 'display' && <DisplayAdmin />}
@@ -112,7 +113,7 @@ export function AdminDashboard() {
 const PAY_FR: Record<string, string> = { pending: 'en attente', paid: 'payé', failed: 'échoué', expired: 'expiré', needs_refund: 'REMBOURSEMENT À FAIRE', refunded: 'remboursé' };
 
 /** Paiements ORZAYAH : suivi, remboursements à effectuer, sommes à reverser aux fournisseurs. */
-function PaymentsAdmin() {
+export function PaymentsAdmin() {
   const qc = useQueryClient();
   const pays = useQuery({ queryKey: ['admin-payments'], queryFn: () => unwrap(api.admin.payments.$get()) });
   const due = useQuery({ queryKey: ['admin-payouts'], queryFn: () => unwrap(api.admin.payouts.$get()) });
@@ -174,7 +175,7 @@ function ScheduleRow({ title, sub, visible, from, until, onSave, pending }: { ti
 }
 
 /** Planification de l'affichage : par type d'activité et par offre. Vide = toujours affiché. */
-function DisplayAdmin() {
+export function DisplayAdmin() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['admin-display'], queryFn: () => unwrap(api.admin.display.$get()) });
   const done = () => { qc.invalidateQueries({ queryKey: ['admin-display'] }); qc.invalidateQueries({ queryKey: ['offers'] }); qc.invalidateQueries({ queryKey: ['activities'] }); };

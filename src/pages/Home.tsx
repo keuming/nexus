@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMyCompany } from '../lib/company';
@@ -11,6 +11,7 @@ import { COUNTRIES, citiesOf } from '../../shared/geo';
 import { placeLabel } from '../lib/place';
 import { ShareButton, absUrl } from '../components/ShareButton';
 import { SITE } from '../../shared/site';
+import { AdBanner, AdCard, FavButton, RatingStars, useAds } from '../components/engage';
 
 export const ACTIVITY_LABEL: Record<string, string> = {
   transport: 'Transport', restauration: 'Restauration', expedition: 'Expédition', hotel: 'Hôtel', boutique: 'Boutique',
@@ -102,6 +103,11 @@ export function Home() {
       ...(dQ ? { q: dQ } : {}),
     } })),
   });
+  const shownMarket = country || (list.data?.market && COUNTRIES.some((c) => c.code === list.data!.market) ? list.data.market : '');
+  const feat = useQuery({ queryKey: ['featured', shownMarket], staleTime: 60_000, queryFn: () => unwrap(api.offers.featured.$get({ query: shownMarket ? { country: shownMarket } : {} })) });
+  const adsQ = useAds(shownMarket ?? '');
+  const topAd = adsQ.data?.ads.find((a) => a.slot === 'home_top');
+  const inlineAd = adsQ.data?.ads.find((a) => a.slot === 'home_inline');
   const filtered = !!(activity || country || destCountry || category || [city, destCity, q, guests, budget].some((x) => x.trim()));
   const reset = () => { setCity(''); setDestCity(''); setQ(''); setGuests(''); setBudget(''); setParams(new URLSearchParams(), { replace: true }); };
   const offers = list.data?.offers ?? [];
@@ -166,6 +172,17 @@ export function Home() {
           {!user && <p className="mt-3 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire BackMarket</Link></p>}
         </section>
 
+        {topAd && !filtered && <AdBanner ad={topAd} />}
+
+        {!filtered && !!feat.data?.offers.length && (
+          <section aria-label="À la une" className="space-y-3">
+            <h2 className="text-lg font-bold">★ À la une</h2>
+            <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {feat.data.offers.map((o) => <OfferCard key={o.id} o={o} featured onBook={() => nav(`/reserver/${o.id}`)} />)}
+            </div>
+          </section>
+        )}
+
         <div className="flex min-h-8 items-center justify-between gap-3" aria-live="polite">
           <p className="text-sm text-zinc-400">{list.isLoading ? 'Chargement des offres…' : `${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}</p>
         </div>
@@ -186,7 +203,12 @@ export function Home() {
           </div>
         ) : (
           <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${list.isFetching ? 'opacity-60' : ''}`}>
-            {offers.map((o) => <OfferCard key={o.id} o={o} onBook={() => nav(`/reserver/${o.id}`)} />)}
+            {offers.map((o, i) => (
+              <Fragment key={o.id}>
+                {inlineAd && i === Math.min(3, offers.length - 1) && <AdCard ad={inlineAd} />}
+                <OfferCard o={o} onBook={() => nav(`/reserver/${o.id}`)} />
+              </Fragment>
+            ))}
           </div>
         )}
       </div>
@@ -194,16 +216,18 @@ export function Home() {
   );
 }
 
-export interface OfferItem { scope?: string; category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string }
+export interface OfferItem { scope?: string; category?: string | null; destCity?: string | null; destCountry?: string | null; id: string; title: string; description: string; priceFcfa: number; startsAt: string; remaining: number; country: string; city: string; stops: string[]; photoCount: number; companyName: string; companyLogo?: string | null; activity: string; ratingAvg?: number | null; ratingCount?: number }
 
 /** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
-export function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
+export function OfferCard({ o, onBook, featured }: { o: OfferItem; onBook: () => void; featured?: boolean }) {
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
   const hasDetails = !!o.description || o.stops.length > 0;
   const low = o.remaining > 0 && o.remaining <= 3;
   return (
-    <article className="card flex flex-col overflow-hidden !p-0 transition hover:border-white/25">
+    <article className="card relative flex flex-col overflow-hidden !p-0 transition hover:border-white/25">
+      <FavButton offerId={o.id} className="absolute right-2 top-2 z-[1]" />
+      {featured && <span className="absolute left-2 top-2 z-[1] rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-black">★ À la une</span>}
       {o.photoCount > 0 && !broken ? (
         <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" onError={() => setBroken(true)} className="aspect-[16/9] w-full object-cover" />
       ) : (
@@ -214,6 +238,7 @@ export function OfferCard({ o, onBook }: { o: OfferItem; onBook: () => void }) {
         <h2 className="line-clamp-2 text-base font-semibold leading-snug"><Link to={`/offre/${o.id}`} className="hover:underline">{o.title}</Link></h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
+        <RatingStars avg={o.ratingAvg} count={o.ratingCount} />
         <p className="pt-1">
           <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${o.remaining < 1 ? 'bg-red-500/15 text-red-300' : low ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : `${o.remaining} disponibles`}</span>
         </p>

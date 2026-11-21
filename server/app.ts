@@ -7,6 +7,7 @@ import type { Db } from './db/client.js';
 import { AppError } from './lib/errors.js';
 import { sameOrigin, session, type Env } from './middleware/auth.js';
 import { authRoutes } from './routes/auth.js';
+import { adsRoutes, favoriteRoutes, reviewRoutes } from './routes/engage.js';
 import { catalogRoutes } from './routes/catalog.js';
 import { bookingRoutes } from './routes/bookings.js';
 import { companyRoutes } from './routes/company.js';
@@ -67,6 +68,9 @@ export function createApp(getDb: () => Db, deps: { orzayah?: OrzayahClient | nul
     })
     .route('/auth', authRoutes)
     .route('/offers', catalogRoutes)
+    .route('/ads', adsRoutes)
+    .route('/favorites', favoriteRoutes)
+    .route('/reviews', reviewRoutes)
     .route('/bookings', bookingRoutes)
     .route('/payments', paymentRoutes)
     .route('/orzayah', orzayahRoutes)

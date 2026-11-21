@@ -7,6 +7,7 @@ import { activityDisplay, bookings, companies, creditLedger, offers, payments, u
 import { conflict, notFound } from '../lib/errors.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { ACTIVITIES, CREDIT_PRICE_FCFA } from '../../shared/constants.js';
+import { backofficeRoutes } from './backoffice.js';
 
 const id = z.object({ id: z.string().uuid() });
 
@@ -128,4 +129,5 @@ export const adminRoutes = new Hono<Env>()
       return row;
     });
     return c.json({ company: safeCompany(co), amountFcfa: credits * CREDIT_PRICE_FCFA });
-  });
+  })
+  .route('/', backofficeRoutes);

@@ -255,3 +255,51 @@ alter table companies add column if not exists scopes text[] not null default '{
 alter table offers add column if not exists scope text not null default 'national';
 alter table offers add column if not exists can_ship_international boolean not null default false;
 create index if not exists companies_country_idx on companies (country);
+
+-- ===== Back-office complet : mise en avant, publicités, favoris, avis =====
+-- Offres « À la une » (choisies par l'admin) : pays ciblés (vide = tous), fenêtre de dates, rang.
+create table if not exists featured_offers (
+  offer_id   uuid primary key references offers(id) on delete cascade,
+  countries  text[] not null default '{}',
+  starts_at  timestamptz,
+  ends_at    timestamptz,
+  rank       integer not null default 0,
+  created_at timestamptz not null default now()
+);
+-- Publicités de partenaires (dont gaRAN) affichées sur la vitrine selon le pays ; vues et clics comptés.
+create table if not exists ads (
+  id         uuid primary key default gen_random_uuid(),
+  advertiser text not null,
+  title      text not null,
+  body       text not null default '',
+  image_url  text,
+  link_url   text not null,
+  cta_label  text not null default 'Découvrir',
+  slot       text not null default 'home_top',
+  countries  text[] not null default '{}',
+  active     boolean not null default true,
+  starts_at  timestamptz,
+  ends_at    timestamptz,
+  views      integer not null default 0,
+  clicks     integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create table if not exists favorites (
+  user_id    uuid not null references users(id) on delete cascade,
+  offer_id   uuid not null references offers(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, offer_id)
+);
+-- Avis : un seul par réservation, uniquement après livraison ; l'admin peut masquer.
+create table if not exists reviews (
+  id         uuid primary key default gen_random_uuid(),
+  booking_id uuid not null unique references bookings(id) on delete cascade,
+  offer_id   uuid not null references offers(id) on delete cascade,
+  company_id uuid not null references companies(id),
+  user_id    uuid not null references users(id) on delete cascade,
+  rating     smallint not null check (rating between 1 and 5),
+  comment    text not null default '',
+  status     text not null default 'published',
+  created_at timestamptz not null default now()
+);
+create index if not exists reviews_offer_idx on reviews (offer_id, status);

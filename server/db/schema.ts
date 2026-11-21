@@ -154,3 +154,48 @@ export const notifications = pgTable('notifications', {
   readAt: timestamp('read_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const featuredOffers = pgTable('featured_offers', {
+  offerId: uuid('offer_id').primaryKey().references(() => offers.id, { onDelete: 'cascade' }),
+  countries: text('countries').array().notNull().default(sql`'{}'::text[]`),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  rank: integer('rank').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const ads = pgTable('ads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  advertiser: text('advertiser').notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull().default(''),
+  imageUrl: text('image_url'),
+  linkUrl: text('link_url').notNull(),
+  ctaLabel: text('cta_label').notNull().default('Découvrir'),
+  slot: text('slot').notNull().default('home_top'),
+  countries: text('countries').array().notNull().default(sql`'{}'::text[]`),
+  active: boolean('active').notNull().default(true),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  views: integer('views').notNull().default(0),
+  clicks: integer('clicks').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const favorites = pgTable('favorites', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  offerId: uuid('offer_id').notNull().references(() => offers.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.offerId] })]);
+
+export const reviews = pgTable('reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  bookingId: uuid('booking_id').notNull().unique().references(() => bookings.id, { onDelete: 'cascade' }),
+  offerId: uuid('offer_id').notNull().references(() => offers.id, { onDelete: 'cascade' }),
+  companyId: uuid('company_id').notNull().references(() => companies.id),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  rating: smallint('rating').notNull(),
+  comment: text('comment').notNull().default(''),
+  status: text('status').notNull().default('published'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

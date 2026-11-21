@@ -18,6 +18,7 @@ import { Confirmation } from './pages/Confirmation';
 import { Conditions } from './pages/Conditions';
 import { Legal, Privacy } from './pages/LegalPages';
 import { registerServiceWorker } from './lib/pwa';
+import { Favorites } from './pages/Favorites';
 import { isBackoffice } from './lib/host';
 import { BackofficeApp } from './pages/Backoffice';
 
@@ -44,6 +45,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="confidentialite" element={<Privacy />} />
               <Route path="mentions-legales" element={<Legal />} />
               <Route path="account" element={<Guard roles={['customer']}><Account /></Guard>} />
+              <Route path="favoris" element={<Guard roles={['customer', 'owner', 'admin']}><Favorites /></Guard>} />
               <Route path="company" element={<Guard roles={['owner']}><CompanyDashboard /></Guard>} />
               <Route path="admin" element={<Guard roles={['admin']}><AdminDashboard /></Guard>} />
               <Route path="*" element={<p className="text-zinc-400">Page introuvable.</p>} />
