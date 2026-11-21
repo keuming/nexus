@@ -13,6 +13,29 @@ import { ShareButton, absUrl } from '../components/ShareButton';
 import { SITE } from '../../shared/site';
 import { AdBanner, AdCard, FavButton, RatingStars, useAds } from '../components/engage';
 
+const flag = (code: string) => String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
+const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+/** Les 54 pays d'Afrique : un clic affiche les articles de ce pays (et les offres internationales). */
+function CountryGrid({ value, chosen, onPick }: { value: string; chosen: boolean; onPick: (code: string) => void }) {
+  return (
+    <section aria-label="Choisir un pays" className="card space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Choisissez un pays <span className="text-sm font-normal text-zinc-500">({COUNTRIES.length} pays d'Afrique)</span></h2>
+        {chosen && <button type="button" className="text-sm text-brand hover:underline" onClick={() => onPick('')}>Revenir à mon pays détecté</button>}
+      </div>
+      <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto pr-1 sm:max-h-none">
+        {SORTED_COUNTRIES.map((c) => (
+          <button key={c.code} type="button" aria-pressed={value === c.code} onClick={() => onPick(c.code)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition ${value === c.code ? 'border-brand bg-brand font-semibold text-black' : 'border-white/10 text-zinc-300 hover:bg-white/5'}`}>
+            <span aria-hidden>{flag(c.code)}</span>{c.name}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export const ACTIVITY_LABEL: Record<string, string> = {
   transport: 'Transport', restauration: 'Restauration', expedition: 'Expédition', hotel: 'Hôtel', boutique: 'Boutique',
   agence_voyage: 'Agence de voyage', residence_meuble: 'Résidence meublée', loisirs: 'Loisirs', location_vente: 'Location / vente',
@@ -183,8 +206,10 @@ export function Home() {
           </section>
         )}
 
-        <div className="flex min-h-8 items-center justify-between gap-3" aria-live="polite">
-          <p className="text-sm text-zinc-400">{list.isLoading ? 'Chargement des offres…' : `${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}</p>
+        <CountryGrid value={shownCountry} chosen={!!country} onPick={(v) => { setFilter('pays', v); try { if (v) localStorage.setItem('bm-market', v); else localStorage.removeItem('bm-market'); } catch { /* ignore */ } document.getElementById('resultats')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
+
+        <div id="resultats" className="flex min-h-8 scroll-mt-24 items-center justify-between gap-3" aria-live="polite">
+          <p className="text-sm text-zinc-400">{list.isLoading ? 'Chargement des offres…' : `${shownCountry ? flag(shownCountry) + ' ' + (COUNTRIES.find((c) => c.code === shownCountry)?.name ?? '') + ' : ' : ''}${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}</p>
         </div>
 
         {list.isLoading ? (
