@@ -13,6 +13,8 @@ import { Featured } from './backoffice/Featured';
 import { Ads } from './backoffice/Ads';
 import { Reviews } from './backoffice/Reviews';
 import { useEffect } from 'react';
+import { ShareButton, absUrl } from '../components/ShareButton';
+import { SITE } from '../../shared/site';
 
 /** Connexion réservée aux administrateurs : pas de création de compte, pas de lien vers le catalogue. */
 function BackofficeLogin() {
@@ -84,6 +86,7 @@ function BackofficeLayout() {
           </div>
           {admin && (
             <div className="flex items-center gap-3">
+              <ShareButton label="Partager BackMarket" url={absUrl('/')} title={SITE.shareTitle} text={SITE.shareDescription} />
               <NotificationBell />
               <span className="hidden text-sm text-zinc-400 sm:inline">{user.name}</span>
               <button className="btn-ghost" onClick={logout}>Déconnexion</button>

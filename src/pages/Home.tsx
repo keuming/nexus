@@ -16,23 +16,17 @@ import { AdBanner, AdCard, FavButton, RatingStars, useAds } from '../components/
 const flag = (code: string) => String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
 const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 
-/** Les 54 pays d'Afrique : un clic affiche les articles de ce pays (et les offres internationales). */
+/** Menu déroulant des 54 pays d'Afrique : le choix affiche les articles de ce pays (et les offres internationales). */
 function CountryGrid({ value, chosen, onPick }: { value: string; chosen: boolean; onPick: (code: string) => void }) {
   return (
-    <section aria-label="Choisir un pays" className="card space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">Choisissez un pays <span className="text-sm font-normal text-zinc-500">({COUNTRIES.length} pays d'Afrique)</span></h2>
-        {chosen && <button type="button" className="text-sm text-brand hover:underline" onClick={() => onPick('')}>Revenir à mon pays détecté</button>}
-      </div>
-      <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto pr-1 sm:max-h-none">
-        {SORTED_COUNTRIES.map((c) => (
-          <button key={c.code} type="button" aria-pressed={value === c.code} onClick={() => onPick(c.code)}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition ${value === c.code ? 'border-brand bg-brand font-semibold text-black' : 'border-white/10 text-zinc-300 hover:bg-white/5'}`}>
-            <span aria-hidden>{flag(c.code)}</span>{c.name}
-          </button>
-        ))}
-      </div>
-    </section>
+    <div className="flex flex-wrap items-center gap-3">
+      <label htmlFor="pays-menu" className="text-sm font-medium">Pays :</label>
+      <select id="pays-menu" className="input !w-auto min-w-56" value={value} onChange={(e) => onPick(e.target.value)}>
+        {!value && <option value="">Choisir un pays ({COUNTRIES.length})</option>}
+        {SORTED_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{flag(c.code)} {c.name}</option>)}
+      </select>
+      {chosen && <button type="button" className="text-sm text-brand hover:underline" onClick={() => onPick('')}>Revenir à mon pays détecté</button>}
+    </div>
   );
 }
 
@@ -160,11 +154,8 @@ export function Home() {
 
       <div className="min-w-0 space-y-6">
         <section className="text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Réservez en Afrique, <span className="text-brand">simplement.</span></h1>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400 sm:text-base">Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.</p>
-          <div className="mt-3"><ShareButton label="Partager BackMarket" url={absUrl('/')} title={SITE.shareTitle} text={SITE.shareDescription} /></div>
-
-          <form className={`card mt-5 grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `Recherche ${MENU.find((m) => m.id === activity)?.label}` : 'Recherche'}>
+          <h1 className="sr-only">BackMarket : réservez en Afrique, simplement</h1>
+          <form className={`card grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `Recherche ${MENU.find((m) => m.id === activity)?.label}` : 'Recherche'}>
             <PlaceFields id="f-dep" countryLabel={form?.from?.country ?? 'Pays'} cityLabel={form?.from?.city ?? 'Ville ou arrêt'}
               country={shownCountry} city={city} onCountry={(v) => { setFilter('pays', v); try { localStorage.setItem('bm-market', v); } catch { /* ignore */ } }} onCity={setCity} cities={shownCountry ? citiesOf(shownCountry) : allCities}
               allowAll={!african} allLabel={market && !african ? 'Autre pays : articles internationaux' : 'Tous les pays'} />

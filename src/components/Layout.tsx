@@ -20,24 +20,27 @@ export function Layout() {
       <header className="sticky top-0 z-10 print:hidden border-b border-white/10 bg-ink/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Link to={home} className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
-          <nav className="order-last flex w-full flex-wrap items-center justify-center gap-x-5 gap-y-1 sm:order-none sm:w-auto">
-            <NavLink to={home} className={link} end>{home === '/' ? 'Catalogue' : 'Ma boutique'}</NavLink>
-            {!user && <NavLink to="/souscription" className={link}>Devenir partenaire</NavLink>}
+          <div className="order-last w-full text-center lg:order-none lg:w-auto lg:flex-1 lg:px-4">
+            <p className="text-base font-extrabold leading-tight tracking-tight sm:text-lg">Réservez en Afrique, <span className="text-brand">simplement.</span></p>
+            <p className="mx-auto max-w-2xl text-[11px] leading-snug text-zinc-400 sm:text-xs">Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.</p>
+          </div>
+          <nav className="flex items-center gap-x-4">
             {user?.role === 'customer' && <NavLink to="/favoris" className={link}>♥ Favoris</NavLink>}
             {user?.role === 'customer' && <NavLink to="/account" className={link}>Mes réservations</NavLink>}
-            {user?.role === 'owner' && <NavLink to="/company" className={link}>Mon entreprise</NavLink>}
-            {user?.role === 'admin' && <a href={`https://${BACKOFFICE_HOST}/admin`} className="text-sm text-zinc-300 hover:text-white">Administration{pending.data?.pending ? <span className="ml-1 rounded-full bg-brand px-1.5 text-xs font-bold text-black">{pending.data.pending}</span> : null}</a>}
+            {!user && <NavLink to="/souscription" className={link}>Devenir partenaire</NavLink>}
           </nav>
-          {user ? (
-            <div className="flex items-center gap-3">
-              <InstallButton />
-              {(user.role === 'owner' || user.role === 'admin') && <NotificationBell />}
-              <span className="hidden text-sm text-zinc-400 sm:inline">{user.name}</span>
-              <button className="btn-ghost" onClick={logout}>Déconnexion</button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2"><InstallButton /><Link className="btn-ghost" to="/login">Connexion</Link><Link className="btn" to="/register">Créer un compte</Link></div>
-          )}
+          <div className="flex items-center gap-2">
+            <InstallButton />
+            {(user?.role === 'owner' || user?.role === 'admin') && <NotificationBell />}
+            {user ? (
+              <>
+                <a className="btn" href={user.role === 'admin' ? `https://${BACKOFFICE_HOST}/admin` : user.role === 'owner' ? '/company' : '/account'}>Accès compte</a>
+                <button className="btn-ghost" onClick={logout}>Déconnexion</button>
+              </>
+            ) : (
+              <><Link className="btn" to="/login">Accès compte</Link><Link className="btn-ghost" to="/register">Créer un compte</Link></>
+            )}
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10"><Outlet /></main>
