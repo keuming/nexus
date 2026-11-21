@@ -7,6 +7,7 @@ import { InstallButton } from '../lib/pwa';
 import { NotificationBell } from './NotificationBell';
 import { Footer } from './Footer';
 import { useMyCompany } from '../lib/company';
+import { BACKOFFICE_HOST } from '../lib/host';
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -24,7 +25,7 @@ export function Layout() {
             {!user && <NavLink to="/souscription" className={link}>Devenir partenaire</NavLink>}
             {user?.role === 'customer' && <NavLink to="/account" className={link}>Mes réservations</NavLink>}
             {user?.role === 'owner' && <NavLink to="/company" className={link}>Mon entreprise</NavLink>}
-            {user?.role === 'admin' && <NavLink to="/admin" className={link}>Administration{pending.data?.pending ? <span className="ml-1 rounded-full bg-brand px-1.5 text-xs font-bold text-black">{pending.data.pending}</span> : null}</NavLink>}
+            {user?.role === 'admin' && <a href={`https://${BACKOFFICE_HOST}/admin`} className="text-sm text-zinc-300 hover:text-white">Administration{pending.data?.pending ? <span className="ml-1 rounded-full bg-brand px-1.5 text-xs font-bold text-black">{pending.data.pending}</span> : null}</a>}
           </nav>
           {user ? (
             <div className="flex items-center gap-3">
