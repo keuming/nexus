@@ -19,6 +19,7 @@ import { Conditions } from './pages/Conditions';
 import { Legal, Privacy } from './pages/LegalPages';
 import { registerServiceWorker } from './lib/pwa';
 import { Favorites } from './pages/Favorites';
+import { Splash } from './components/Splash';
 import { isBackoffice } from './lib/host';
 import { BackofficeApp } from './pages/Backoffice';
 
@@ -31,7 +32,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={qc}>
       <AuthProvider>
         <BrowserRouter>
-          {isBackoffice ? <BackofficeApp /> : <Routes>
+          {isBackoffice ? <BackofficeApp /> : <><Splash /><Routes>
             <Route element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="login" element={<Login />} />
@@ -50,7 +51,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="admin" element={<Guard roles={['admin']}><AdminDashboard /></Guard>} />
               <Route path="*" element={<p className="text-zinc-400">Page introuvable.</p>} />
             </Route>
-          </Routes>}
+          </Routes></>}
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
