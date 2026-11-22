@@ -47,6 +47,8 @@ const EN: Record<string, string> = {
   'Remboursement en cours': 'Refund in progress', 'Annulée': 'Cancelled', 'Voir le reçu': 'View receipt', '★ Laisser un avis': '★ Leave a review',
   'Merci pour votre avis': 'Thanks for your review', 'Publier mon avis': 'Post my review', 'Votre avis (facultatif)': 'Your review (optional)',
   'Plus que {n} !': 'Only {n} left!', '{n} disponibles': '{n} available',
+  'Fermer': 'Close', 'Fermer la publicité': 'Close the ad', 'Touchez ici pour découvrir gaRAN': 'Tap here to discover gaRAN',
+  'Vous serez redirigé vers apps.garan.solutions': 'You will be redirected to apps.garan.solutions',
   'Annuler cette réservation ?': 'Cancel this booking?',
 };
 
