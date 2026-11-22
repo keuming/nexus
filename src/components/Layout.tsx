@@ -8,9 +8,11 @@ import { NotificationBell } from './NotificationBell';
 import { Footer } from './Footer';
 import { useMyCompany } from '../lib/company';
 import { BACKOFFICE_HOST } from '../lib/host';
+import { LangSwitch, useT } from '../lib/i18n';
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const t = useT();
   const mine = useMyCompany();
   const home = user?.role === 'owner' && mine.data ? `/boutique/${mine.data.id}` : '/';
   const pending = useQuery({ queryKey: ['admin-stats'], enabled: user?.role === 'admin', queryFn: () => unwrap(api.admin.stats.$get()), refetchInterval: 60_000 });
@@ -21,24 +23,25 @@ export function Layout() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Link to={home} className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span></Link>
           <div className="order-last w-full text-center lg:order-none lg:w-auto lg:flex-1 lg:px-4">
-            <p className="text-base font-extrabold leading-tight tracking-tight sm:text-lg">Réservez en Afrique, <span className="text-brand">simplement.</span></p>
-            <p className="mx-auto max-w-2xl text-[11px] leading-snug text-zinc-400 sm:text-xs">Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.</p>
+            <p className="text-base font-extrabold leading-tight tracking-tight sm:text-lg">{t('Réservez en Afrique, simplement.').replace(/[^ ]+$/, '')}<span className="text-brand">{t('Réservez en Afrique, simplement.').split(' ').pop()}</span></p>
+            <p className="mx-auto max-w-2xl text-[11px] leading-snug text-zinc-400 sm:text-xs">{t('Transport, hôtels, restaurants, loisirs, high-tech, mode et beauté auprès d’entreprises validées par BackMarket.')}</p>
           </div>
           <nav className="flex items-center gap-x-4">
-            {user?.role === 'customer' && <NavLink to="/favoris" className={link}>♥ Favoris</NavLink>}
-            {user?.role === 'customer' && <NavLink to="/account" className={link}>Mes réservations</NavLink>}
-            {!user && <NavLink to="/souscription" className={link}>Devenir partenaire</NavLink>}
+            {user?.role === 'customer' && <NavLink to="/favoris" className={link}>{t('♥ Favoris')}</NavLink>}
+            {user?.role === 'customer' && <NavLink to="/account" className={link}>{t('Mes réservations')}</NavLink>}
+            {!user && <NavLink to="/souscription" className={link}>{t('Devenir partenaire')}</NavLink>}
           </nav>
           <div className="flex items-center gap-2">
+            <LangSwitch />
             <InstallButton />
             {(user?.role === 'owner' || user?.role === 'admin') && <NotificationBell />}
             {user ? (
               <>
-                <a className="btn" href={user.role === 'admin' ? `https://${BACKOFFICE_HOST}/admin` : user.role === 'owner' ? '/company' : '/account'}>Accès compte</a>
-                <button className="btn-ghost" onClick={logout}>Déconnexion</button>
+                <a className="btn" href={user.role === 'admin' ? `https://${BACKOFFICE_HOST}/admin` : user.role === 'owner' ? '/company' : '/account'}>{t('Accès compte')}</a>
+                <button className="btn-ghost" onClick={logout}>{t('Déconnexion')}</button>
               </>
             ) : (
-              <><Link className="btn" to="/login">Accès compte</Link><Link className="btn-ghost" to="/register">Créer un compte</Link></>
+              <><Link className="btn" to="/login">{t('Accès compte')}</Link><Link className="btn-ghost" to="/register">{t('Créer un compte')}</Link></>
             )}
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { COUNTRIES as COUNTRIES_LIST, citiesOf } from '../../shared/geo';
+import { useCountryName } from '../lib/i18n';
 
 const SORTED = [...COUNTRIES_LIST].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 
@@ -58,10 +59,11 @@ export function CitySelect({ id, country, value, onChange, extra = [], required 
 }
 
 export function CountrySelect({ value, onChange, allowAll, allLabel = 'Tous les pays', id }: { value: string; onChange: (v: string) => void; allowAll?: boolean; allLabel?: string; id?: string }) {
+  const cname = useCountryName();
   return (
     <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
       {allowAll && <option value="">{allLabel}</option>}
-      {SORTED.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+      {[...SORTED].sort((a, b) => cname(a.code).localeCompare(cname(b.code))).map((c) => <option key={c.code} value={c.code}>{cname(c.code)}</option>)}
     </select>
   );
 }

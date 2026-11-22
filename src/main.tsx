@@ -19,6 +19,7 @@ import { Conditions } from './pages/Conditions';
 import { Legal, Privacy } from './pages/LegalPages';
 import { registerServiceWorker } from './lib/pwa';
 import { Favorites } from './pages/Favorites';
+import { LangProvider } from './lib/i18n';
 import { Splash } from './components/Splash';
 import { isBackoffice } from './lib/host';
 import { BackofficeApp } from './pages/Backoffice';
@@ -30,7 +31,7 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWin
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={qc}>
-      <AuthProvider>
+      <AuthProvider><LangProvider>
         <BrowserRouter>
           {isBackoffice ? <BackofficeApp /> : <><Splash /><Routes>
             <Route element={<Layout />}>
@@ -53,7 +54,7 @@ createRoot(document.getElementById('root')!).render(
             </Route>
           </Routes></>}
         </BrowserRouter>
-      </AuthProvider>
+      </LangProvider></AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

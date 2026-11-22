@@ -11,6 +11,7 @@ import { COUNTRIES, citiesOf } from '../../shared/geo';
 import { placeLabel } from '../lib/place';
 import { ShareButton, absUrl } from '../components/ShareButton';
 import { SITE } from '../../shared/site';
+import { useCountryName, useI18n, useT } from '../lib/i18n';
 import { AdBanner, AdCard, FavButton, RatingStars, useAds } from '../components/engage';
 
 const flag = (code: string) => String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
@@ -18,14 +19,16 @@ const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.na
 
 /** Menu déroulant des 54 pays d'Afrique : le choix affiche les articles de ce pays (et les offres internationales). */
 function CountryGrid({ value, chosen, onPick }: { value: string; chosen: boolean; onPick: (code: string) => void }) {
+  const t = useT();
+  const cname = useCountryName();
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <label htmlFor="pays-menu" className="text-sm font-medium">Pays :</label>
+      <label htmlFor="pays-menu" className="text-sm font-medium">{t('Pays :')}</label>
       <select id="pays-menu" className="input !w-auto min-w-56" value={value} onChange={(e) => onPick(e.target.value)}>
-        {!value && <option value="">Choisir un pays ({COUNTRIES.length})</option>}
-        {SORTED_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{flag(c.code)} {c.name}</option>)}
+        {!value && <option value="">{t('Choisir un pays')} ({COUNTRIES.length})</option>}
+        {[...SORTED_COUNTRIES].sort((a, b) => cname(a.code).localeCompare(cname(b.code))).map((c) => <option key={c.code} value={c.code}>{flag(c.code)} {cname(c.code)}</option>)}
       </select>
-      {chosen && <button type="button" className="text-sm text-brand hover:underline" onClick={() => onPick('')}>Revenir à mon pays détecté</button>}
+      {chosen && <button type="button" className="text-sm text-brand hover:underline" onClick={() => onPick('')}>{t('Revenir à mon pays détecté')}</button>}
     </div>
   );
 }
@@ -67,6 +70,9 @@ function useUrlInput(key: string): [string, (v: string) => void, string] {
 }
 
 export function Home() {
+  const t = useT();
+  const { lang } = useI18n();
+  const cname = useCountryName();
   const [params, setParams] = useSearchParams();
   const activity = params.get('activite') ?? '';
   const country = params.get('pays') ?? '';
@@ -140,13 +146,13 @@ export function Home() {
 
   return (
     <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-[13rem_1fr]">
-      <div><aside className="card md:fixed md:top-[101px] md:z-0 md:max-h-[calc(100vh-7rem)] md:w-52 md:overflow-y-auto" aria-label="Services BackMarket">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Services BackMarket</p>
+      <div><aside className="card md:fixed md:top-[101px] md:z-0 md:max-h-[calc(100vh-7rem)] md:w-52 md:overflow-y-auto" aria-label={t('Services BackMarket')}>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">{t('Services BackMarket')}</p>
         <div className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1">
           {[{ id: '', label: 'Tous les services' }, ...menu].map((m) => (
             <button key={m.id} aria-pressed={activity === m.id} onClick={() => setFilter('activite', m.id)}
               className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-left text-sm transition ${activity === m.id ? 'bg-brand font-semibold text-black' : 'text-zinc-300 hover:bg-white/5'}`}>
-              {m.label}
+              {t(m.label)}
             </button>
           ))}
         </div>
@@ -155,42 +161,42 @@ export function Home() {
       <div className="min-w-0 space-y-6">
         <section className="text-center">
           <h1 className="sr-only">BackMarket : réservez en Afrique, simplement</h1>
-          <form className={`card grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `Recherche ${MENU.find((m) => m.id === activity)?.label}` : 'Recherche'}>
-            <PlaceFields id="f-dep" countryLabel={form?.from?.country ?? 'Pays'} cityLabel={form?.from?.city ?? 'Ville ou arrêt'}
+          <form className={`card grid gap-3 text-left ${cols}`} onSubmit={(e) => e.preventDefault()} role="search" aria-label={activity ? `${t('Recherche')} ${t(MENU.find((m) => m.id === activity)?.label ?? '')}` : t('Recherche')}>
+            <PlaceFields id="f-dep" countryLabel={t(form?.from?.country ?? 'Pays')} cityLabel={t(form?.from?.city ?? 'Ville ou arrêt')}
               country={shownCountry} city={city} onCountry={(v) => { setFilter('pays', v); try { localStorage.setItem('bm-market', v); } catch { /* ignore */ } }} onCity={setCity} cities={shownCountry ? citiesOf(shownCountry) : allCities}
-              allowAll={!african} allLabel={market && !african ? 'Autre pays : articles internationaux' : 'Tous les pays'} />
+              allowAll={!african} allLabel={market && !african ? t('Autre pays : articles internationaux') : t('Tous les pays')} />
             {form?.to && (
-              <PlaceFields id="f-arr" countryLabel={form.to.country} cityLabel={form.to.city}
+              <PlaceFields id="f-arr" countryLabel={t(form.to.country)} cityLabel={t(form.to.city)}
                 country={destCountry} city={destCity} onCountry={(v) => setFilter('pays_arr', v)} onCity={setDestCity} cities={destCountry ? citiesOf(destCountry) : allCities} />
             )}
             {form?.guests && (
-              <div className="space-y-1"><label htmlFor="f-guests" className="text-xs text-zinc-400">{form.guests}</label>
+              <div className="space-y-1"><label htmlFor="f-guests" className="text-xs text-zinc-400">{t(form.guests)}</label>
                 <input id="f-guests" type="number" min={1} max={500} inputMode="numeric" className="input" placeholder="1" value={guests} onChange={(e) => setGuests(e.target.value)} /></div>
             )}
             {form?.category && cat && (
-              <div className="space-y-1"><label htmlFor="f-cat" className="text-xs text-zinc-400">{cat.label}</label>
+              <div className="space-y-1"><label htmlFor="f-cat" className="text-xs text-zinc-400">{t(cat.label)}</label>
                 <select id="f-cat" className="input" value={category} onChange={(e) => setFilter('categorie', e.target.value)}>
-                  <option value="">Tous</option>
-                  {cat.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                  <option value="">{t('Tous')}</option>
+                  {cat.options.map((o) => <option key={o} value={o}>{t(o)}</option>)}
                 </select></div>
             )}
             {form?.budget && (
-              <div className="space-y-1"><label htmlFor="f-budget" className="text-xs text-zinc-400">{form.budget}</label>
-                <input id="f-budget" type="number" min={0} step={500} inputMode="numeric" className="input" placeholder="Illimité" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
+              <div className="space-y-1"><label htmlFor="f-budget" className="text-xs text-zinc-400">{t(form.budget)}</label>
+                <input id="f-budget" type="number" min={0} step={500} inputMode="numeric" className="input" placeholder={t('Illimité')} value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
             )}
             <div className={`space-y-1 ${form ? 'sm:col-span-2' : ''}`}>
-              <label htmlFor="f-q" className="text-xs text-zinc-400">Rechercher</label>
-              <input id="f-q" className="input" type="search" placeholder="Mot-clé…" value={q} onChange={(e) => setQ(e.target.value)} />
+              <label htmlFor="f-q" className="text-xs text-zinc-400">{t('Rechercher')}</label>
+              <input id="f-q" className="input" type="search" placeholder={t('Mot-clé…')} value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
           </form>
-          {!user && <p className="mt-3 text-sm text-zinc-400">Vous êtes une entreprise ? <Link to="/souscription" className="text-brand">Devenez partenaire BackMarket</Link></p>}
+          {!user && <p className="mt-3 text-sm text-zinc-400">{t('Vous êtes une entreprise ?')} <Link to="/souscription" className="text-brand">{t('Devenez partenaire BackMarket')}</Link></p>}
         </section>
 
         {topAd && !filtered && <AdBanner ad={topAd} />}
 
         {!filtered && !!feat.data?.offers.length && (
           <section aria-label="À la une" className="space-y-3">
-            <h2 className="text-lg font-bold">★ À la une</h2>
+            <h2 className="text-lg font-bold">{t('★ À la une')}</h2>
             <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {feat.data.offers.map((o) => <OfferCard key={o.id} o={o} featured onBook={() => nav(`/reserver/${o.id}`)} />)}
             </div>
@@ -200,7 +206,7 @@ export function Home() {
         <CountryGrid value={shownCountry} chosen={!!country} onPick={(v) => { setFilter('pays', v); try { if (v) localStorage.setItem('bm-market', v); else localStorage.removeItem('bm-market'); } catch { /* ignore */ } document.getElementById('resultats')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
 
         <div id="resultats" className="flex min-h-8 scroll-mt-24 items-center justify-between gap-3" aria-live="polite">
-          <p className="text-sm text-zinc-400">{list.isLoading ? 'Chargement des offres…' : `${shownCountry ? flag(shownCountry) + ' ' + (COUNTRIES.find((c) => c.code === shownCountry)?.name ?? '') + ' : ' : ''}${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}</p>
+          <p className="text-sm text-zinc-400">{list.isLoading ? t('Chargement des offres…') : `${shownCountry ? flag(shownCountry) + ' ' + cname(shownCountry) + ' : ' : ''}${lang === 'en' ? `${offers.length} ${filtered ? 'matching ' : ''}offer${offers.length > 1 ? 's' : ''}` : `${offers.length} offre${offers.length > 1 ? 's' : ''}${filtered ? ' correspondante' + (offers.length > 1 ? 's' : '') : ''}`}`}</p>
         </div>
 
         {list.isLoading ? (
@@ -209,13 +215,13 @@ export function Home() {
           </div>
         ) : list.error && !list.data ? (
           <div role="alert" className="card mx-auto max-w-md space-y-3 text-center">
-            <p className="text-zinc-300">Impossible de charger les offres pour le moment.</p>
-            <button className="btn" onClick={() => list.refetch()}>Réessayer</button>
+            <p className="text-zinc-300">{t('Impossible de charger les offres pour le moment.')}</p>
+            <button className="btn" onClick={() => list.refetch()}>{t('Réessayer')}</button>
           </div>
         ) : !offers.length ? (
           <div className="card mx-auto max-w-md space-y-3 text-center">
-            <p className="text-zinc-300">{filtered ? 'Aucune offre ne correspond à votre recherche.' : 'Aucune offre disponible pour le moment.'}</p>
-            {filtered && <button className="btn" onClick={reset}>Voir toutes les offres</button>}
+            <p className="text-zinc-300">{filtered ? t('Aucune offre ne correspond à votre recherche.') : t('Aucune offre disponible pour le moment.')}</p>
+            {filtered && <button className="btn" onClick={reset}>{t('Voir toutes les offres')}</button>}
           </div>
         ) : (
           <div className={`grid grid-cols-1 gap-4 transition-opacity min-[520px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${list.isFetching ? 'opacity-60' : ''}`}>
@@ -236,6 +242,7 @@ export interface OfferItem { scope?: string; category?: string | null; destCity?
 
 /** Carte d'offre compacte : photo (ou visuel par défaut), titre, lieu, prix. Les détails s'ouvrent à la demande. */
 export function OfferCard({ o, onBook, featured }: { o: OfferItem; onBook: () => void; featured?: boolean }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
   const hasDetails = !!o.description || o.stops.length > 0;
@@ -243,39 +250,39 @@ export function OfferCard({ o, onBook, featured }: { o: OfferItem; onBook: () =>
   return (
     <article className="card relative flex flex-col overflow-hidden !p-0 transition hover:border-white/25">
       <FavButton offerId={o.id} className="absolute right-2 top-2 z-[1]" />
-      {featured && <span className="absolute left-2 top-2 z-[1] rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-black">★ À la une</span>}
+      {featured && <span className="absolute left-2 top-2 z-[1] rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-black">{t('★ À la une')}</span>}
       {o.photoCount > 0 && !broken ? (
         <img src={`/api/offers/${o.id}/photos/0`} alt={o.title} loading="lazy" onError={() => setBroken(true)} className="aspect-[16/9] w-full object-cover" />
       ) : (
         <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-brand/25 to-white/5 text-3xl font-extrabold text-brand/70" aria-hidden>{(ACTIVITY_LABEL[o.activity] ?? '?').charAt(0)}</div>
       )}
       <div className="flex flex-1 flex-col gap-1 px-4 pb-4 pt-3">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{ACTIVITY_LABEL[o.activity] ?? o.activity}{o.category ? ` · ${o.category}` : ''}{o.scope === 'international' ? ' · 🌍 International' : ''}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-brand">{t(ACTIVITY_LABEL[o.activity] ?? o.activity)}{o.category ? ` · ${t(o.category)}` : ''}{o.scope === 'international' ? ' · 🌍 International' : ''}</span>
         <h2 className="line-clamp-2 text-base font-semibold leading-snug"><Link to={`/offre/${o.id}`} className="hover:underline">{o.title}</Link></h2>
         {o.destCity && <p className="line-clamp-2 text-sm font-medium text-zinc-200">{placeLabel(o)}</p>}
         <p className="flex items-center gap-1.5 truncate text-sm text-zinc-400">{o.companyLogo && <img src={o.companyLogo} alt="" className="h-5 w-5 shrink-0 rounded-full bg-white object-cover" loading="lazy" />}<span className="truncate">{o.companyName}{o.destCity ? '' : ` · ${placeLabel(o)}`}</span></p>
         <RatingStars avg={o.ratingAvg} count={o.ratingCount} />
         <p className="pt-1">
-          <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${o.remaining < 1 ? 'bg-red-500/15 text-red-300' : low ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{o.remaining < 1 ? 'Complet' : low ? `Plus que ${o.remaining} !` : `${o.remaining} disponibles`}</span>
+          <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${o.remaining < 1 ? 'bg-red-500/15 text-red-300' : low ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/10 text-emerald-300'}`}>{o.remaining < 1 ? t('Complet') : low ? t('Plus que {n} !', { n: o.remaining }) : t('{n} disponibles', { n: o.remaining })}</span>
         </p>
         {hasDetails && (
           <>
             <button type="button" className="mt-1 self-start text-sm text-brand hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-              {open ? 'Masquer les détails ▲' : 'Voir les détails ▼'}
+              {open ? t('Masquer les détails ▲') : t('Voir les détails ▼')}
             </button>
             {open && (
               <div className="space-y-1 rounded-lg bg-white/5 p-3 text-sm text-zinc-300">
                 {o.description && <p className="whitespace-pre-line">{o.description}</p>}
-                {o.stops.length > 0 && <p className="text-xs text-zinc-400">Arrêts : {o.stops.join(' · ')}</p>}
+                {o.stops.length > 0 && <p className="text-xs text-zinc-400">{t('Arrêts :')} {o.stops.join(' · ')}</p>}
               </div>
             )}
           </>
         )}
         <div className="mt-auto space-y-3 border-t border-white/10 pt-3">
-          <p className="text-xl font-extrabold leading-none">{o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}</p>
+          <p className="text-xl font-extrabold leading-none">{o.priceFcfa > 0 ? fcfa(o.priceFcfa) : t('Gratuit')}</p>
           <div className="flex gap-2">
-            <button className="btn flex-1" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? 'Complet' : 'Réserver'}</button>
-            <ShareButton iconOnly className="btn-ghost !px-3" label="Partager cette offre" url={absUrl(`/offre/${o.id}`)} title={`${o.title} · ${o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}`} text={`${o.companyName} sur ${SITE.name}`} />
+            <button className="btn flex-1" disabled={o.remaining < 1} onClick={onBook}>{o.remaining < 1 ? t('Complet') : t('Réserver')}</button>
+            <ShareButton iconOnly className="btn-ghost !px-3" label={t('Partager cette offre')} url={absUrl(`/offre/${o.id}`)} title={`${o.title} · ${o.priceFcfa > 0 ? fcfa(o.priceFcfa) : 'Gratuit'}`} text={`${o.companyName} sur ${SITE.name}`} />
           </div>
         </div>
       </div>

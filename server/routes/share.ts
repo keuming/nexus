@@ -15,7 +15,7 @@ function html(c: Card) {
   return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(c.title)}</title>
 <meta name="description" content="${esc(c.description)}">
 <link rel="canonical" href="${esc(c.url)}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(SITE.name)}"><meta property="og:locale" content="fr_FR">
+<meta property="og:type" content="website"><meta property="og:site_name" content="${esc(SITE.name)}"><meta property="og:locale" content="fr_FR"><meta property="og:locale:alternate" content="en_US">
 <meta property="og:title" content="${esc(c.title)}"><meta property="og:description" content="${esc(c.description)}">
 <meta property="og:url" content="${esc(c.url)}"><meta property="og:image" content="${esc(c.image)}">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
