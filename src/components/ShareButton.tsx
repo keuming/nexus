@@ -24,7 +24,7 @@ export function ShareButton({ url, title, text = '', label = 'Partager', classNa
 
   const start = async () => {
     if (typeof navigator.share === 'function') {
-      try { await navigator.share({ title, text, url }); return; }
+      try { await navigator.share({ title, text: [title, text].filter(Boolean).join('\n'), url }); return; }
       catch (e) { if ((e as Error).name === 'AbortError') return; }
     }
     setOpen(true);
@@ -34,7 +34,7 @@ export function ShareButton({ url, title, text = '', label = 'Partager', classNa
     catch { window.prompt('Copiez ce lien :', url); }
   };
 
-  const targets = shareTargets(url, title);
+  const targets = shareTargets(url, title, text);
 
   return (
     <>

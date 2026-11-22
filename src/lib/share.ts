@@ -10,9 +10,10 @@ export function shareBase(origin: string): string {
 export const absUrl = (path: string, origin = typeof window === 'undefined' ? SITE.url : window.location.origin) =>
   new URL(path, shareBase(origin)).toString();
 
-/** Liens de partage web. Le texte = titre + lien (l'aperçu du lien affiche déjà image et description). */
-export function shareTargets(url: string, title: string) {
-  const u = encodeURIComponent(url), t = encodeURIComponent(title), msg = encodeURIComponent(`${title}\n${url}`);
+/** Liens de partage web. Le message contient titre, description et lien : le destinataire sait de quoi il s'agit même si l'application n'affiche pas d'aperçu du lien. */
+export function shareTargets(url: string, title: string, text = '') {
+  const body = [title, text, url].filter(Boolean).join('\n');
+  const u = encodeURIComponent(url), t = encodeURIComponent(text ? `${title}\n${text}` : title), msg = encodeURIComponent(body);
   return [
     { name: 'WhatsApp', href: `https://wa.me/?text=${msg}` },
     { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${u}` },

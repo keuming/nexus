@@ -60,4 +60,7 @@ export function Guard({ roles, children }: { roles: User['role'][]; children: Re
   return <>{children}</>;
 }
 
-export const Err = ({ e }: { e: unknown }) => e ? <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{e instanceof Error ? e.message : 'Erreur'}</p> : null;
+export function Err({ e }: { e: unknown }) {
+  const t = useT();
+  return e ? <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{e instanceof Error ? t(e.message) : t('Erreur')}</p> : null;
+}

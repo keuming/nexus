@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { COUNTRIES as COUNTRIES_LIST, citiesOf } from '../../shared/geo';
-import { useCountryName } from '../lib/i18n';
+import { useCountryName, useT } from '../lib/i18n';
 
 const SORTED = [...COUNTRIES_LIST].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 
@@ -8,6 +8,7 @@ const SORTED = [...COUNTRIES_LIST].sort((a, b) => a.name.localeCompare(b.name, '
 export function ChipInput({ label, hint, values, onChange, suggestions = [], max = 20, placeholder }: {
   label: string; hint?: string; values: string[]; onChange: (v: string[]) => void; suggestions?: string[]; max?: number; placeholder?: string;
 }) {
+  const t = useT();
   const [text, setText] = useState('');
   const listId = useId();
   const add = () => {
@@ -21,9 +22,9 @@ export function ChipInput({ label, hint, values, onChange, suggestions = [], max
       <label className="block text-sm font-medium text-zinc-200">{label}</label>
       {hint && <p className="text-xs text-zinc-500">{hint}</p>}
       <div className="flex gap-2">
-        <input className="input" list={listId} value={text} placeholder={placeholder ?? 'Ajouter…'} maxLength={100}
+        <input className="input" list={listId} value={text} placeholder={placeholder ?? t('Ajouter…')} maxLength={100}
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
-        <button type="button" className="btn-ghost shrink-0" onClick={add}>Ajouter</button>
+        <button type="button" className="btn-ghost shrink-0" onClick={add}>{t('Ajouter')}</button>
       </div>
       <datalist id={listId}>{suggestions.filter((s) => !values.includes(s)).map((s) => <option key={s} value={s} />)}</datalist>
       {values.length > 0 && (
@@ -31,7 +32,7 @@ export function ChipInput({ label, hint, values, onChange, suggestions = [], max
           {values.map((v) => (
             <li key={v} className="flex items-center gap-1 rounded-full bg-white/10 py-1 pl-3 pr-1 text-sm">
               {v}
-              <button type="button" aria-label={`Retirer ${v}`} className="rounded-full px-2 text-zinc-400 hover:text-white" onClick={() => onChange(values.filter((x) => x !== v))}>×</button>
+              <button type="button" aria-label={`${t('Retirer')} ${v}`} className="rounded-full px-2 text-zinc-400 hover:text-white" onClick={() => onChange(values.filter((x) => x !== v))}>×</button>
             </li>
           ))}
         </ul>
@@ -42,6 +43,7 @@ export function ChipInput({ label, hint, values, onChange, suggestions = [], max
 
 /** Liste déroulante des villes d'un pays, avec « Autre ville… » pour saisir une ville absente de la liste. */
 export function CitySelect({ id, country, value, onChange, extra = [], required }: { id?: string; country: string; value: string; onChange: (v: string) => void; extra?: string[]; required?: boolean }) {
+  const t = useT();
   const options = [...new Set([...citiesOf(country), ...extra.filter(Boolean)])];
   const [other, setOther] = useState(false);
   const custom = other || (value !== '' && !options.includes(value));
@@ -49,11 +51,11 @@ export function CitySelect({ id, country, value, onChange, extra = [], required 
     <div className="space-y-2">
       <select id={id} className="input" required={required} value={custom ? '__other' : value}
         onChange={(e) => { if (e.target.value === '__other') { setOther(true); onChange(''); } else { setOther(false); onChange(e.target.value); } }}>
-        <option value="">Choisir une ville…</option>
+        <option value="">{t('Choisir une ville…')}</option>
         {options.map((c) => <option key={c} value={c}>{c}</option>)}
-        <option value="__other">Autre ville…</option>
+        <option value="__other">{t('Autre ville…')}</option>
       </select>
-      {custom && <input className="input" required={required} autoFocus={other && value === ''} maxLength={80} placeholder="Nom de la ville" aria-label="Autre ville" value={value} onChange={(e) => onChange(e.target.value)} />}
+      {custom && <input className="input" required={required} autoFocus={other && value === ''} maxLength={80} placeholder={t('Nom de la ville')} aria-label={t('Autre ville')} value={value} onChange={(e) => onChange(e.target.value)} />}
     </div>
   );
 }
