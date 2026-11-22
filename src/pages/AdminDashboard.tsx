@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, dateFr, fcfa, unwrap } from '../lib/api';
 import { Err } from '../components/Layout';
-import { countryName } from '../../shared/geo';
+import { useCountryName, useT } from '../lib/i18n';
 import { CREDIT_PRICE_FCFA } from '../../shared/constants';
 import { ACTIVITY_LABEL } from './Home';
 import { ACTIVITIES } from '../../shared/constants';
@@ -16,6 +16,8 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 export function AdminDashboard({ fixed }: { fixed?: Tab } = {}) {
+  const tr = useT();
+  const cname = useCountryName();
   const qc = useQueryClient();
   const [tabState, setTab] = useState<Tab>('pending');
   const tab = fixed ?? tabState;
@@ -52,7 +54,7 @@ export function AdminDashboard({ fixed }: { fixed?: Tab } = {}) {
       <Err e={list.error ?? review.error ?? setSt.error ?? topup.error} />
       {tab === 'payments' && <PaymentsAdmin />}
       {tab === 'display' && <DisplayAdmin />}
-      {tab !== 'payments' && tab !== 'display' && !list.data?.companies.length && !list.isLoading && <p className="text-center text-zinc-400">{tab === 'pending' ? 'Aucune demande en attente.' : 'Aucune entreprise.'}</p>}
+      {tab !== 'payments' && tab !== 'display' && !list.data?.companies.length && !list.isLoading && <p className="text-center text-zinc-400">{tab === 'pending' ? tr('Aucune demande en attente.') : tr('Aucune entreprise.')}</p>}
       <ul className="space-y-3">
         {tab !== 'payments' && list.data?.companies.map((c) => {
           const digits = c.phone.replace(/\D/g, '');
@@ -60,45 +62,45 @@ export function AdminDashboard({ fixed }: { fixed?: Tab } = {}) {
             <li key={c.id} className="card space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="text-lg font-semibold">{c.name} <span className="text-xs font-normal text-zinc-500">({STATUS_FR[c.status] ?? c.status})</span></p>
-                  <p className="text-sm text-zinc-400">{ACTIVITY_LABEL[c.activity] ?? c.activity} · {c.city}, {countryName(c.country)}</p>
+                  <p className="text-lg font-semibold">{c.name} <span className="text-xs font-normal text-zinc-500">({tr(STATUS_FR[c.status] ?? c.status)})</span></p>
+                  <p className="text-sm text-zinc-400">{tr(ACTIVITY_LABEL[c.activity] ?? c.activity)} · {c.city}, {cname(c.country)}</p>
                 </div>
-                <p className="text-xs text-zinc-500">Demande du {dateFr(c.createdAt)}</p>
+                <p className="text-xs text-zinc-500">{tr('Demande du')} {dateFr(c.createdAt)}</p>
               </div>
               <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-                <div className="sm:col-span-2"><dt className="inline text-zinc-500">Gérant : </dt><dd className="inline">{c.ownerName}{c.managerTitle ? ` (${c.managerTitle})` : ''} · {c.ownerEmail}{c.ownerPhone ? ` · ${c.ownerPhone}` : ''}</dd></div>
-                <div><dt className="inline text-zinc-500">Adresse : </dt><dd className="inline">{c.address || '—'}</dd></div>
-                <div><dt className="inline text-zinc-500">Position : </dt><dd className="inline">{c.latitude != null && c.longitude != null
-                  ? <a className="text-brand" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}`}>{c.latitude.toFixed(5)}, {c.longitude.toFixed(5)} (carte)</a> : '—'}</dd></div>
-                {c.companyEmail && <div><dt className="inline text-zinc-500">E-mail entreprise : </dt><dd className="inline">{c.companyEmail}</dd></div>}
-                <div><dt className="inline text-zinc-500">Téléphone entreprise : </dt><dd className="inline">{c.phone ? <>
+                <div className="sm:col-span-2"><dt className="inline text-zinc-500">{tr('Gérant')} : </dt><dd className="inline">{c.ownerName}{c.managerTitle ? ` (${c.managerTitle})` : ''} · {c.ownerEmail}{c.ownerPhone ? ` · ${c.ownerPhone}` : ''}</dd></div>
+                <div><dt className="inline text-zinc-500">{tr('Adresse')} : </dt><dd className="inline">{c.address || '—'}</dd></div>
+                <div><dt className="inline text-zinc-500">{tr('Position')} : </dt><dd className="inline">{c.latitude != null && c.longitude != null
+                  ? <a className="text-brand" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${c.latitude}&mlon=${c.longitude}#map=17/${c.latitude}/${c.longitude}`}>{c.latitude.toFixed(5)}, {c.longitude.toFixed(5)} ({tr('carte')})</a> : '—'}</dd></div>
+                {c.companyEmail && <div><dt className="inline text-zinc-500">{tr('E-mail entreprise')} : </dt><dd className="inline">{c.companyEmail}</dd></div>}
+                <div><dt className="inline text-zinc-500">{tr('Téléphone entreprise')} : </dt><dd className="inline">{c.phone ? <>
                   <a className="text-brand" href={`tel:${c.phone}`}>{c.phone}</a>{' · '}<a className="text-brand" target="_blank" rel="noreferrer" href={`https://wa.me/${digits}`}>WhatsApp</a></> : '—'}</dd></div>
-                <div><dt className="inline text-zinc-500">RCCM : </dt><dd className="inline">{c.rccm || '—'}</dd></div>
-                <div><dt className="inline text-zinc-500">Crédits : </dt><dd className="inline">{c.credits}</dd></div>
-                <div className="sm:col-span-2"><dt className="inline text-zinc-500">Villes de service : </dt><dd className="inline">{c.serviceCities.length ? c.serviceCities.join(', ') : '—'}</dd></div>
-                {c.reviewNote && <div className="sm:col-span-2"><dt className="inline text-zinc-500">Dernière décision : </dt><dd className="inline">{c.reviewNote}</dd></div>}
+                <div><dt className="inline text-zinc-500">{tr('RCCM')} : </dt><dd className="inline">{c.rccm || '—'}</dd></div>
+                <div><dt className="inline text-zinc-500">{tr('Crédits')} : </dt><dd className="inline">{c.credits}</dd></div>
+                <div className="sm:col-span-2"><dt className="inline text-zinc-500">{tr('Villes de service')} : </dt><dd className="inline">{c.serviceCities.length ? c.serviceCities.join(', ') : '—'}</dd></div>
+                {c.reviewNote && <div className="sm:col-span-2"><dt className="inline text-zinc-500">{tr('Dernière décision')} : </dt><dd className="inline">{c.reviewNote}</dd></div>}
               </dl>
 
               {rejecting === c.id ? (
                 <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); review.mutate({ id: c.id, decision: 'reject', note }, { onSuccess: () => { setRejecting(null); setNote(''); } }); }}>
-                  <label htmlFor={`note-${c.id}`} className="text-sm font-medium">Motif du refus (visible par le fournisseur)</label>
+                  <label htmlFor={`note-${c.id}`} className="text-sm font-medium">{tr('Motif du refus (visible par le fournisseur)')}</label>
                   <textarea id={`note-${c.id}`} className="input" required minLength={5} maxLength={500} autoFocus value={note} onChange={(e) => setNote(e.target.value)} />
                   <div className="flex justify-end gap-2">
-                    <button type="button" className="btn-ghost" onClick={() => { setRejecting(null); setNote(''); }}>Annuler</button>
-                    <button className="btn" disabled={review.isPending}>Confirmer le refus</button>
+                    <button type="button" className="btn-ghost" onClick={() => { setRejecting(null); setNote(''); }}>{tr('Annuler')}</button>
+                    <button className="btn" disabled={review.isPending}>{tr('Confirmer le refus')}</button>
                   </div>
                 </form>
               ) : (
                 <div className="flex flex-wrap justify-end gap-2">
-                  {c.status === 'pending' && <button className="btn-ghost" onClick={() => { setRejecting(c.id); setNote(''); }}>Refuser</button>}
-                  {(c.status === 'pending' || c.status === 'rejected') && <button className="btn" disabled={review.isPending} onClick={() => review.mutate({ id: c.id, decision: 'approve' })}>Approuver</button>}
-                  {c.status === 'active' && <button className="btn-ghost" onClick={() => setSt.mutate({ id: c.id, status: 'suspended' })}>Suspendre</button>}
-                  {c.status === 'suspended' && <button className="btn" onClick={() => setSt.mutate({ id: c.id, status: 'active' })}>Réactiver</button>}
+                  {c.status === 'pending' && <button className="btn-ghost" onClick={() => { setRejecting(c.id); setNote(''); }}>{tr('Refuser')}</button>}
+                  {(c.status === 'pending' || c.status === 'rejected') && <button className="btn" disabled={review.isPending} onClick={() => review.mutate({ id: c.id, decision: 'approve' })}>{tr('Approuver')}</button>}
+                  {c.status === 'active' && <button className="btn-ghost" onClick={() => setSt.mutate({ id: c.id, status: 'suspended' })}>{tr('Suspendre')}</button>}
+                  {c.status === 'suspended' && <button className="btn" onClick={() => setSt.mutate({ id: c.id, status: 'active' })}>{tr('Réactiver')}</button>}
                   {(c.status === 'active' || c.status === 'suspended') && (
                     <button className="btn-ghost" onClick={() => {
-                      const n = Number(prompt(`Crédits à ajouter (1 crédit = ${fcfa(CREDIT_PRICE_FCFA)}) :`));
+                      const n = Number(prompt(tr('Crédits à ajouter (1 crédit = {price}) :', { price: fcfa(CREDIT_PRICE_FCFA) })));
                       if (Number.isInteger(n) && n > 0) topup.mutate({ id: c.id, credits: n });
-                    }}>+ Crédits</button>
+                    }}>{tr('+ Crédits')}</button>
                   )}
                 </div>
               )}
@@ -156,6 +158,7 @@ const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
 
 /** Une ligne planifiable : visible / masqué + fenêtre d'affichage (début, fin). */
 function ScheduleRow({ title, sub, visible, from, until, onSave, pending }: { title: string; sub?: string; visible: boolean; from: string | null; until: string | null; onSave: (v: { visible: boolean; from: string | null; until: string | null }) => void; pending: boolean }) {
+  const tr = useT();
   const [vis, setVis] = useState(visible);
   const [f, setF] = useState(toLocal(from));
   const [u, setU] = useState(toLocal(until));
@@ -166,16 +169,17 @@ function ScheduleRow({ title, sub, visible, from, until, onSave, pending }: { ti
         <p className="font-medium">{title}</p>
         {sub && <p className="text-xs text-zinc-500">{sub}</p>}
       </div>
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={vis} onChange={(e) => setVis(e.target.checked)} /> Affiché</label>
-      <label className="text-xs text-zinc-400">À partir du<input type="datetime-local" className="input mt-1" value={f} onChange={(e) => setF(e.target.value)} /></label>
-      <label className="text-xs text-zinc-400">Jusqu'au<input type="datetime-local" className="input mt-1" value={u} onChange={(e) => setU(e.target.value)} /></label>
-      <button className="btn" disabled={!dirty || pending} onClick={() => onSave({ visible: vis, from: toIso(f), until: toIso(u) })}>Enregistrer</button>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={vis} onChange={(e) => setVis(e.target.checked)} /> {tr('Affiché')}</label>
+      <label className="text-xs text-zinc-400">{tr('À partir du')}<input type="datetime-local" className="input mt-1" value={f} onChange={(e) => setF(e.target.value)} /></label>
+      <label className="text-xs text-zinc-400">{tr("Jusqu'au")}<input type="datetime-local" className="input mt-1" value={u} onChange={(e) => setU(e.target.value)} /></label>
+      <button className="btn" disabled={!dirty || pending} onClick={() => onSave({ visible: vis, from: toIso(f), until: toIso(u) })}>{tr('Enregistrer')}</button>
     </li>
   );
 }
 
 /** Planification de l'affichage : par type d'activité et par offre. Vide = toujours affiché. */
 export function DisplayAdmin() {
+  const tr = useT();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['admin-display'], queryFn: () => unwrap(api.admin.display.$get()) });
   const done = () => { qc.invalidateQueries({ queryKey: ['admin-display'] }); qc.invalidateQueries({ queryKey: ['offers'] }); qc.invalidateQueries({ queryKey: ['activities'] }); };
@@ -189,26 +193,26 @@ export function DisplayAdmin() {
       unwrap(api.admin.display.offers[':id'].$patch({ param: { id: v.id }, json: { hidden: !v.visible, showFrom: v.from, showUntil: v.until } })),
     onSuccess: done,
   });
-  if (q.isLoading) return <p className="text-center text-zinc-400">Chargement…</p>;
+  if (q.isLoading) return <p className="text-center text-zinc-400">{tr('Chargement…')}</p>;
   return (
     <div className="space-y-8">
       <Err e={q.error ?? saveAct.error ?? saveOffer.error} />
       <section className="space-y-2">
-        <h2 className="text-center text-lg font-semibold">Types d'activité</h2>
-        <p className="text-center text-sm text-zinc-400">Décochez pour masquer tout un type (ex. n'afficher que les smartphones). Les dates planifient l'affichage ; vide = sans limite.</p>
+        <h2 className="text-center text-lg font-semibold">{tr("Types d'activité")}</h2>
+        <p className="text-center text-sm text-zinc-400">{tr("Décochez pour masquer tout un type (ex. n'afficher que les smartphones). Les dates planifient l'affichage ; vide = sans limite.")}</p>
         <ul className="space-y-2">
           {q.data?.activities.map((a) => (
-            <ScheduleRow key={a.activity + String(a.visible) + a.showFrom + a.showUntil} title={ACTIVITY_LABEL[a.activity] ?? a.activity} visible={a.visible} from={a.showFrom} until={a.showUntil} pending={saveAct.isPending}
+            <ScheduleRow key={a.activity + String(a.visible) + a.showFrom + a.showUntil} title={tr(ACTIVITY_LABEL[a.activity] ?? a.activity)} visible={a.visible} from={a.showFrom} until={a.showUntil} pending={saveAct.isPending}
               onSave={(v) => saveAct.mutate({ activity: a.activity as (typeof ACTIVITIES)[number], ...v })} />
           ))}
         </ul>
       </section>
       <section className="space-y-2">
-        <h2 className="text-center text-lg font-semibold">Articles publiés</h2>
-        {!q.data?.offers.length && <p className="text-center text-sm text-zinc-400">Aucune offre publiée.</p>}
+        <h2 className="text-center text-lg font-semibold">{tr('Articles publiés')}</h2>
+        {!q.data?.offers.length && <p className="text-center text-sm text-zinc-400">{tr('Aucune offre publiée.')}</p>}
         <ul className="space-y-2">
           {q.data?.offers.map((o) => (
-            <ScheduleRow key={o.id + String(o.adminHidden) + o.showFrom + o.showUntil} title={o.title} sub={`${o.companyName} · ${ACTIVITY_LABEL[o.activity] ?? o.activity}${o.active ? '' : ' · désactivée par le partenaire'}`}
+            <ScheduleRow key={o.id + String(o.adminHidden) + o.showFrom + o.showUntil} title={o.title} sub={`${o.companyName} · ${tr(ACTIVITY_LABEL[o.activity] ?? o.activity)}${o.active ? '' : ' · ' + tr('désactivée par le partenaire')}`}
               visible={!o.adminHidden} from={o.showFrom} until={o.showUntil} pending={saveOffer.isPending}
               onSave={(v) => saveOffer.mutate({ id: o.id, ...v })} />
           ))}

@@ -27,7 +27,7 @@ const cookieOpts = () => ({
 });
 
 /** Compte « invité » : créé pour réserver sans inscription. Son e-mail est fictif (jamais utilisable pour se connecter). */
-const publicUser = (u: typeof users.$inferSelect) => ({ id: u.id, email: u.email.endsWith(GUEST_DOMAIN) ? '' : u.email, name: u.name, role: u.role, guest: u.email.endsWith(GUEST_DOMAIN) });
+const publicUser = (u: typeof users.$inferSelect) => ({ id: u.id, email: u.email.endsWith(GUEST_DOMAIN) ? '' : u.email, name: u.name, role: u.role, adminCountry: u.adminCountry, guest: u.email.endsWith(GUEST_DOMAIN) });
 
 // Hash factice généré à la volée : égalise le temps de réponse quand l'email est inconnu (anti-énumération).
 let dummyHash: Promise<string> | undefined;
@@ -66,7 +66,7 @@ export const authRoutes = new Hono<Env>()
         const [co] = await tx.insert(companies).values({ ...company, managerTitle: manager.title, ownerId: u.id }).returning({ id: companies.id });
         return { ...u, companyId: co.id };
       });
-      await notifyAdmins(c.get('db'), { kind: 'company_request', refId: user.companyId, title: `Nouvelle demande partenaire : ${company.name}`, body: `${manager.name} (${manager.title}) · ${company.city}`, link: '/admin' });
+      await notifyAdmins(c.get('db'), { kind: 'company_request', refId: user.companyId, title: `Nouvelle demande partenaire : ${company.name}`, body: `${manager.name} (${manager.title}) · ${company.city}`, link: '/admin' }, company.country);
       setCookie(c, COOKIE_NAME, await signSession({ id: user.id, role: user.role }), cookieOpts());
       return c.json({ user: publicUser(user) }, 201);
     },

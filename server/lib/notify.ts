@@ -32,13 +32,15 @@ export async function notify(db: Db, items: NewNotification[]): Promise<void> {
   } catch (e) { console.error('[notify]', e instanceof Error ? e.message : e); }
 }
 
-export const adminIds = async (db: Db) => (await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin'))).map((u) => u.id);
+/** Administrateurs à prévenir : les généraux, et pour un pays donné, ses administrateurs pays. */
+export const adminIds = async (db: Db, country?: string) =>
+  (await db.select({ id: users.id }).from(users).where(and(eq(users.role, 'admin'), country ? sql`(${users.adminCountry} is null or ${users.adminCountry} = ${country})` : sql`${users.adminCountry} is null`))).map((u) => u.id);
 
 /** Réservation confirmée (gratuite ou payée) : alerte le fournisseur et le back-office. */
 export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise<void> {
   try {
     const [r] = await db.select({
-      seats: bookings.seats, stop: bookings.stop, offerTitle: offers.title, companyName: companies.name, ownerId: companies.ownerId,
+      seats: bookings.seats, stop: bookings.stop, offerTitle: offers.title, companyName: companies.name, country: companies.country, ownerId: companies.ownerId,
       customer: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, phone: bookings.contactPhone, email: bookings.contactEmail, ref: bookings.reference, payMethod: bookings.payMethod, price: offers.priceFcfa, amount: payments.amountFcfa,
     }).from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
@@ -54,11 +56,11 @@ export async function notifyBookingConfirmed(db: Db, bookingId: string): Promise
       `Bonjour ${r.customer},\n\nVotre réservation ${r.ref} chez ${r.companyName} est confirmée.\n${r.offerTitle}\n${r.seats} place(s)${r.stop ? ` · arrêt : ${r.stop}` : ''} · ${payText}\n\nPrésentez la référence ${r.ref} au prestataire. Reçu disponible dans « Mes réservations » sur BackMarket.`);
     await notify(db, [
       { userId: r.ownerId, kind: 'booking', refId: bookingId, title: `Nouvelle réservation : ${r.offerTitle}`, body: detail, link: '/company' },
-      ...(await adminIds(db)).map((id) => ({ userId: id, kind: 'booking', refId: bookingId, title: `Réservation chez ${r.companyName} : ${r.offerTitle}`, body: detail, link: '/admin' })),
+      ...(await adminIds(db, r.country)).map((id) => ({ userId: id, kind: 'booking', refId: bookingId, title: `Réservation chez ${r.companyName} : ${r.offerTitle}`, body: detail, link: '/admin' })),
     ]);
   } catch (e) { console.error('[notify]', e instanceof Error ? e.message : e); }
 }
 
-export async function notifyAdmins(db: Db, n: Omit<NewNotification, 'userId'>): Promise<void> {
-  try { await notify(db, (await adminIds(db)).map((userId) => ({ ...n, userId }))); } catch (e) { console.error('[notify]', e instanceof Error ? e.message : e); }
+export async function notifyAdmins(db: Db, n: Omit<NewNotification, 'userId'>, country?: string): Promise<void> {
+  try { await notify(db, (await adminIds(db, country)).map((userId) => ({ ...n, userId }))); } catch (e) { console.error('[notify]', e instanceof Error ? e.message : e); }
 }

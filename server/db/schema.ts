@@ -12,6 +12,8 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   phone: text('phone').notNull().default(''),
   role: userRole('role').notNull().default('customer'),
+  /** Administrateur pays : ne gère que ce pays (null = administrateur général). */
+  adminCountry: text('admin_country'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -16,4 +16,4 @@ export async function unwrap<R extends { ok: boolean; status: number; json(): Pr
 }
 export const errMsg = (e: unknown) => (e instanceof Error ? e.message : 'Erreur');
 export const fcfa = (n: number) => new Intl.NumberFormat('fr-FR').format(n) + ' FCFA';
-export const dateFr = (d: string | Date) => new Date(d).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+export const dateFr = (d: string | Date) => new Date(d).toLocaleString(typeof document !== 'undefined' && document.documentElement.lang === 'en' ? 'en-GB' : 'fr-FR', { dateStyle: 'medium', timeStyle: 'short' });

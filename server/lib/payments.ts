@@ -76,17 +76,18 @@ export async function applyOrzOp(db: Db, paymentId: string, op: OrzOp): Promise<
     }
     await set({});
   });
+  const [payCo] = await db.select({ country: companies.country }).from(payments).innerJoin(companies, eq(companies.id, payments.companyId)).where(eq(payments.id, paymentId)).limit(1);
   if (mismatch) {
     // Montant payé différent du montant attendu : on ne confirme rien, un administrateur vérifie.
     await db.update(payments).set({ lastCheckedAt: new Date() }).where(eq(payments.id, paymentId));
-    await notifyAdmins(db, { kind: 'amount_mismatch', refId: paymentId, title: 'Montant de paiement inattendu', body: `Le lien ORZAYAH ${op.id} est payé mais son montant (${op.amount! / 100} FCFA) ne correspond pas à la réservation. Vérifiez dans le dashboard ORZAYAH.`, link: '/admin' });
+    await notifyAdmins(db, { kind: 'amount_mismatch', refId: paymentId, title: 'Montant de paiement inattendu', body: `Le lien ORZAYAH ${op.id} est payé mais son montant (${op.amount! / 100} FCFA) ne correspond pas à la réservation. Vérifiez dans le dashboard ORZAYAH.`, link: '/admin' }, payCo?.country);
     return;
   }
   // Alertes après validation de la transaction (idempotentes : une seule alerte par réservation).
   if (before === 'pending' || before === 'expired') {
     const [after] = await db.select({ status: payments.status, bookingId: payments.bookingId, amount: payments.amountFcfa }).from(payments).where(eq(payments.id, paymentId)).limit(1);
     if (after?.status === 'paid') await notifyBookingConfirmed(db, after.bookingId);
-    else if (after?.status === 'needs_refund') await notifyAdmins(db, { kind: 'needs_refund', refId: paymentId, title: 'Remboursement à effectuer', body: `Paiement de ${new Intl.NumberFormat('fr-FR').format(after.amount)} FCFA reçu après expiration, places indisponibles.`, link: '/admin' });
+    else if (after?.status === 'needs_refund') await notifyAdmins(db, { kind: 'needs_refund', refId: paymentId, title: 'Remboursement à effectuer', body: `Paiement de ${new Intl.NumberFormat('fr-FR').format(after.amount)} FCFA reçu après expiration, places indisponibles.`, link: '/admin' }, payCo?.country);
   }
 }
 

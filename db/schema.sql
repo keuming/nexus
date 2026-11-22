@@ -18,8 +18,10 @@ create table if not exists users (
   name          text not null,
   phone         text not null default '',
   role          user_role not null default 'customer',
+  admin_country text,
   created_at    timestamptz not null default now()
 );
+alter table users add column if not exists admin_country text;
 create unique index if not exists users_email_uq on users (lower(email));
 
 create table if not exists companies (

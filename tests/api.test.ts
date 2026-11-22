@@ -1389,3 +1389,111 @@ describe('back-office complet (KPI, partenaires, paiements, à la une, publicit�
     expect((await cust.get('/favorites')).json.offers).toHaveLength(0);
   });
 });
+
+describe('administrateurs pays (périmètre par pays)', () => {
+  async function twoCountries() {
+    const { adm, offer: ciOffer, co: ciCo } = await setup(5, 5, 1000);
+    const o2 = await register('owner', 'benin@x.test');
+    const bjCo = (await o2.post('/company', { name: 'Taxi Cotonou', activity: 'transport', country: 'BJ', city: 'Cotonou', serviceCities: ['Porto-Novo'], phone: '+229 01 00 00 00', ...geo })).json.company;
+    await adm.post(`/admin/companies/${bjCo.id}/review`, { decision: 'approve' });
+    const bjOffer = (await o2.post('/company/offers', { title: 'Cotonou → Porto-Novo', country: 'BJ', city: 'Cotonou', destCountry: 'BJ', destCity: 'Porto-Novo', stops: [], priceFcfa: 1000, capacity: 5, startsAt: future() })).json.offer;
+    const mk = await adm.post('/admin/admins', { name: 'Admin CI', email: 'admin.ci@x.test', password: 'password123', country: 'CI' });
+    expect(mk.status).toBe(201);
+    const ci = new Client(ctx.app);
+    expect((await ci.post('/auth/login', { email: 'admin.ci@x.test', password: 'password123' })).status).toBe(200);
+    return { adm, ci, ciOffer, bjOffer, ciCo, bjCo };
+  }
+
+  it("crée, liste et supprime des administrateurs pays ; réservé à l'administrateur général", async () => {
+    const { adm, ci } = await twoCountries();
+    expect((await ci.get('/auth/me')).json.user).toMatchObject({ role: 'admin', adminCountry: 'CI' });
+    expect((await adm.get('/auth/me')).json.user.adminCountry).toBeNull();
+    const list = (await adm.get('/admin/admins')).json.admins;
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ email: 'admin.ci@x.test', country: 'CI' });
+    expect((await adm.post('/admin/admins', { name: 'Doublon', email: 'ADMIN.CI@x.test', password: 'password123', country: 'BJ' })).status).toBe(409);
+    expect((await ci.get('/admin/admins')).status).toBe(403);
+    expect((await ci.post('/admin/admins', { name: 'X Y', email: 'z@x.test', password: 'password123', country: 'BJ' })).status).toBe(403);
+    expect((await adm.post(`/admin/admins/${list[0].id}/password`, { password: 'newpassword123' })).status).toBe(200);
+    expect((await new Client(ctx.app).post('/auth/login', { email: 'admin.ci@x.test', password: 'newpassword123' })).status).toBe(200);
+    expect((await adm.delete(`/admin/admins/${list[0].id}`)).status).toBe(200);
+    expect((await adm.get('/admin/admins')).json.admins).toHaveLength(0);
+  });
+
+  it('un administrateur pays ne voit que son pays (KPI, boutiques, paiements, avis, stats)', async () => {
+    const { adm, ci } = await twoCountries();
+    const all = (await adm.get('/admin/partners')).json.partners;
+    expect(all).toHaveLength(2);
+    const mine = (await ci.get('/admin/partners')).json;
+    expect(mine.partners.map((p: any) => p.country)).toEqual(['CI']);
+    expect(mine.countries.map((c: any) => c.country)).toEqual(['CI']);
+    expect((await ci.get('/admin/partners?country=BJ')).status).toBe(403);
+    const k = (await ci.get('/admin/kpis')).json;
+    expect(k.country).toBe('CI');
+    expect(k.byCountry.map((r: any) => r.country)).toEqual(['CI']);
+    expect(k.totals.partners_active).toBe(1);
+    expect((await ci.get('/admin/kpis?country=BJ')).status).toBe(403);
+    expect((await ci.get('/admin/kpis?country=CI')).status).toBe(200);
+    expect((await adm.get('/admin/kpis')).json.totals.partners_active).toBe(2);
+    expect((await ci.get('/admin/partner-payments?country=BJ')).status).toBe(403);
+    expect((await ci.get('/admin/partner-payments')).json.partners.map((p: any) => p.country)).toEqual(['CI']);
+    expect((await ci.get('/admin/companies')).json.companies.map((c: any) => c.country)).toEqual(['CI']);
+    expect((await ci.get('/admin/stats')).json.companies).toBe(1);
+    expect((await adm.get('/admin/stats')).json.companies).toBe(2);
+  });
+
+  it("un administrateur pays ne peut pas agir sur une boutique d'un autre pays", async () => {
+    const { ci, ciCo, bjCo } = await twoCountries();
+    expect((await ci.post(`/admin/companies/${bjCo.id}/status`, { status: 'suspended' })).status).toBe(403);
+    expect((await ci.post(`/admin/companies/${bjCo.id}/credits`, { credits: 5 })).status).toBe(403);
+    expect((await ci.post(`/admin/companies/${bjCo.id}/review`, { decision: 'approve' })).status).toBe(403);
+    expect((await ci.post(`/admin/partners/${bjCo.id}/remind-orzayah`)).status).toBe(403);
+    expect((await ci.post(`/admin/companies/${ciCo.id}/credits`, { credits: 5 })).status).toBe(200);
+    expect((await ci.post(`/admin/companies/${ciCo.id}/status`, { status: 'suspended' })).status).toBe(200);
+  });
+
+  it('publicités et mises en avant : cantonnées au pays de l\'administrateur pays', async () => {
+    const { adm, ci, ciOffer, bjOffer } = await twoCountries();
+    // Création : le pays est imposé, quoi qu'il demande.
+    const mine = (await ci.post('/admin/ads', { advertiser: 'Pub CI', title: 'Offre locale', linkUrl: 'https://x.test', countries: ['BJ', 'SN'] })).json.ad;
+    expect(mine.countries).toEqual(['CI']);
+    const general = (await adm.post('/admin/ads', { advertiser: 'gaRAN', title: 'Toute l\'Afrique', linkUrl: 'https://x.test', countries: [] })).json.ad;
+    const bj = (await adm.post('/admin/ads', { advertiser: 'Pub BJ', title: 'Offre Bénin', linkUrl: 'https://x.test', countries: ['BJ'] })).json.ad;
+    expect((await ci.get('/admin/ads')).json.ads.map((a: any) => a.id)).toEqual([mine.id]);
+    expect((await adm.get('/admin/ads')).json.ads).toHaveLength(3);
+    expect((await ci.patch(`/admin/ads/${bj.id}`, { title: 'Piraté' })).status).toBe(403);
+    expect((await ci.patch(`/admin/ads/${general.id}`, { title: 'Piraté' })).status).toBe(403);
+    expect((await ci.patch(`/admin/ads/${mine.id}`, { title: 'Offre locale 2', countries: ['BJ'] })).json.ad.countries).toEqual(['CI']);
+    await ci.delete(`/admin/ads/${bj.id}`); // sans effet sur une publicité d'un autre pays
+    expect((await adm.get('/admin/ads')).json.ads).toHaveLength(3);
+    expect((await ci.delete(`/admin/ads/${mine.id}`)).status).toBe(200);
+    // Mise en avant
+    expect((await ci.put(`/admin/featured/${bjOffer.id}`, {})).status).toBe(403);
+    expect((await ci.put(`/admin/featured/${ciOffer.id}`, { countries: ['BJ'] })).status).toBe(200);
+    expect((await adm.get('/admin/featured')).json.featured[0].countries).toEqual(['CI']);
+    expect((await ci.get('/admin/offer-search?q=ab')).json.offers.every((o: any) => o.companyCountry === 'CI')).toBe(true);
+    await adm.put(`/admin/featured/${bjOffer.id}`, {});
+    expect((await ci.get('/admin/featured')).json.featured.map((f: any) => f.offerId)).toEqual([ciOffer.id]);
+    expect((await ci.delete(`/admin/featured/${bjOffer.id}`)).status).toBe(403);
+  });
+
+  it("l'affichage global du site reste réservé à l'administrateur général", async () => {
+    const { adm, ci } = await twoCountries();
+    expect((await ci.get('/admin/display')).status).toBe(403);
+    expect((await adm.get('/admin/display')).status).toBe(200);
+  });
+
+  it("les alertes d'un pays vont à son administrateur pays et aux généraux, pas aux autres pays", async () => {
+    const { adm, ci, bjCo } = await twoCountries();
+    const bj = new Client(ctx.app);
+    await adm.post('/admin/admins', { name: 'Admin BJ', email: 'admin.bj@x.test', password: 'password123', country: 'BJ' });
+    await bj.post('/auth/login', { email: 'admin.bj@x.test', password: 'password123' });
+    const o3 = await register('owner', 'togo@x.test');
+    await o3.post('/company', { name: 'Taxi Lomé', activity: 'transport', country: 'TG', city: 'Lomé', serviceCities: [], phone: '+228 90 00 00 00', ...geo });
+    const has = async (c: Client) => (await c.get('/notifications')).json.notifications.some((n: any) => n.kind === 'company_request' && String(n.title).includes('Lomé'));
+    expect(await has(adm)).toBe(true);
+    expect(await has(ci)).toBe(false);
+    expect(await has(bj)).toBe(false);
+    void bjCo;
+  });
+});

@@ -6,7 +6,7 @@ import { forbidden, unauthorized } from '../lib/errors.js';
 import { COOKIE_NAME } from '../../shared/constants.js';
 
 import type { OrzayahClient, OrzResolver } from '../lib/orzayah.js';
-export type Env = { Variables: { db: Db; user: SessionUser | null; orz: OrzayahClient | null; orzFor: OrzResolver; orzMake: (apiKey: string) => OrzayahClient | null } };
+export type Env = { Variables: { adminCountry: string | null; db: Db; user: SessionUser | null; orz: OrzayahClient | null; orzFor: OrzResolver; orzMake: (apiKey: string) => OrzayahClient | null } };
 
 /** Décode le cookie de session ; n'échoue jamais (user = null si absent/invalide). */
 export const session = createMiddleware<Env>(async (c, next) => {

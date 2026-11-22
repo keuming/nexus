@@ -3,13 +3,15 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { v } from '../lib/validate.js';
 import { ads, bookings, companies, featuredOffers, offers, payments, reviews, users } from '../db/schema.js';
-import { conflict, notFound } from '../lib/errors.js';
+import { conflict, forbidden, notFound } from '../lib/errors.js';
 import { AppError } from '../lib/errors.js';
 import { cloudinaryUrl } from '../lib/images.js';
 import { config } from '../config.js';
 import { notify } from '../lib/notify.js';
 import { countryCode } from '../lib/schemas.js';
 import { requireRole, type Env } from '../middleware/auth.js';
+import { adminScope, assertCountry, generalOnly, scopeCountry } from '../lib/scope.js';
+import { hashPassword } from '../lib/auth.js';
 import type { Db } from '../db/client.js';
 
 const uuid = z.object({ id: z.string().uuid() });
@@ -31,11 +33,13 @@ const datesOk = (x: { startsAt?: Date | null; endsAt?: Date | null }) => !x.star
 
 export const backofficeRoutes = new Hono<Env>()
   .use(requireRole('admin'))
+  .use(adminScope)
 
   /** Indicateurs clés. `country` = pays de création des boutiques ; `days` = fenêtre (comparée à la fenêtre précédente). */
   .get('/kpis', v('query', z.object({ country: countryCode.optional(), days: z.coerce.number().int().min(1).max(365).default(30) })), async (c) => {
     const db = c.get('db');
-    const { country, days } = c.req.valid('query');
+    const { days } = c.req.valid('query');
+    const country = scopeCountry(c, c.req.valid('query').country);
     const cf = country ? sql`and c.country = ${country}` : sql``;
     const win = (from: number, to: number) => sql`b.created_at >= now() - make_interval(days => ${from}) and b.created_at < now() - make_interval(days => ${to})`;
     const period = async (from: number, to: number) => {
@@ -52,24 +56,26 @@ export const backofficeRoutes = new Hono<Env>()
         from payments p join companies c on c.id = p.company_id
         where p.status = 'paid' and p.paid_at >= now() - make_interval(days => ${from}) and p.paid_at < now() - make_interval(days => ${to}) ${cf}`);
       const [n] = await rows<{ partners: number }>(db, sql`select count(*)::int as partners from companies c where c.created_at >= now() - make_interval(days => ${from}) and c.created_at < now() - make_interval(days => ${to}) ${cf}`);
-      const [cu] = await rows<{ customers: number }>(db, sql`select count(*)::int as customers from users u where u.role = 'customer' and u.created_at >= now() - make_interval(days => ${from}) and u.created_at < now() - make_interval(days => ${to})`);
+      const [cu] = await rows<{ customers: number }>(db, country
+        ? sql`select count(distinct b.user_id)::int as customers from bookings b join companies c on c.id = b.company_id where c.country = ${country} and b.created_at >= now() - make_interval(days => ${from}) and b.created_at < now() - make_interval(days => ${to})`
+        : sql`select count(*)::int as customers from users u where u.role = 'customer' and u.created_at >= now() - make_interval(days => ${from}) and u.created_at < now() - make_interval(days => ${to})`);
       return { ...s, online: p.online, newPartners: n.partners, newCustomers: cu.customers };
     };
     const [current, previous] = await Promise.all([period(days, -1), period(days * 2, days)]);
     // `to = -1` : jusqu'à demain, pour inclure les réservations de l'instant.
     const [totals] = await rows<Record<string, number>>(db, sql`
-      select (select count(*) from users where role = 'customer')::int as customers,
+      select (${country ? sql`select count(distinct b.user_id) from bookings b join companies c on c.id = b.company_id where c.country = ${country}` : sql`select count(*) from users where role = 'customer'`})::int as customers,
              (select count(*) from companies c where status = 'active' ${cf})::int as partners_active,
              (select count(*) from companies c where status = 'pending' ${cf})::int as partners_pending,
              (select count(*) from companies c where status = 'suspended' ${cf})::int as partners_suspended,
              (select count(*) from offers o join companies c on c.id = o.company_id where o.active ${cf})::int as offers_active,
              (select count(*) from payments p join companies c on c.id = p.company_id where p.status = 'needs_refund' ${cf})::int as needs_refund,
              (select count(*) from companies c where status = 'active' and orz_api_key_enc is null ${cf})::int as partners_without_orz,
-             (select coalesce(round(avg(rating)::numeric, 2), 0)::float8 from reviews where status = 'published') as rating_avg,
-             (select count(*) from reviews where status = 'published')::int as rating_count,
-             (select count(*) from reviews where status = 'hidden')::int as reviews_hidden,
-             (select coalesce(sum(views), 0) from ads)::int as ad_views,
-             (select coalesce(sum(clicks), 0) from ads)::int as ad_clicks`);
+             (select coalesce(round(avg(r.rating)::numeric, 2), 0)::float8 from reviews r join companies c on c.id = r.company_id where r.status = 'published' ${cf}) as rating_avg,
+             (select count(*) from reviews r join companies c on c.id = r.company_id where r.status = 'published' ${cf})::int as rating_count,
+             (select count(*) from reviews r join companies c on c.id = r.company_id where r.status = 'hidden' ${cf})::int as reviews_hidden,
+             (select coalesce(sum(views), 0) from ads ${country ? sql`where countries = array[${country}]::text[]` : sql``})::int as ad_views,
+             (select coalesce(sum(clicks), 0) from ads ${country ? sql`where countries = array[${country}]::text[]` : sql``})::int as ad_clicks`);
     const series = await rows<{ day: string; bookings: number; gmv: number }>(db, sql`
       select to_char(d::date, 'YYYY-MM-DD') as day, coalesce(x.n, 0)::int as bookings, coalesce(x.gmv, 0)::float8 as gmv
       from generate_series((now() - make_interval(days => ${days - 1}))::date, now()::date, interval '1 day') d
@@ -94,6 +100,7 @@ export const backofficeRoutes = new Hono<Env>()
              count(b.id) filter (where ${SALE} and b.created_at >= now() - make_interval(days => ${days}))::int as bookings,
              coalesce(sum(${VALUE}) filter (where ${SALE} and b.created_at >= now() - make_interval(days => ${days})), 0)::float8 as gmv
       from companies c left join offers o on o.company_id = c.id left join bookings b on b.offer_id = o.id
+      where true ${country ? sql`and c.country = ${country}` : sql``}
       group by c.country order by gmv desc, shops desc`);
     return c.json({ days, country: country ?? null, current, previous, totals, series, topPartners, topOffers, byCountry });
   })
@@ -101,7 +108,8 @@ export const backofficeRoutes = new Hono<Env>()
   /** Boutiques, filtrables par pays de création, statut et recherche, avec leurs chiffres. */
   .get('/partners', v('query', z.object({ country: countryCode.optional(), status: z.enum(['pending', 'active', 'suspended', 'rejected']).optional(), q: z.string().trim().max(80).optional() })), async (c) => {
     const db = c.get('db');
-    const { country, status, q } = c.req.valid('query');
+    const { status, q } = c.req.valid('query');
+    const country = scopeCountry(c, c.req.valid('query').country);
     const like = q ? `%${q.replace(/[%_\\]/g, '\\$&')}%` : null;
     const list = await rows<Record<string, unknown>>(db, sql`
       select c.id, c.name, c.logo_url as "logoUrl", c.activity, c.country, c.city, c.status, c.credits, c.created_at as "createdAt",
@@ -117,14 +125,14 @@ export const backofficeRoutes = new Hono<Env>()
       order by c.created_at desc limit 300`);
     const countriesSummary = await rows<{ country: string; total: number; active: number; pending: number }>(db, sql`
       select country, count(*)::int as total, count(*) filter (where status = 'active')::int as active, count(*) filter (where status = 'pending')::int as pending
-      from companies group by country order by total desc`);
+      from companies ${country ? sql`where country = ${country}` : sql``} group by country order by total desc`);
     return c.json({ partners: list, countries: countriesSummary });
   })
 
   /** Paiements par partenaire : l'argent en ligne va directement chez le marchand (compte ORZAYAH) ; on suit encaissé, en attente, à la livraison et remboursements. */
   .get('/partner-payments', v('query', z.object({ country: countryCode.optional() })), async (c) => {
     const db = c.get('db');
-    const country = c.req.valid('query').country;
+    const country = scopeCountry(c, c.req.valid('query').country);
     const list = await rows<Record<string, number | string | boolean | null>>(db, sql`
       select c.id, c.name, c.country, c.status, (c.orz_api_key_enc is not null) as "orzConnected", (c.orz_webhook_secret_enc is not null) as "webhookConfigured",
         coalesce((select sum(p.amount_fcfa) from payments p where p.company_id = c.id and p.status = 'paid' and p.orz_scope = 'merchant'), 0)::float8 as "onlinePaid",
@@ -148,6 +156,8 @@ export const backofficeRoutes = new Hono<Env>()
     const db = c.get('db');
     const [co] = await db.select({ id: companies.id, ownerId: companies.ownerId, name: companies.name }).from(companies).where(eq(companies.id, c.req.valid('param').id)).limit(1);
     if (!co) throw notFound('Boutique');
+    const [cc] = await rows<{ country: string }>(db, sql`select country from companies where id = ${co.id}`);
+    assertCountry(c, cc?.country);
     // Une relance par jour au maximum (le dédoublonnage des notifications se fait sur kind + ref_id).
     const [{ n }] = await rows<{ n: number }>(db, sql`select count(*)::int as n from notifications where user_id = ${co.ownerId} and kind = 'connect_orzayah' and created_at > now() - interval '1 day'`);
     if (n > 0) throw conflict('already_reminded', 'Un rappel a déjà été envoyé dans les dernières 24 h');
@@ -156,6 +166,8 @@ export const backofficeRoutes = new Hono<Env>()
   })
   /** Remboursement effectué (hors plateforme) : clôt l'alerte. */
   .post('/payments/:id/refunded', v('param', uuid), async (c) => {
+    const [pc] = await rows<{ country: string }>(c.get('db'), sql`select c.country from payments p join companies c on c.id = p.company_id where p.id = ${c.req.valid('param').id}`);
+    if (pc) assertCountry(c, pc.country);
     const [p] = await c.get('db').update(payments).set({ status: 'refunded' }).where(and(eq(payments.id, c.req.valid('param').id), eq(payments.status, 'needs_refund'))).returning({ id: payments.id });
     if (!p) throw conflict('not_pending_refund', 'Aucun remboursement à confirmer sur ce paiement');
     return c.json({ ok: true });
@@ -167,7 +179,8 @@ export const backofficeRoutes = new Hono<Env>()
       select f.offer_id as "offerId", f.countries, f.starts_at as "startsAt", f.ends_at as "endsAt", f.rank, o.title, o.active, c.name as "companyName", c.country as "companyCountry",
              (o.admin_hidden or c.status <> 'active' or not o.active) as "notVisible",
              ((f.starts_at is null or f.starts_at <= now()) and (f.ends_at is null or f.ends_at >= now())) as "live"
-      from featured_offers f join offers o on o.id = f.offer_id join companies c on c.id = o.company_id order by f.rank, f.created_at desc`);
+      from featured_offers f join offers o on o.id = f.offer_id join companies c on c.id = o.company_id
+      ${c.get('adminCountry') ? sql`where c.country = ${c.get('adminCountry')}` : sql``} order by f.rank, f.created_at desc`);
     return c.json({ featured: list });
   })
   /** Recherche d'offres à mettre en avant. */
@@ -176,36 +189,49 @@ export const backofficeRoutes = new Hono<Env>()
     const list = await rows<Record<string, unknown>>(c.get('db'), sql`
       select o.id, o.title, o.price_fcfa as "priceFcfa", c.name as "companyName", c.country as "companyCountry", exists (select 1 from featured_offers f where f.offer_id = o.id) as featured
       from offers o join companies c on c.id = o.company_id
-      where o.active and c.status = 'active' and (o.title ilike ${like} or c.name ilike ${like}) order by o.created_at desc limit 12`);
+      where o.active and c.status = 'active' ${c.get('adminCountry') ? sql`and c.country = ${c.get('adminCountry')}` : sql``} and (o.title ilike ${like} or c.name ilike ${like}) order by o.created_at desc limit 12`);
     return c.json({ offers: list });
   })
   .put('/featured/:id', v('param', uuid), v('json', z.object({ countries: countries.default([]), startsAt: when.default(null), endsAt: when.default(null), rank: z.number().int().min(0).max(999).default(0) })), async (c) => {
     const db = c.get('db');
     const b = c.req.valid('json');
-    const [o] = await db.select({ id: offers.id }).from(offers).where(eq(offers.id, c.req.valid('param').id)).limit(1);
+    const [o] = await db.select({ id: offers.id, country: companies.country }).from(offers).innerJoin(companies, eq(companies.id, offers.companyId)).where(eq(offers.id, c.req.valid('param').id)).limit(1);
     if (!o) throw notFound('Offre');
+    assertCountry(c, o.country);
+    if (c.get('adminCountry')) b.countries = [c.get('adminCountry')!];
     if (b.startsAt && b.endsAt && b.endsAt <= b.startsAt) throw new AppError(400, 'invalid', 'La date de fin doit suivre la date de début');
     await db.insert(featuredOffers).values({ offerId: o.id, ...b }).onConflictDoUpdate({ target: featuredOffers.offerId, set: b });
     return c.json({ ok: true });
   })
   .delete('/featured/:id', v('param', uuid), async (c) => {
+    const [fo] = await rows<{ country: string }>(c.get('db'), sql`select c.country from offers o join companies c on c.id = o.company_id where o.id = ${c.req.valid('param').id}`);
+    if (fo) assertCountry(c, fo.country);
     await c.get('db').delete(featuredOffers).where(eq(featuredOffers.offerId, c.req.valid('param').id));
     return c.json({ ok: true });
   })
 
   /** Publicités (dont gaRAN) : création, planification par pays, pause, statistiques. */
   .get('/ads', async (c) => {
-    const list = await c.get('db').select().from(ads).orderBy(desc(ads.createdAt)).limit(200);
+    const a = c.get('adminCountry');
+    const list = await c.get('db').select().from(ads).where(a ? sql`${ads.countries} = array[${a}]::text[]` : undefined).orderBy(desc(ads.createdAt)).limit(200);
     const now = Date.now();
     return c.json({ ads: list.map((a) => ({ ...a, live: a.active && (!a.startsAt || a.startsAt.getTime() <= now) && (!a.endsAt || a.endsAt.getTime() >= now) })) });
   })
   .post('/ads', v('json', adInput().refine(datesOk, { message: 'La date de fin doit suivre la date de début' })), async (c) => {
     const b = c.req.valid('json');
+    if (c.get('adminCountry')) b.countries = [c.get('adminCountry')!];
     const [row] = await c.get('db').insert(ads).values({ ...b, imageUrl: b.imageUrl ? cloudinaryUrl(b.imageUrl) : null }).returning();
     return c.json({ ad: row }, 201);
   })
   .patch('/ads/:id', v('param', uuid), v('json', adInput().partial()), async (c) => {
     const b = c.req.valid('json');
+    const a = c.get('adminCountry');
+    if (a) {
+      const [cur] = await c.get('db').select({ countries: ads.countries }).from(ads).where(eq(ads.id, c.req.valid('param').id)).limit(1);
+      if (!cur) throw notFound('Publicité');
+      if (cur.countries.length !== 1 || cur.countries[0] !== a) throw forbidden('Pays hors de votre périmètre');
+      if (b.countries) b.countries = [a];
+    }
     const set = { ...b, ...(b.imageUrl ? { imageUrl: cloudinaryUrl(b.imageUrl) } : {}) };
     if (!Object.keys(set).length) throw new AppError(400, 'invalid', 'Rien à modifier');
     const [row] = await c.get('db').update(ads).set(set).where(eq(ads.id, c.req.valid('param').id)).returning();
@@ -213,7 +239,8 @@ export const backofficeRoutes = new Hono<Env>()
     return c.json({ ad: row });
   })
   .delete('/ads/:id', v('param', uuid), async (c) => {
-    await c.get('db').delete(ads).where(eq(ads.id, c.req.valid('param').id));
+    const a = c.get('adminCountry');
+    await c.get('db').delete(ads).where(and(eq(ads.id, c.req.valid('param').id), a ? sql`${ads.countries} = array[${a}]::text[]` : undefined));
     return c.json({ ok: true });
   })
   .get('/upload-config', (c) => {
@@ -226,12 +253,45 @@ export const backofficeRoutes = new Hono<Env>()
     const { status } = c.req.valid('query');
     const list = await c.get('db').select({ id: reviews.id, rating: reviews.rating, comment: reviews.comment, status: reviews.status, createdAt: reviews.createdAt, offerTitle: offers.title, companyName: companies.name, customerName: users.name })
       .from(reviews).innerJoin(offers, eq(offers.id, reviews.offerId)).innerJoin(companies, eq(companies.id, reviews.companyId)).innerJoin(users, eq(users.id, reviews.userId))
-      .where(status ? eq(reviews.status, status) : undefined).orderBy(desc(reviews.createdAt)).limit(200);
+      .where(and(status ? eq(reviews.status, status) : undefined, c.get('adminCountry') ? eq(companies.country, c.get('adminCountry')!) : undefined)).orderBy(desc(reviews.createdAt)).limit(200);
     return c.json({ reviews: list });
   })
   .post('/reviews/:id/status', v('param', uuid), v('json', z.object({ status: z.enum(['published', 'hidden']) })), async (c) => {
+    const [rc] = await rows<{ country: string }>(c.get('db'), sql`select c.country from reviews r join companies c on c.id = r.company_id where r.id = ${c.req.valid('param').id}`);
+    if (rc) assertCountry(c, rc.country);
     const [r] = await c.get('db').update(reviews).set({ status: c.req.valid('json').status }).where(eq(reviews.id, c.req.valid('param').id)).returning({ id: reviews.id });
     if (!r) throw notFound('Avis');
+    return c.json({ ok: true });
+  })
+
+  /** Administrateurs pays (créés et supprimés par l'administrateur général uniquement). */
+  .get('/admins', generalOnly, async (c) => {
+    const list = await c.get('db').select({ id: users.id, name: users.name, email: users.email, country: users.adminCountry, createdAt: users.createdAt })
+      .from(users).where(and(eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).orderBy(users.adminCountry, users.name);
+    return c.json({ admins: list });
+  })
+  .post('/admins', generalOnly, v('json', z.object({
+    name: z.string().trim().min(2).max(100),
+    email: z.string().trim().toLowerCase().email().max(200),
+    password: z.string().min(8, '8 caractères minimum').max(200),
+    country: countryCode,
+  })), async (c) => {
+    const db = c.get('db');
+    const b = c.req.valid('json');
+    const [exists] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${b.email}`).limit(1);
+    if (exists) throw conflict('email_taken', 'Cet email est déjà utilisé');
+    const [u] = await db.insert(users).values({ email: b.email, name: b.name, role: 'admin', adminCountry: b.country, passwordHash: await hashPassword(b.password) }).returning({ id: users.id });
+    return c.json({ id: u.id }, 201);
+  })
+  .post('/admins/:id/password', generalOnly, v('param', uuid), v('json', z.object({ password: z.string().min(8, '8 caractères minimum').max(200) })), async (c) => {
+    const [u] = await c.get('db').update(users).set({ passwordHash: await hashPassword(c.req.valid('json').password) })
+      .where(and(eq(users.id, c.req.valid('param').id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).returning({ id: users.id });
+    if (!u) throw notFound('Administrateur pays');
+    return c.json({ ok: true });
+  })
+  .delete('/admins/:id', generalOnly, v('param', uuid), async (c) => {
+    const [u] = await c.get('db').delete(users).where(and(eq(users.id, c.req.valid('param').id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).returning({ id: users.id });
+    if (!u) throw notFound('Administrateur pays');
     return c.json({ ok: true });
   });
 

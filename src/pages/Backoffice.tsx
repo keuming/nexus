@@ -12,35 +12,38 @@ import { PartnerPayments } from './backoffice/PartnerPayments';
 import { Featured } from './backoffice/Featured';
 import { Ads } from './backoffice/Ads';
 import { Reviews } from './backoffice/Reviews';
+import { Admins } from './backoffice/Admins';
+import { LangSwitch, useCountryName, useT } from '../lib/i18n';
 import { useEffect } from 'react';
 import { ShareButton, absUrl } from '../components/ShareButton';
 import { SITE } from '../../shared/site';
 
 /** Connexion réservée aux administrateurs : pas de création de compte, pas de lien vers le catalogue. */
 function BackofficeLogin() {
+  const t = useT();
   const { user, loading, refresh, logout } = useAuth();
   const [f, setF] = useState({ email: '', password: '' });
   const m = useMutation({
     mutationFn: () => unwrap(api.auth.login.$post({ json: f })),
     onSuccess: async () => { await refresh(); },
   });
-  if (loading) return <p className="text-zinc-400">Chargement…</p>;
+  if (loading) return <p className="text-zinc-400">{t('Chargement…')}</p>;
   if (user?.role === 'admin') return <Navigate to="/admin" replace />;
   const submit = (e: FormEvent) => { e.preventDefault(); m.mutate(); };
   return (
     <form onSubmit={submit} className="card mx-auto mt-10 max-w-sm space-y-3">
       <h1 className="text-xl font-bold">Back-office</h1>
-      <p className="text-sm text-zinc-400">Accès réservé à l'administration BackMarket.</p>
-      {user && <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">Ce compte n'a pas accès au back-office. <button type="button" className="underline" onClick={logout}>Changer de compte</button></p>}
+      <p className="text-sm text-zinc-400">{t("Accès réservé à l'administration BackMarket.")}</p>
+      {user && <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{t("Ce compte n'a pas accès au back-office.")} <button type="button" className="underline" onClick={logout}>{t('Changer de compte')}</button></p>}
       <Err e={m.error} />
-      <input className="input" type="email" required autoComplete="username" placeholder="Identifiant (e-mail)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-      <input className="input" type="password" required autoComplete="current-password" placeholder="Mot de passe" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
-      <button className="btn w-full" disabled={m.isPending}>Se connecter</button>
+      <input className="input" type="email" required autoComplete="username" placeholder={t('Identifiant (e-mail)')} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+      <input className="input" type="password" required autoComplete="current-password" placeholder={t('Mot de passe')} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+      <button className="btn w-full" disabled={m.isPending}>{t('Se connecter')}</button>
     </form>
   );
 }
 
-const NAV: { to: string; label: string; icon: string; end?: boolean; badge?: 'pending' | 'needsRefund' }[] = [
+const NAV: { to: string; label: string; icon: string; end?: boolean; badge?: 'pending' | 'needsRefund'; general?: boolean }[] = [
   { to: '/admin', label: 'Tableau de bord', icon: '▦', end: true },
   { to: '/admin/demandes', label: 'Demandes partenaires', icon: '✉', badge: 'pending' },
   { to: '/admin/boutiques', label: 'Boutiques par pays', icon: '⌂' },
@@ -48,20 +51,23 @@ const NAV: { to: string; label: string; icon: string; end?: boolean; badge?: 'pe
   { to: '/admin/mise-en-avant', label: 'Mise en avant', icon: '★' },
   { to: '/admin/publicites', label: 'Publicités', icon: '◎' },
   { to: '/admin/avis', label: 'Avis clients', icon: '✎' },
-  { to: '/admin/affichage', label: 'Affichage du site', icon: '⚙' },
+  { to: '/admin/affichage', label: 'Affichage du site', icon: '⚙', general: true },
+  { to: '/admin/administrateurs', label: 'Administrateurs pays', icon: '☰', general: true },
 ];
 
 function Sidebar({ onNavigate }: { onNavigate: () => void }) {
+  const t = useT();
+  const { user } = useAuth();
   const stats = useQuery({ queryKey: ['admin-stats'], queryFn: () => unwrap(api.admin.stats.$get()), refetchInterval: 60000 });
   return (
-    <nav aria-label="Menu du back-office" className="flex flex-col gap-1 p-3">
-      {NAV.map((n) => {
+    <nav aria-label={t('Menu du back-office')} className="flex flex-col gap-1 p-3">
+      {NAV.filter((n) => !n.general || !user?.adminCountry).map((n) => {
         const b = n.badge ? stats.data?.[n.badge] ?? 0 : 0;
         return (
           <NavLink key={n.to} to={n.to} end={n.end} onClick={onNavigate}
             className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${isActive ? 'bg-brand/15 font-semibold text-brand' : 'text-zinc-300 hover:bg-white/5'}`}>
             <span aria-hidden className="w-5 text-center">{n.icon}</span>
-            <span className="flex-1">{n.label}</span>
+            <span className="flex-1">{t(n.label)}</span>
             {b > 0 && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">{b}</span>}
           </NavLink>
         );
@@ -72,6 +78,8 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
 
 function BackofficeLayout() {
   const { user, logout } = useAuth();
+  const t = useT();
+  const cname = useCountryName();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
   useEffect(() => setOpen(false), [loc.pathname]);
@@ -81,15 +89,16 @@ function BackofficeLayout() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-ink/90 backdrop-blur">
         <div className="flex items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
-            {admin && <button className="btn-ghost lg:hidden" aria-label="Ouvrir le menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>☰</button>}
-            <span className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span> <span className="text-sm font-medium text-zinc-400">· Back-office</span></span>
+            {admin && <button className="btn-ghost lg:hidden" aria-label={t('Ouvrir le menu')} aria-expanded={open} onClick={() => setOpen((o) => !o)}>☰</button>}
+            <span className="text-lg font-extrabold tracking-tight">Back<span className="text-brand">Market</span> <span className="text-sm font-medium text-zinc-400">· Back-office{user?.adminCountry ? ` · ${cname(user.adminCountry)}` : ''}</span></span>
           </div>
           {admin && (
             <div className="flex items-center gap-3">
-              <ShareButton label="Partager BackMarket" url={absUrl('/')} title={SITE.shareTitle} text={SITE.shareDescription} />
+              <LangSwitch />
+              <ShareButton label={t('Partager BackMarket')} url={absUrl('/')} title={SITE.shareTitle} text={SITE.shareDescription} />
               <NotificationBell />
               <span className="hidden text-sm text-zinc-400 sm:inline">{user.name}</span>
-              <button className="btn-ghost" onClick={logout}>Déconnexion</button>
+              <button className="btn-ghost" onClick={logout}>{t('Déconnexion')}</button>
             </div>
           )}
         </div>
@@ -106,9 +115,15 @@ function BackofficeLayout() {
   );
 }
 
+function GeneralOnly({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  return user?.adminCountry ? <Navigate to="/admin" replace /> : <>{children}</>;
+}
+
 function AdminOnly() {
+  const t = useT();
   const { user, loading } = useAuth();
-  if (loading) return <p className="text-zinc-400">Chargement…</p>;
+  if (loading) return <p className="text-zinc-400">{t('Chargement…')}</p>;
   if (user?.role !== 'admin') return <Navigate to="/login" replace />;
   return <Outlet />;
 }
@@ -126,7 +141,8 @@ export function BackofficeApp() {
           <Route path="mise-en-avant" element={<Featured />} />
           <Route path="publicites" element={<Ads />} />
           <Route path="avis" element={<Reviews />} />
-          <Route path="affichage" element={<DisplayAdmin />} />
+          <Route path="affichage" element={<GeneralOnly><DisplayAdmin /></GeneralOnly>} />
+          <Route path="administrateurs" element={<GeneralOnly><Admins /></GeneralOnly>} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/admin" replace />} />

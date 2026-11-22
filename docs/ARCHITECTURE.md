@@ -122,3 +122,7 @@ Menu vertical à gauche : tableau de bord KPI (période 7/30/90 j, filtre pays, 
 - Publicités : `GET /ads?country=` (pays vide = tous ; pays inconnu = annonces non ciblées), vue comptée une fois par session au défilement, clic via `POST /ads/:id/click`, mention « Publicité / Sponsorisé ».
 - Favoris : table `favorites`, cœur sur chaque carte, page `/favoris`.
 - Avis : table `reviews` (un par réservation, uniquement commande livrée), étoiles sur les cartes, liste sur la page offre, formulaire dans « Mes réservations ».
+
+## Administrateurs pays et langue du back-office
+- `users.admin_country` : `null` = administrateur général (tous les pays) ; un code pays = administrateur pays. Le périmètre est lu à chaque requête admin (`server/lib/scope.ts`) et imposé côté serveur : KPI, boutiques, paiements, avis, publicités (pays forcé), mises en avant, demandes partenaires, crédits. Hors périmètre : 403. L'affichage global du site et la gestion des administrateurs pays restent réservés à l'administrateur général. Les alertes d'un pays vont aux administrateurs généraux et à ceux de ce pays.
+- Langue : `src/lib/i18n.tsx` (clé = texte français, valeur = anglais ; texte absent = français). Drapeaux 🇫🇷 / 🇬🇧 sur le site et dans le back-office.

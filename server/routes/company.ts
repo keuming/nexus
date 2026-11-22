@@ -72,7 +72,7 @@ export const companyRoutes = new Hono<Env>()
     const [dup] = await db.select({ id: companies.id }).from(companies).where(eq(companies.ownerId, ownerId)).limit(1);
     if (dup) throw conflict('company_exists', 'Vous avez déjà une entreprise');
     const [co] = await db.insert(companies).values({ ...c.req.valid('json'), ownerId }).returning();
-    await notifyAdmins(db, { kind: 'company_request', refId: co.id, title: `Nouvelle demande partenaire : ${co.name}`, body: co.city, link: '/admin' });
+    await notifyAdmins(db, { kind: 'company_request', refId: co.id, title: `Nouvelle demande partenaire : ${co.name}`, body: co.city, link: '/admin' }, co.country);
     return c.json({ company: safeCompany(co) }, 201);
   })
   /** Correction d'une demande refusée : repasse en attente de validation. */
@@ -259,7 +259,7 @@ export const companyRoutes = new Hono<Env>()
       return { b, pay, title: o?.title ?? '' };
     });
     await tellCustomer(db, r.b, { kind: 'booking_cancelled_merchant', title: `Réservation annulée : ${r.title}`, body: `${co.name} a annulé votre réservation ${r.b.reference}. Motif : ${reason}.${r.pay ? ' Vous serez remboursé.' : ''}` });
-    if (r.pay && r.pay.scope !== 'merchant') await notifyAdmins(db, { kind: 'needs_refund', refId: r.pay.id, title: 'Remboursement à effectuer', body: `${co.name} a annulé ${r.b.reference} (${new Intl.NumberFormat('fr-FR').format(r.pay.amount)} FCFA déjà payés).`, link: '/admin' });
+    if (r.pay && r.pay.scope !== 'merchant') await notifyAdmins(db, { kind: 'needs_refund', refId: r.pay.id, title: 'Remboursement à effectuer', body: `${co.name} a annulé ${r.b.reference} (${new Intl.NumberFormat('fr-FR').format(r.pay.amount)} FCFA déjà payés).`, link: '/admin' }, co.country);
     return c.json({ ok: true, refundDue: !!r.pay });
   })
   /**

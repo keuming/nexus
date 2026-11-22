@@ -4,7 +4,8 @@ import { v } from '../lib/validate.js';
 import { z } from 'zod';
 import { and, count, desc, eq, inArray, sql } from 'drizzle-orm';
 import { activityDisplay, bookings, companies, creditLedger, offers, payments, users } from '../db/schema.js';
-import { conflict, notFound } from '../lib/errors.js';
+import { conflict, forbidden, notFound } from '../lib/errors.js';
+import { adminScope, generalOnly } from '../lib/scope.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { ACTIVITIES, CREDIT_PRICE_FCFA } from '../../shared/constants.js';
 import { backofficeRoutes } from './backoffice.js';
@@ -13,9 +14,19 @@ const id = z.object({ id: z.string().uuid() });
 
 const when = z.string().datetime({ offset: true }).nullable().transform((x) => (x ? new Date(x) : null));
 
+/** Refuse l'accès à une entreprise d'un autre pays qu'un administrateur pays. */
+async function guardCompany(c: { get: (k: any) => any }, id: string) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const a = c.get('adminCountry') as string | null;
+  if (!a) return;
+  const [r] = await (c.get('db') as import('../db/client.js').Db).select({ country: companies.country }).from(companies).where(eq(companies.id, id)).limit(1);
+  if (r && r.country !== a) throw forbidden('Pays hors de votre périmètre');
+}
+
 export const adminRoutes = new Hono<Env>()
   .use(requireRole('admin'))
-  .get('/display', async (c) => {
+  .use(adminScope)
+  .use('/display/*', generalOnly)
+  .get('/display', generalOnly, async (c) => {
     const db = c.get('db');
     const rows = await db.select().from(activityDisplay);
     const by = new Map(rows.map((r) => [r.activity, r]));
@@ -43,12 +54,13 @@ export const adminRoutes = new Hono<Env>()
   })
   .get('/stats', async (c) => {
     const db = c.get('db');
+    const ac = c.get('adminCountry');
     const [[u], [co], [b], [p], [nr]] = await Promise.all([
-      db.select({ n: count() }).from(users),
-      db.select({ n: count() }).from(companies),
-      db.select({ n: count() }).from(bookings),
-      db.select({ n: count() }).from(companies).where(eq(companies.status, 'pending')),
-      db.select({ n: count() }).from(payments).where(eq(payments.status, 'needs_refund')),
+      ac ? db.select({ n: sql<number>`count(distinct ${bookings.userId})::int` }).from(bookings).innerJoin(companies, eq(companies.id, bookings.companyId)).where(eq(companies.country, ac)) : db.select({ n: count() }).from(users),
+      db.select({ n: count() }).from(companies).where(ac ? eq(companies.country, ac) : undefined),
+      ac ? db.select({ n: count() }).from(bookings).innerJoin(companies, eq(companies.id, bookings.companyId)).where(eq(companies.country, ac)) : db.select({ n: count() }).from(bookings),
+      db.select({ n: count() }).from(companies).where(and(eq(companies.status, 'pending'), ac ? eq(companies.country, ac) : undefined)),
+      db.select({ n: count() }).from(payments).innerJoin(companies, eq(companies.id, payments.companyId)).where(and(eq(payments.status, 'needs_refund'), ac ? eq(companies.country, ac) : undefined)),
     ]);
     return c.json({ users: u.n, companies: co.n, bookings: b.n, pending: p.n, needsRefund: nr.n });
   })
@@ -59,6 +71,7 @@ export const adminRoutes = new Hono<Env>()
       .from(payments)
       .innerJoin(companies, eq(companies.id, payments.companyId))
       .innerJoin(users, eq(users.id, payments.userId))
+      .where(c.get('adminCountry') ? eq(companies.country, c.get('adminCountry')!) : undefined)
       .orderBy(sql`(${payments.status} = 'needs_refund') desc`, desc(payments.createdAt)).limit(200);
     return c.json({ payments: rows });
   })
@@ -68,13 +81,14 @@ export const adminRoutes = new Hono<Env>()
       .select({ companyId: payments.companyId, companyName: companies.name, count: count(), totalFcfa: sql<number>`sum(${payments.amountFcfa})::int` })
       .from(payments)
       .innerJoin(companies, eq(companies.id, payments.companyId))
-      .where(and(eq(payments.status, 'paid'), eq(payments.orzScope, 'platform'), sql`${payments.reversedAt} is null`))
+      .where(and(eq(payments.status, 'paid'), eq(payments.orzScope, 'platform'), sql`${payments.reversedAt} is null`, c.get('adminCountry') ? eq(companies.country, c.get('adminCountry')!) : undefined))
       .groupBy(payments.companyId, companies.name)
       .orderBy(desc(sql`sum(${payments.amountFcfa})`));
     return c.json({ payouts: rows });
   })
   /** Marque les paiements encaissés comme reversés (le virement est fait hors plateforme). */
   .post('/companies/:id/payouts', v('param', id), async (c) => {
+    await guardCompany(c, c.req.valid('param').id);
     const rows = await c.get('db').update(payments).set({ reversedAt: new Date() })
       .where(and(eq(payments.companyId, c.req.valid('param').id), eq(payments.orzScope, 'platform'), eq(payments.status, 'paid'), sql`${payments.reversedAt} is null`))
       .returning({ amount: payments.amountFcfa });
@@ -85,7 +99,7 @@ export const adminRoutes = new Hono<Env>()
     const rows = await c.get('db')
       .select({ id: companies.id, name: companies.name, activity: companies.activity, country: companies.country, city: companies.city, serviceCities: companies.serviceCities, phone: companies.phone, rccm: companies.rccm, reviewNote: companies.reviewNote, reviewedAt: companies.reviewedAt, ownerName: users.name, ownerPhone: users.phone, address: companies.address, latitude: companies.latitude, longitude: companies.longitude, companyEmail: companies.email, managerTitle: companies.managerTitle, status: companies.status, credits: companies.credits, createdAt: companies.createdAt, ownerEmail: users.email })
       .from(companies).innerJoin(users, eq(users.id, companies.ownerId))
-      .where(status ? eq(companies.status, status) : undefined)
+      .where(and(status ? eq(companies.status, status) : undefined, c.get('adminCountry') ? eq(companies.country, c.get('adminCountry')!) : undefined))
       .orderBy(desc(companies.createdAt)).limit(200);
     return c.json({ companies: rows });
   })
@@ -96,6 +110,7 @@ export const adminRoutes = new Hono<Env>()
   .post('/companies/:id/review', v('param', id), v('json', z.object({ decision: z.enum(['approve', 'reject']), note: z.string().trim().max(500).default('') })
     .refine((d) => d.decision === 'approve' || d.note.length >= 5, { message: 'Indiquez le motif du refus (5 caractères minimum)', path: ['note'] })), async (c) => {
     const { decision, note } = c.req.valid('json');
+    await guardCompany(c, c.req.valid('param').id);
     const approve = decision === 'approve';
     const [co] = await c.get('db').update(companies)
       .set({ status: approve ? 'active' : 'rejected', reviewNote: note, reviewedAt: new Date(), reviewedBy: c.get('user')!.id })
@@ -110,6 +125,7 @@ export const adminRoutes = new Hono<Env>()
   })
   /** Suspension / réactivation d'une entreprise déjà validée (ne contourne pas la validation). */
   .post('/companies/:id/status', v('param', id), v('json', z.object({ status: z.enum(['active', 'suspended']) })), async (c) => {
+    await guardCompany(c, c.req.valid('param').id);
     const [co] = await c.get('db').update(companies).set({ status: c.req.valid('json').status })
       .where(and(eq(companies.id, c.req.valid('param').id), inArray(companies.status, ['active', 'suspended']))).returning();
     if (!co) {
@@ -122,6 +138,7 @@ export const adminRoutes = new Hono<Env>()
   /** Recharge de crédits (après paiement hors-ligne / mobile money). 1 crédit = 125 FCFA. */
   .post('/companies/:id/credits', v('param', id), v('json', z.object({ credits: z.number().int().min(1).max(100_000) })), async (c) => {
     const { credits } = c.req.valid('json');
+    await guardCompany(c, c.req.valid('param').id);
     const co = await c.get('db').transaction(async (tx) => {
       const [row] = await tx.update(companies).set({ credits: sql`${companies.credits} + ${credits}` }).where(eq(companies.id, c.req.valid('param').id)).returning();
       if (!row) throw notFound('Entreprise');
