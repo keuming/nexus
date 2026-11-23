@@ -54,7 +54,7 @@ function Edit({ a, onDone }: { a: { id: string; name: string; email: string; cou
     <form className="mt-3 grid gap-3 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
       <Err e={save.error} />
       <label className="text-xs text-zinc-400">{t('Nom')}<input className="input mt-1" required minLength={2} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-      <label className="text-xs text-zinc-400">{t('Email')}<input className="input mt-1" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
+      <label className="text-xs text-zinc-400">{t('Login (adresse e-mail)')}<input className="input mt-1" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
       <label className="text-xs text-zinc-400">{t('Pays géré')}<CountrySelect value={f.country} onChange={(v) => setF({ ...f, country: v })} /></label>
       <label className="text-xs text-zinc-400">{t('Téléphone du pays')}<input className="input mt-1" type="tel" required value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
       <label className="text-xs text-zinc-400">{t('N° de compte ORZAYAH du pays')}<input className="input mt-1" required minLength={3} maxLength={40} value={f.orzAccount} onChange={(e) => setF({ ...f, orzAccount: e.target.value })} /></label>
@@ -87,10 +87,14 @@ export function Admins() {
         <h2 className="font-semibold sm:col-span-2">{t('Nouvel administrateur pays')}</h2>
         <label className="text-xs text-zinc-400">{t('Nom')}<input className="input mt-1" required minLength={2} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
         <label className="text-xs text-zinc-400">{t('Pays géré')}<CountrySelect value={f.country} onChange={(v) => setF({ ...f, country: v })} /></label>
-        <label className="text-xs text-zinc-400">{t('Email')}<input className="input mt-1" type="email" required autoComplete="off" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
         <label className="text-xs text-zinc-400">{t('Téléphone du pays')}<input className="input mt-1" type="tel" required placeholder="+225 07 00 00 00 00" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
         <label className="text-xs text-zinc-400">{t('N° de compte ORZAYAH du pays')}<input className="input mt-1" required minLength={3} maxLength={40} value={f.orzAccount} onChange={(e) => setF({ ...f, orzAccount: e.target.value })} /></label>
+        <fieldset className="grid gap-3 rounded-xl border border-brand/40 p-3 sm:col-span-2 sm:grid-cols-2">
+          <legend className="px-2 text-xs font-semibold uppercase tracking-wide text-brand">{t('Identifiants de connexion au back-office')}</legend>
+          <label className="text-xs text-zinc-400">{t('Login (adresse e-mail)')}<input className="input mt-1" type="email" required autoComplete="off" placeholder="prenom.nom@exemple.com" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
         <label className="text-xs text-zinc-400">{t('Mot de passe (8 caractères min.)')}<input className="input mt-1" type="password" required minLength={8} autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>
+          <p className="text-xs text-zinc-500 sm:col-span-2">{t('Le country manager se connecte sur backoffice.backmarket-ci.com avec ce login et ce mot de passe.')}</p>
+        </fieldset>
         <div className="sm:col-span-2"><button className="btn" disabled={create.isPending}>{t('Créer le compte')}</button></div>
       </form>
       {list.isLoading && <p className="text-zinc-400">{t('Chargement…')}</p>}

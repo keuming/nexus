@@ -179,6 +179,7 @@ const EN: Record<string, string> = {
   'Administrateur sans connexion depuis 14 j': 'Administrator not logged in for 14 days',
   'Compte suspendu : contactez l’administrateur général': 'Account suspended: contact the general administrator',
   'Téléphone du pays': 'Country phone number', 'N° de compte ORZAYAH du pays': 'Country ORZAYAH account no.', 'Numéro de compte ORZAYAH invalide': 'Invalid ORZAYAH account number',
+  'Identifiants de connexion au back-office': 'Back-office sign-in credentials', 'Login (adresse e-mail)': 'Login (email address)', 'Le country manager se connecte sur backoffice.backmarket-ci.com avec ce login et ce mot de passe.': 'The country manager signs in at backoffice.backmarket-ci.com with this login and password.',
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (fr: string, vars?: Record<string, string | number>) => string }
