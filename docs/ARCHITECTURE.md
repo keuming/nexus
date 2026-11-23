@@ -126,3 +126,12 @@ Menu vertical à gauche : tableau de bord KPI (période 7/30/90 j, filtre pays, 
 ## Administrateurs pays et langue du back-office
 - `users.admin_country` : `null` = administrateur général (tous les pays) ; un code pays = administrateur pays. Le périmètre est lu à chaque requête admin (`server/lib/scope.ts`) et imposé côté serveur : KPI, boutiques, paiements, avis, publicités (pays forcé), mises en avant, demandes partenaires, crédits. Hors périmètre : 403. L'affichage global du site et la gestion des administrateurs pays restent réservés à l'administrateur général. Les alertes d'un pays vont aux administrateurs généraux et à ceux de ce pays.
 - Langue : `src/lib/i18n.tsx` (clé = texte français, valeur = anglais ; texte absent = français). Drapeaux 🇫🇷 / 🇬🇧 sur le site et dans le back-office.
+
+
+## Gestion des comptes pays et suivi par pays (v68)
+Bonnes pratiques appliquées (administration déléguée) : périmètre par pays vérifié côté serveur à chaque appel, moindre privilège (le général seul crée/modifie/suspend), cycle de vie complet du compte (création, modification, suspension réversible, réinitialisation du mot de passe, suppression), traçabilité (`admin_audit` : qui, pays, action, statut — sans corps de requête).
+- `users.disabled_at` : compte suspendu = connexion refusée (403) et session existante coupée (401) à la requête suivante ; `users.last_login_at` mis à jour à la connexion.
+- `admin_audit` : écrit par `adminScope` pour toute requête d'écriture (POST/PATCH/PUT/DELETE) du back-office ; lisible par l'administrateur général (`GET /admin/audit`).
+- `GET/PATCH /admin/admins/:id` : détail (profil, dernière connexion, stats du pays, 25 dernières actions) et modification (nom, e-mail, pays, suspension).
+- `GET /admin/countries-activity` : état par pays (actif = vente sur 7 j, calme, inactif), boutiques, offres, réservations 24 h/7 j/30 j, ventes 7 j, alertes (aucun admin actif, demandes > 48 h, remboursements dus, annulations > 30 %, admin jamais connecté / inactif 14 j). Il n'existe pas de mesure de visites : l'activité est commerciale et administrative.
+- Non implémenté (recommandé ensuite) : MFA, expiration de session par inactivité, double validation des actions sensibles, compte « break-glass » séparé.

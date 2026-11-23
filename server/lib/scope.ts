@@ -1,17 +1,28 @@
 import { createMiddleware } from 'hono/factory';
 import { eq } from 'drizzle-orm';
-import { users } from '../db/schema.js';
-import { forbidden } from './errors.js';
+import { adminAudit, users } from '../db/schema.js';
+import { forbidden, unauthorized } from './errors.js';
 import type { Env } from '../middleware/auth.js';
 
-/** Périmètre de l'administrateur : `null` = administrateur général (tous les pays), sinon le code du seul pays qu'il gère. */
+/**
+ * Périmètre de l'administrateur : `null` = administrateur général (tous les pays), sinon le code du seul pays qu'il gère.
+ * Refuse un compte suspendu (même avec une session encore valide) et journalise toute action d'écriture (audit).
+ */
 export const adminScope = createMiddleware<Env>(async (c, next) => {
+  const u = c.get('user');
+  let name = '';
   if (c.get('adminCountry') === undefined) {
-    const u = c.get('user');
-    const [r] = u ? await c.get('db').select({ ac: users.adminCountry }).from(users).where(eq(users.id, u.id)).limit(1) : [];
+    const [r] = u ? await c.get('db').select({ ac: users.adminCountry, off: users.disabledAt, name: users.name }).from(users).where(eq(users.id, u.id)).limit(1) : [];
+    if (u && (!r || r.off)) throw unauthorized();
     c.set('adminCountry', r?.ac ?? null);
+    name = r?.name ?? '';
   }
   await next();
+  if (u && c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+    try {
+      await c.get('db').insert(adminAudit).values({ userId: u.id, userName: name, country: c.get('adminCountry') ?? null, method: c.req.method, path: c.req.path.slice(0, 200), status: c.res.status });
+    } catch { /* le journal ne doit jamais bloquer l'action */ }
+  }
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

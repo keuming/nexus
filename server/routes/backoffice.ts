@@ -264,11 +264,27 @@ export const backofficeRoutes = new Hono<Env>()
     return c.json({ ok: true });
   })
 
-  /** Administrateurs pays (créés et supprimés par l'administrateur général uniquement). */
+  /** Administrateurs pays : cycle de vie complet (création, consultation, modification, suspension, mot de passe, suppression) — administrateur général uniquement. */
   .get('/admins', generalOnly, async (c) => {
-    const list = await c.get('db').select({ id: users.id, name: users.name, email: users.email, country: users.adminCountry, createdAt: users.createdAt })
-      .from(users).where(and(eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).orderBy(users.adminCountry, users.name);
+    const list = await rows<{ id: string; name: string; email: string; country: string; createdAt: string; lastLoginAt: string | null; disabledAt: string | null; actions30: number }>(c.get('db'), sql`
+      select u.id, u.name, u.email, u.admin_country as country, u.created_at as "createdAt", u.last_login_at as "lastLoginAt", u.disabled_at as "disabledAt",
+             (select count(*) from admin_audit a where a.user_id = u.id and a.created_at > now() - interval '30 days')::int as actions30
+      from users u where u.role = 'admin' and u.admin_country is not null order by u.admin_country, u.name`);
     return c.json({ admins: list });
+  })
+  .get('/admins/:id', generalOnly, v('param', uuid), async (c) => {
+    const db = c.get('db');
+    const [u] = await db.select({ id: users.id, name: users.name, email: users.email, phone: users.phone, country: users.adminCountry, createdAt: users.createdAt, lastLoginAt: users.lastLoginAt, disabledAt: users.disabledAt })
+      .from(users).where(and(eq(users.id, c.req.valid('param').id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).limit(1);
+    if (!u) throw notFound('Administrateur pays');
+    const [stats] = await rows<Record<string, number>>(db, sql`
+      select (select count(*) from companies where country = ${u.country} and status = 'active')::int as shops_active,
+             (select count(*) from companies where country = ${u.country} and status = 'pending')::int as shops_pending,
+             (select count(*) from admin_audit where user_id = ${u.id} and created_at > now() - interval '7 days')::int as actions7,
+             (select count(*) from admin_audit where user_id = ${u.id})::int as actions_total`);
+    const recent = await rows<{ id: string; method: string; path: string; status: number; createdAt: string }>(db, sql`
+      select id, method, path, status, created_at as "createdAt" from admin_audit where user_id = ${u.id} order by created_at desc limit 25`);
+    return c.json({ admin: u, stats, recent });
   })
   .post('/admins', generalOnly, v('json', z.object({
     name: z.string().trim().min(2).max(100),
@@ -283,6 +299,31 @@ export const backofficeRoutes = new Hono<Env>()
     const [u] = await db.insert(users).values({ email: b.email, name: b.name, role: 'admin', adminCountry: b.country, passwordHash: await hashPassword(b.password) }).returning({ id: users.id });
     return c.json({ id: u.id }, 201);
   })
+  /** Modification : nom, e-mail, pays géré, suspension / réactivation. */
+  .patch('/admins/:id', generalOnly, v('param', uuid), v('json', z.object({
+    name: z.string().trim().min(2).max(100).optional(),
+    email: z.string().trim().toLowerCase().email().max(200).optional(),
+    country: countryCode.optional(),
+    disabled: z.boolean().optional(),
+  })), async (c) => {
+    const db = c.get('db');
+    const { id } = c.req.valid('param');
+    const b = c.req.valid('json');
+    if (b.email) {
+      const [dup] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${b.email} and ${users.id} <> ${id}`).limit(1);
+      if (dup) throw conflict('email_taken', 'Cet email est déjà utilisé');
+    }
+    const set = {
+      ...(b.name !== undefined && { name: b.name }),
+      ...(b.email !== undefined && { email: b.email }),
+      ...(b.country !== undefined && { adminCountry: b.country }),
+      ...(b.disabled !== undefined && { disabledAt: b.disabled ? new Date() : null }),
+    };
+    if (!Object.keys(set).length) return c.json({ ok: true });
+    const [u] = await db.update(users).set(set).where(and(eq(users.id, id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).returning({ id: users.id });
+    if (!u) throw notFound('Administrateur pays');
+    return c.json({ ok: true });
+  })
   .post('/admins/:id/password', generalOnly, v('param', uuid), v('json', z.object({ password: z.string().min(8, '8 caractères minimum').max(200) })), async (c) => {
     const [u] = await c.get('db').update(users).set({ passwordHash: await hashPassword(c.req.valid('json').password) })
       .where(and(eq(users.id, c.req.valid('param').id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).returning({ id: users.id });
@@ -293,6 +334,70 @@ export const backofficeRoutes = new Hono<Env>()
     const [u] = await c.get('db').delete(users).where(and(eq(users.id, c.req.valid('param').id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).returning({ id: users.id });
     if (!u) throw notFound('Administrateur pays');
     return c.json({ ok: true });
+  })
+
+  /** Journal d'audit : actions d'écriture de tous les administrateurs (général et pays). */
+  .get('/audit', generalOnly, v('query', z.object({ country: countryCode.optional() })), async (c) => {
+    const country = c.req.valid('query').country;
+    const list = await rows<{ id: string; userName: string; country: string | null; method: string; path: string; status: number; createdAt: string }>(c.get('db'), sql`
+      select id, user_name as "userName", country, method, path, status, created_at as "createdAt" from admin_audit
+      ${country ? sql`where country = ${country}` : sql``} order by created_at desc limit 100`);
+    return c.json({ audit: list });
+  })
+
+  /**
+   * Suivi d'activité par pays (vitrine de chaque pays). Il n'existe pas de mesure de visites : l'« activité » est l'activité commerciale
+   * (boutiques, offres, réservations, ventes) et l'activité d'administration (connexion du responsable pays, demandes en attente).
+   */
+  .get('/countries-activity', generalOnly, async (c) => {
+    const db = c.get('db');
+    type Row = Record<string, number | string | null>;
+    const [shops, offs, bks, last, backlog, refunds, adsLive, admins] = await Promise.all([
+      rows<Row>(db, sql`select country, count(*) filter (where status = 'active')::int as active, count(*) filter (where status = 'pending')::int as pending, count(*) filter (where status = 'suspended')::int as suspended from companies group by country`),
+      rows<Row>(db, sql`select c.country, count(*)::int as live from offers o join companies c on c.id = o.company_id where o.active and c.status = 'active' group by c.country`),
+      rows<Row>(db, sql`select c.country,
+          count(*) filter (where ${SALE} and b.created_at > now() - interval '24 hours')::int as b24,
+          count(*) filter (where ${SALE} and b.created_at > now() - interval '7 days')::int as b7,
+          count(*) filter (where ${SALE} and b.created_at > now() - interval '30 days')::int as b30,
+          coalesce(sum(${VALUE}) filter (where ${SALE} and b.created_at > now() - interval '7 days'), 0)::float8 as gmv7,
+          count(*) filter (where b.status = 'cancelled' and b.created_at > now() - interval '30 days')::int as cancelled30
+        from bookings b join offers o on o.id = b.offer_id join companies c on c.id = b.company_id group by c.country`),
+      rows<Row>(db, sql`select c.country, max(b.created_at) as last_booking from bookings b join companies c on c.id = b.company_id group by c.country`),
+      rows<Row>(db, sql`select country, count(*)::int as late from companies where status = 'pending' and created_at < now() - interval '48 hours' group by country`),
+      rows<Row>(db, sql`select c.country, count(*)::int as n from payments p join companies c on c.id = p.company_id where p.status = 'needs_refund' group by c.country`),
+      rows<Row>(db, sql`select k.country, count(*)::int as n from ads a cross join lateral unnest(case when cardinality(a.countries) = 0 then (select array_agg(distinct country) from companies) else a.countries end) as k(country)
+          where a.active and (a.starts_at is null or a.starts_at <= now()) and (a.ends_at is null or a.ends_at > now()) group by k.country`),
+      rows<Row>(db, sql`select admin_country as country, count(*)::int as n, count(*) filter (where disabled_at is null)::int as enabled, max(last_login_at) as last_login from users where role = 'admin' and admin_country is not null group by admin_country`),
+    ]);
+    const by = (r: Row[]) => new Map(r.map((x) => [x.country as string, x]));
+    const m = { shops: by(shops), offs: by(offs), bks: by(bks), last: by(last), backlog: by(backlog), refunds: by(refunds), ads: by(adsLive), admins: by(admins) };
+    const codes = new Set<string>([...m.shops.keys(), ...m.admins.keys()]);
+    const out = [...codes].map((country) => {
+      const sh = m.shops.get(country), bk = m.bks.get(country), ad = m.admins.get(country);
+      const shopsActive = Number(sh?.active ?? 0), b7 = Number(bk?.b7 ?? 0), b30 = Number(bk?.b30 ?? 0);
+      const cancelled30 = Number(bk?.cancelled30 ?? 0);
+      const state: 'active' | 'quiet' | 'inactive' = !shopsActive ? 'inactive' : b7 > 0 ? 'active' : 'quiet';
+      const alerts: string[] = [];
+      if (!Number(ad?.enabled ?? 0)) alerts.push('no_admin');
+      if (Number(m.backlog.get(country)?.late ?? 0)) alerts.push('late_requests');
+      if (Number(m.refunds.get(country)?.n ?? 0)) alerts.push('refunds_due');
+      if (b30 + cancelled30 >= 5 && cancelled30 / (b30 + cancelled30) > 0.3) alerts.push('high_cancellations');
+      if (Number(ad?.enabled ?? 0) && !ad?.last_login) alerts.push('admin_never_logged');
+      else if (ad?.last_login && Date.now() - new Date(ad.last_login as string).getTime() > 14 * 86400_000) alerts.push('admin_inactive');
+      return {
+        country, state, alerts,
+        shopsActive, shopsPending: Number(sh?.pending ?? 0), shopsSuspended: Number(sh?.suspended ?? 0),
+        offersLive: Number(m.offs.get(country)?.live ?? 0),
+        bookings24h: Number(bk?.b24 ?? 0), bookings7d: b7, bookings30d: b30, gmv7d: Number(bk?.gmv7 ?? 0),
+        lastBookingAt: (m.last.get(country)?.last_booking as string | null) ?? null,
+        lateRequests: Number(m.backlog.get(country)?.late ?? 0), refundsDue: Number(m.refunds.get(country)?.n ?? 0),
+        adsLive: Number(m.ads.get(country)?.n ?? 0),
+        admins: Number(ad?.n ?? 0), adminsEnabled: Number(ad?.enabled ?? 0), adminLastLoginAt: (ad?.last_login as string | null) ?? null,
+      };
+    });
+    const rank = { active: 0, quiet: 1, inactive: 2 } as const;
+    out.sort((x, y) => y.alerts.length - x.alerts.length || rank[x.state] - rank[y.state] || y.gmv7d - x.gmv7d);
+    return c.json({ countries: out });
   });
 
 function adInput() {

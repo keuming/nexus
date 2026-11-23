@@ -1420,6 +1420,46 @@ describe('administrateurs pays (périmètre par pays)', () => {
     expect((await adm.get('/admin/admins')).json.admins).toHaveLength(0);
   });
 
+  it('détail, modification, suspension (session coupée), réactivation et journal d\'audit', async () => {
+    const { adm, ci, ciCo } = await twoCountries();
+    const id = (await adm.get('/admin/admins')).json.admins[0].id;
+    expect((await ci.post(`/admin/companies/${ciCo.id}/credits`, { credits: 2 })).status).toBe(200);
+    const d = (await adm.get(`/admin/admins/${id}`)).json;
+    expect(d.admin).toMatchObject({ email: 'admin.ci@x.test', country: 'CI', disabledAt: null });
+    expect(d.admin.lastLoginAt).toBeTruthy();
+    expect(d.stats.shops_active).toBe(1);
+    expect(d.stats.actions_total).toBeGreaterThanOrEqual(1);
+    expect(d.recent.some((r: any) => r.path.includes('/credits'))).toBe(true);
+    expect(JSON.stringify(d.recent)).not.toContain('password');
+    expect((await ci.get(`/admin/admins/${id}`)).status).toBe(403);
+    expect((await adm.patch(`/admin/admins/${id}`, { name: 'Nouveau Nom', country: 'BJ' })).status).toBe(200);
+    expect((await adm.get('/admin/admins')).json.admins[0]).toMatchObject({ name: 'Nouveau Nom', country: 'BJ' });
+    expect((await adm.patch(`/admin/admins/${id}`, { email: 'benin@x.test' })).status).toBe(409);
+    expect((await ci.patch(`/admin/admins/${id}`, { disabled: true })).status).toBe(403);
+    expect((await adm.patch(`/admin/admins/${id}`, { disabled: true })).status).toBe(200);
+    expect((await ci.get('/admin/kpis')).status).toBe(401);
+    const blocked = await new Client(ctx.app).post('/auth/login', { email: 'admin.ci@x.test', password: 'password123' });
+    expect(blocked.status).toBe(403);
+    expect((await adm.patch(`/admin/admins/${id}`, { disabled: false })).status).toBe(200);
+    expect((await new Client(ctx.app).post('/auth/login', { email: 'admin.ci@x.test', password: 'password123' })).status).toBe(200);
+    const audit = (await adm.get('/admin/audit')).json.audit;
+    expect(audit.length).toBeGreaterThan(0);
+    expect(audit.some((r: any) => r.method === 'PATCH' && r.path.includes('/admins/'))).toBe(true);
+    expect((await ci.get('/admin/audit')).status).toBe(403);
+  });
+
+  it("suivi d'activité par pays : états, alertes, réservé à l'administrateur général", async () => {
+    const { adm, ci } = await twoCountries();
+    const { countries } = (await adm.get('/admin/countries-activity')).json;
+    const byc = Object.fromEntries(countries.map((c: any) => [c.country, c]));
+    expect(byc.CI).toMatchObject({ shopsActive: 1, offersLive: 1, adminsEnabled: 1 });
+    expect(byc.CI.alerts).not.toContain('no_admin');
+    expect(byc.BJ).toMatchObject({ shopsActive: 1, adminsEnabled: 0 });
+    expect(byc.BJ.alerts).toContain('no_admin');
+    expect(['active', 'quiet']).toContain(byc.CI.state);
+    expect((await ci.get('/admin/countries-activity')).status).toBe(403);
+  });
+
   it('un administrateur pays ne voit que son pays (KPI, boutiques, paiements, avis, stats)', async () => {
     const { adm, ci } = await twoCountries();
     const all = (await adm.get('/admin/partners')).json.partners;

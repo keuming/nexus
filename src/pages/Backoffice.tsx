@@ -13,6 +13,7 @@ import { Featured } from './backoffice/Featured';
 import { Ads } from './backoffice/Ads';
 import { Reviews } from './backoffice/Reviews';
 import { Admins } from './backoffice/Admins';
+import { CountryMonitor } from './backoffice/CountryMonitor';
 import { LangSwitch, useCountryName, useT } from '../lib/i18n';
 import { useEffect } from 'react';
 import { ShareButton, absUrl } from '../components/ShareButton';
@@ -52,6 +53,7 @@ const NAV: { to: string; label: string; icon: string; end?: boolean; badge?: 'pe
   { to: '/admin/publicites', label: 'Publicités', icon: '◎' },
   { to: '/admin/avis', label: 'Avis clients', icon: '✎' },
   { to: '/admin/affichage', label: 'Affichage du site', icon: '⚙', general: true },
+  { to: '/admin/suivi-pays', label: 'Suivi des pays', icon: '◔', general: true },
   { to: '/admin/administrateurs', label: 'Administrateurs pays', icon: '☰', general: true },
 ];
 
@@ -142,6 +144,7 @@ export function BackofficeApp() {
           <Route path="publicites" element={<Ads />} />
           <Route path="avis" element={<Reviews />} />
           <Route path="affichage" element={<GeneralOnly><DisplayAdmin /></GeneralOnly>} />
+          <Route path="suivi-pays" element={<GeneralOnly><CountryMonitor /></GeneralOnly>} />
           <Route path="administrateurs" element={<GeneralOnly><Admins /></GeneralOnly>} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>

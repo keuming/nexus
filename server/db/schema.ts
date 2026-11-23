@@ -14,6 +14,21 @@ export const users = pgTable('users', {
   role: userRole('role').notNull().default('customer'),
   /** Administrateur pays : ne gère que ce pays (null = administrateur général). */
   adminCountry: text('admin_country'),
+  /** Compte suspendu : connexion et session refusées. */
+  disabledAt: timestamp('disabled_at', { withTimezone: true }),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Journal d'audit des actions d'administration (qui, quel pays, quelle action). Aucun corps de requête n'est conservé. */
+export const adminAudit = pgTable('admin_audit', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  userName: text('user_name').notNull().default(''),
+  country: text('country'),
+  method: text('method').notNull(),
+  path: text('path').notNull(),
+  status: integer('status').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

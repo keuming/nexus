@@ -102,6 +102,8 @@ export const authRoutes = new Hono<Env>()
     const [u] = await c.get('db').select().from(users).where(sql`lower(${users.email}) = ${email}`).limit(1);
     const ok = await verifyPassword(password, u?.passwordHash ?? (await getDummyHash()));
     if (!u || !ok) throw new AppError(401, 'bad_credentials', 'Email ou mot de passe incorrect');
+    if (u.disabledAt) throw new AppError(403, 'account_disabled', 'Compte suspendu : contactez l’administrateur général');
+    await c.get('db').update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, u.id));
     setCookie(c, COOKIE_NAME, await signSession({ id: u.id, role: u.role }), cookieOpts());
     return c.json({ user: publicUser(u) });
   })
