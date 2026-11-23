@@ -1397,7 +1397,7 @@ describe('administrateurs pays (périmètre par pays)', () => {
     const bjCo = (await o2.post('/company', { name: 'Taxi Cotonou', activity: 'transport', country: 'BJ', city: 'Cotonou', serviceCities: ['Porto-Novo'], phone: '+229 01 00 00 00', ...geo })).json.company;
     await adm.post(`/admin/companies/${bjCo.id}/review`, { decision: 'approve' });
     const bjOffer = (await o2.post('/company/offers', { title: 'Cotonou → Porto-Novo', country: 'BJ', city: 'Cotonou', destCountry: 'BJ', destCity: 'Porto-Novo', stops: [], priceFcfa: 1000, capacity: 5, startsAt: future() })).json.offer;
-    const mk = await adm.post('/admin/admins', { name: 'Admin CI', email: 'admin.ci@x.test', password: 'password123', country: 'CI' });
+    const mk = await adm.post('/admin/admins', { name: 'Admin CI', email: 'admin.ci@x.test', password: 'password123', country: 'CI', phone: '+225 07 00 00 00 00', orzAccount: 'ORZ-CI-0001' });
     expect(mk.status).toBe(201);
     const ci = new Client(ctx.app);
     expect((await ci.post('/auth/login', { email: 'admin.ci@x.test', password: 'password123' })).status).toBe(200);
@@ -1411,9 +1411,9 @@ describe('administrateurs pays (périmètre par pays)', () => {
     const list = (await adm.get('/admin/admins')).json.admins;
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ email: 'admin.ci@x.test', country: 'CI' });
-    expect((await adm.post('/admin/admins', { name: 'Doublon', email: 'ADMIN.CI@x.test', password: 'password123', country: 'BJ' })).status).toBe(409);
+    expect((await adm.post('/admin/admins', { name: 'Doublon', email: 'ADMIN.CI@x.test', password: 'password123', country: 'BJ', phone: '+229 01 00 00 00', orzAccount: 'ORZ-BJ-1' })).status).toBe(409);
     expect((await ci.get('/admin/admins')).status).toBe(403);
-    expect((await ci.post('/admin/admins', { name: 'X Y', email: 'z@x.test', password: 'password123', country: 'BJ' })).status).toBe(403);
+    expect((await ci.post('/admin/admins', { name: 'X Y', email: 'z@x.test', password: 'password123', country: 'BJ', phone: '+229 01 00 00 00', orzAccount: 'ORZ-BJ-1' })).status).toBe(403);
     expect((await adm.post(`/admin/admins/${list[0].id}/password`, { password: 'newpassword123' })).status).toBe(200);
     expect((await new Client(ctx.app).post('/auth/login', { email: 'admin.ci@x.test', password: 'newpassword123' })).status).toBe(200);
     expect((await adm.delete(`/admin/admins/${list[0].id}`)).status).toBe(200);
@@ -1425,7 +1425,10 @@ describe('administrateurs pays (périmètre par pays)', () => {
     const id = (await adm.get('/admin/admins')).json.admins[0].id;
     expect((await ci.post(`/admin/companies/${ciCo.id}/credits`, { credits: 2 })).status).toBe(200);
     const d = (await adm.get(`/admin/admins/${id}`)).json;
-    expect(d.admin).toMatchObject({ email: 'admin.ci@x.test', country: 'CI', disabledAt: null });
+    expect(d.admin).toMatchObject({ email: 'admin.ci@x.test', country: 'CI', disabledAt: null, phone: '+225 07 00 00 00 00', orzAccount: 'ORZ-CI-0001' });
+    expect((await adm.post('/admin/admins', { name: 'Sans Tel', email: 'q@x.test', password: 'password123', country: 'BJ' })).status).toBe(400);
+    expect((await adm.patch(`/admin/admins/${id}`, { phone: '+225 05 11 22 33 44', orzAccount: 'ORZ-CI-0002' })).status).toBe(200);
+    expect((await adm.get(`/admin/admins/${id}`)).json.admin).toMatchObject({ phone: '+225 05 11 22 33 44', orzAccount: 'ORZ-CI-0002' });
     expect(d.admin.lastLoginAt).toBeTruthy();
     expect(d.stats.shops_active).toBe(1);
     expect(d.stats.actions_total).toBeGreaterThanOrEqual(1);
@@ -1526,7 +1529,7 @@ describe('administrateurs pays (périmètre par pays)', () => {
   it("les alertes d'un pays vont à son administrateur pays et aux généraux, pas aux autres pays", async () => {
     const { adm, ci, bjCo } = await twoCountries();
     const bj = new Client(ctx.app);
-    await adm.post('/admin/admins', { name: 'Admin BJ', email: 'admin.bj@x.test', password: 'password123', country: 'BJ' });
+    await adm.post('/admin/admins', { name: 'Admin BJ', email: 'admin.bj@x.test', password: 'password123', country: 'BJ', phone: '+229 01 00 00 00', orzAccount: 'ORZ-BJ-1' });
     await bj.post('/auth/login', { email: 'admin.bj@x.test', password: 'password123' });
     const o3 = await register('owner', 'togo@x.test');
     await o3.post('/company', { name: 'Taxi Lomé', activity: 'transport', country: 'TG', city: 'Lomé', serviceCities: [], phone: '+228 90 00 00 00', ...geo });

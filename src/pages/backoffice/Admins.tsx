@@ -23,7 +23,8 @@ function Detail({ id }: { id: string }) {
     <div className="grid gap-4 text-sm md:grid-cols-2">
       <dl>
         {row('Email', a.email)}
-        {row('Téléphone', a.phone || '—')}
+        {row('Téléphone du pays', a.phone || '—')}
+        {row('N° de compte ORZAYAH du pays', a.orzAccount || '—')}
         {row('Compte créé le', dateFr(a.createdAt))}
         {row('Dernière connexion', a.lastLoginAt ? dateFr(a.lastLoginAt) : t('Jamais connecté'))}
         {row('Statut', a.disabledAt ? t('Suspendu') : t('Actif'))}
@@ -44,10 +45,10 @@ function Detail({ id }: { id: string }) {
   );
 }
 
-function Edit({ a, onDone }: { a: { id: string; name: string; email: string; country: string }; onDone: () => void }) {
+function Edit({ a, onDone }: { a: { id: string; name: string; email: string; country: string; phone: string; orzAccount: string | null }; onDone: () => void }) {
   const t = useT();
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: a.name, email: a.email, country: a.country });
+  const [f, setF] = useState({ name: a.name, email: a.email, country: a.country, phone: a.phone, orzAccount: a.orzAccount ?? '' });
   const save = useMutation({ mutationFn: () => unwrap(api.admin.admins[':id'].$patch({ param: { id: a.id }, json: f })), onSuccess: () => { qc.invalidateQueries({ queryKey: ['bo-admins'] }); qc.invalidateQueries({ queryKey: ['bo-admin', a.id] }); onDone(); } });
   return (
     <form className="mt-3 grid gap-3 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
@@ -55,6 +56,8 @@ function Edit({ a, onDone }: { a: { id: string; name: string; email: string; cou
       <label className="text-xs text-zinc-400">{t('Nom')}<input className="input mt-1" required minLength={2} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
       <label className="text-xs text-zinc-400">{t('Email')}<input className="input mt-1" type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
       <label className="text-xs text-zinc-400">{t('Pays géré')}<CountrySelect value={f.country} onChange={(v) => setF({ ...f, country: v })} /></label>
+      <label className="text-xs text-zinc-400">{t('Téléphone du pays')}<input className="input mt-1" type="tel" required value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
+      <label className="text-xs text-zinc-400">{t('N° de compte ORZAYAH du pays')}<input className="input mt-1" required minLength={3} maxLength={40} value={f.orzAccount} onChange={(e) => setF({ ...f, orzAccount: e.target.value })} /></label>
       <div className="flex gap-2 sm:col-span-3"><button className="btn" disabled={save.isPending}>{t('Enregistrer')}</button><button type="button" className="btn-ghost" onClick={onDone}>{t('Annuler')}</button></div>
     </form>
   );
@@ -65,13 +68,13 @@ export function Admins() {
   const t = useT();
   const cname = useCountryName();
   const qc = useQueryClient();
-  const [f, setF] = useState({ name: '', email: '', password: '', country: 'CI' });
+  const [f, setF] = useState({ name: '', email: '', password: '', country: 'CI', phone: '', orzAccount: '' });
   const [pw, setPw] = useState<{ id: string; value: string } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [edit, setEdit] = useState<string | null>(null);
   const list = useQuery({ queryKey: ['bo-admins'], queryFn: () => unwrap(api.admin.admins.$get()) });
   const inv = () => qc.invalidateQueries({ queryKey: ['bo-admins'] });
-  const create = useMutation({ mutationFn: () => unwrap(api.admin.admins.$post({ json: f })), onSuccess: () => { inv(); setF({ name: '', email: '', password: '', country: f.country }); } });
+  const create = useMutation({ mutationFn: () => unwrap(api.admin.admins.$post({ json: f })), onSuccess: () => { inv(); setF({ name: '', email: '', password: '', country: f.country, phone: '', orzAccount: '' }); } });
   const reset = useMutation({ mutationFn: (v: { id: string; password: string }) => unwrap(api.admin.admins[':id'].password.$post({ param: { id: v.id }, json: { password: v.password } })), onSuccess: () => { setPw(null); alert(t('Mot de passe modifié.')); } });
   const toggle = useMutation({ mutationFn: (v: { id: string; disabled: boolean }) => unwrap(api.admin.admins[':id'].$patch({ param: { id: v.id }, json: { disabled: v.disabled } })), onSuccess: (_d, v) => { inv(); qc.invalidateQueries({ queryKey: ['bo-admin', v.id] }); } });
   const remove = useMutation({ mutationFn: (id: string) => unwrap(api.admin.admins[':id'].$delete({ param: { id } })), onSuccess: inv });
@@ -85,6 +88,8 @@ export function Admins() {
         <label className="text-xs text-zinc-400">{t('Nom')}<input className="input mt-1" required minLength={2} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
         <label className="text-xs text-zinc-400">{t('Pays géré')}<CountrySelect value={f.country} onChange={(v) => setF({ ...f, country: v })} /></label>
         <label className="text-xs text-zinc-400">{t('Email')}<input className="input mt-1" type="email" required autoComplete="off" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
+        <label className="text-xs text-zinc-400">{t('Téléphone du pays')}<input className="input mt-1" type="tel" required placeholder="+225 07 00 00 00 00" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></label>
+        <label className="text-xs text-zinc-400">{t('N° de compte ORZAYAH du pays')}<input className="input mt-1" required minLength={3} maxLength={40} value={f.orzAccount} onChange={(e) => setF({ ...f, orzAccount: e.target.value })} /></label>
         <label className="text-xs text-zinc-400">{t('Mot de passe (8 caractères min.)')}<input className="input mt-1" type="password" required minLength={8} autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>
         <div className="sm:col-span-2"><button className="btn" disabled={create.isPending}>{t('Créer le compte')}</button></div>
       </form>

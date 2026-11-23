@@ -8,7 +8,7 @@ import { AppError } from '../lib/errors.js';
 import { cloudinaryUrl } from '../lib/images.js';
 import { config } from '../config.js';
 import { notify } from '../lib/notify.js';
-import { countryCode } from '../lib/schemas.js';
+import { countryCode, phoneField } from '../lib/schemas.js';
 import { requireRole, type Env } from '../middleware/auth.js';
 import { adminScope, assertCountry, generalOnly, scopeCountry } from '../lib/scope.js';
 import { hashPassword } from '../lib/auth.js';
@@ -16,6 +16,7 @@ import type { Db } from '../db/client.js';
 
 const uuid = z.object({ id: z.string().uuid() });
 const when = z.string().datetime({ offset: true }).nullable().transform((x) => (x ? new Date(x) : null));
+const orzAccount = z.string().trim().min(3, 'Numéro de compte ORZAYAH invalide').max(40);
 const countries = z.array(countryCode).max(60).transform((a) => [...new Set(a)]);
 
 /** Lignes d'un `db.execute` (node-postgres et PGlite renvoient `{ rows }`). */
@@ -266,15 +267,15 @@ export const backofficeRoutes = new Hono<Env>()
 
   /** Administrateurs pays : cycle de vie complet (création, consultation, modification, suspension, mot de passe, suppression) — administrateur général uniquement. */
   .get('/admins', generalOnly, async (c) => {
-    const list = await rows<{ id: string; name: string; email: string; country: string; createdAt: string; lastLoginAt: string | null; disabledAt: string | null; actions30: number }>(c.get('db'), sql`
-      select u.id, u.name, u.email, u.admin_country as country, u.created_at as "createdAt", u.last_login_at as "lastLoginAt", u.disabled_at as "disabledAt",
+    const list = await rows<{ id: string; name: string; email: string; country: string; phone: string; orzAccount: string | null; createdAt: string; lastLoginAt: string | null; disabledAt: string | null; actions30: number }>(c.get('db'), sql`
+      select u.id, u.name, u.email, u.admin_country as country, u.phone, u.orz_account as "orzAccount", u.created_at as "createdAt", u.last_login_at as "lastLoginAt", u.disabled_at as "disabledAt",
              (select count(*) from admin_audit a where a.user_id = u.id and a.created_at > now() - interval '30 days')::int as actions30
       from users u where u.role = 'admin' and u.admin_country is not null order by u.admin_country, u.name`);
     return c.json({ admins: list });
   })
   .get('/admins/:id', generalOnly, v('param', uuid), async (c) => {
     const db = c.get('db');
-    const [u] = await db.select({ id: users.id, name: users.name, email: users.email, phone: users.phone, country: users.adminCountry, createdAt: users.createdAt, lastLoginAt: users.lastLoginAt, disabledAt: users.disabledAt })
+    const [u] = await db.select({ id: users.id, name: users.name, email: users.email, phone: users.phone, orzAccount: users.orzAccount, country: users.adminCountry, createdAt: users.createdAt, lastLoginAt: users.lastLoginAt, disabledAt: users.disabledAt })
       .from(users).where(and(eq(users.id, c.req.valid('param').id), eq(users.role, 'admin'), sql`${users.adminCountry} is not null`)).limit(1);
     if (!u) throw notFound('Administrateur pays');
     const [stats] = await rows<Record<string, number>>(db, sql`
@@ -291,12 +292,14 @@ export const backofficeRoutes = new Hono<Env>()
     email: z.string().trim().toLowerCase().email().max(200),
     password: z.string().min(8, '8 caractères minimum').max(200),
     country: countryCode,
+    phone: phoneField,
+    orzAccount,
   })), async (c) => {
     const db = c.get('db');
     const b = c.req.valid('json');
     const [exists] = await db.select({ id: users.id }).from(users).where(sql`lower(${users.email}) = ${b.email}`).limit(1);
     if (exists) throw conflict('email_taken', 'Cet email est déjà utilisé');
-    const [u] = await db.insert(users).values({ email: b.email, name: b.name, role: 'admin', adminCountry: b.country, passwordHash: await hashPassword(b.password) }).returning({ id: users.id });
+    const [u] = await db.insert(users).values({ email: b.email, name: b.name, role: 'admin', adminCountry: b.country, phone: b.phone, orzAccount: b.orzAccount, passwordHash: await hashPassword(b.password) }).returning({ id: users.id });
     return c.json({ id: u.id }, 201);
   })
   /** Modification : nom, e-mail, pays géré, suspension / réactivation. */
@@ -304,6 +307,8 @@ export const backofficeRoutes = new Hono<Env>()
     name: z.string().trim().min(2).max(100).optional(),
     email: z.string().trim().toLowerCase().email().max(200).optional(),
     country: countryCode.optional(),
+    phone: phoneField.optional(),
+    orzAccount: orzAccount.optional(),
     disabled: z.boolean().optional(),
   })), async (c) => {
     const db = c.get('db');
@@ -317,6 +322,8 @@ export const backofficeRoutes = new Hono<Env>()
       ...(b.name !== undefined && { name: b.name }),
       ...(b.email !== undefined && { email: b.email }),
       ...(b.country !== undefined && { adminCountry: b.country }),
+      ...(b.phone !== undefined && { phone: b.phone }),
+      ...(b.orzAccount !== undefined && { orzAccount: b.orzAccount }),
       ...(b.disabled !== undefined && { disabledAt: b.disabled ? new Date() : null }),
     };
     if (!Object.keys(set).length) return c.json({ ok: true });

@@ -24,6 +24,7 @@ create table if not exists users (
 alter table users add column if not exists admin_country text;
 alter table users add column if not exists disabled_at timestamptz;
 alter table users add column if not exists last_login_at timestamptz;
+alter table users add column if not exists orz_account text;
 create table if not exists admin_audit (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid references users(id) on delete set null,

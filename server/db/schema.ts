@@ -16,6 +16,8 @@ export const users = pgTable('users', {
   adminCountry: text('admin_country'),
   /** Compte suspendu : connexion et session refusées. */
   disabledAt: timestamp('disabled_at', { withTimezone: true }),
+  /** Administrateur pays : numéro de compte ORZAYAH du pays. */
+  orzAccount: text('orz_account'),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

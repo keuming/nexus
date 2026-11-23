@@ -178,6 +178,7 @@ const EN: Record<string, string> = {
   'L\'administrateur ne s\'est jamais connecté': 'The administrator has never logged in',
   'Administrateur sans connexion depuis 14 j': 'Administrator not logged in for 14 days',
   'Compte suspendu : contactez l’administrateur général': 'Account suspended: contact the general administrator',
+  'Téléphone du pays': 'Country phone number', 'N° de compte ORZAYAH du pays': 'Country ORZAYAH account no.', 'Numéro de compte ORZAYAH invalide': 'Invalid ORZAYAH account number',
 };
 
 interface Ctx { lang: Lang; setLang: (l: Lang) => void; t: (fr: string, vars?: Record<string, string | number>) => string }
