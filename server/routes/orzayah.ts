@@ -5,6 +5,7 @@ import { config } from '../config.js';
 import { bookings, companies, payments } from '../db/schema.js';
 import { decryptSecret } from '../lib/secrets.js';
 import { syncPayment } from '../lib/payments.js';
+import { appUrlOf, syncPurchase } from '../lib/credits.js';
 import type { Env } from '../middleware/auth.js';
 
 const TOLERANCE_S = 300;
@@ -37,6 +38,15 @@ async function handle(c: Context<Env>, raw: string, companyId: string | null) {
     [p] = await db.select({ pay: payments }).from(payments).innerJoin(bookings, eq(bookings.id, payments.bookingId)).where(own).limit(1).then((r) => r.map((x) => x.pay));
   }
   // Inconnu : 503 pour qu'ORZAYAH réessaie (course) ; connu : relecture chez ORZAYAH + application idempotente (déjà payé = sans effet).
+  if (!p && !companyId) {
+    // Achat de crédit (référence « CR-<id> ») : relecture chez ORZAYAH puis crédit idempotent.
+    const ref = String(evt?.data?.externalReference ?? '');
+    const orz = c.get('orz');
+    if (orz && /^CR-[0-9a-f-]{36}$/i.test(ref)) {
+      await syncPurchase({ db, orzFor: c.get('orzFor'), appUrl: appUrlOf(c) }, orz, ref.slice(3));
+      return c.json({ ok: true });
+    }
+  }
   if (!p) return c.json({ error: { code: 'unknown_payment', message: 'Paiement inconnu' } }, 503);
   await syncPayment({ db, orzFor: c.get('orzFor') }, p, true);
   return c.json({ ok: true });

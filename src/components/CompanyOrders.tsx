@@ -8,7 +8,7 @@ export interface OrderRow {
   id: string; reference: string; seats: number; stop: string | null; status: string; createdAt: string; updatedAt: string;
   offerTitle: string; customerName: string; contactPhone: string | null; contactEmail: string | null; guests: string[]; note: string;
   paymentStatus: string | null; amountFcfa: number | null; payMethod: string; dueFcfa: number;
-  fulfillment: string; merchantNote: string; cancelReason: string | null; cancelledBy: string | null; cashCollectedAt: string | null;
+  fulfillment: string; merchantNote: string; cancelReason: string | null; cancelledBy: string | null; cashCollectedAt: string | null; locked?: boolean;
 }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -79,7 +79,8 @@ export function CompanyOrders({ q }: { q: UseQueryResult<{ bookings: OrderRow[] 
   const [openId, setOpenId] = useState<string | null>(null);
   const qc = useQueryClient();
   const refresh = () => { qc.invalidateQueries({ queryKey: ['company-bookings'] }); qc.invalidateQueries({ queryKey: ['company'] }); };
-  const all = q.data?.bookings ?? [];
+  // Les commandes verrouillées (sans détail) sont affichées dans le bandeau de crédit, pas dans cette liste.
+  const all = (q.data?.bookings ?? []).filter((b) => !b.locked);
   const count = (id: string) => all.filter(FILTERS.find((f) => f.id === id)!.test).length;
   const rows = useMemo(() => {
     const t = FILTERS.find((f) => f.id === filter)!.test;

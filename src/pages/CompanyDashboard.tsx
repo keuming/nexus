@@ -10,6 +10,7 @@ import { CompanyFields, ScopeField, coordsOk, draftFrom, emptyDraft, toPayload }
 import { ACTIVITY_LABEL } from './Home';
 import { CompanyOrders } from '../components/CompanyOrders';
 import { CompanyPayments } from '../components/CompanyPayments';
+import { CreditBar } from '../components/CreditBar';
 import { placeLabel } from '../lib/place';
 import { CATEGORIES, ROUTE_ACTIVITIES, SEARCH_FORMS } from '../../shared/search';
 import { ACTIVITIES } from '../../shared/constants';
@@ -45,7 +46,7 @@ export function CompanyDashboard() {
   if (c.status === 'rejected' && editing) return <CompanyForm mode="resubmit" initial={c} onDone={refresh} />;
   const confirmed = bookings.data?.bookings.filter((b) => b.status === 'confirmed').length ?? 0;
   const toProcess = bookings.data?.bookings.filter((b) => b.status === 'confirmed' && b.fulfillment === 'new').length ?? 0;
-  const waiting = bookings.data?.bookings.filter((b) => b.status === 'pending_payment').length ?? 0;
+  const waiting = bookings.data?.bookings.filter((b) => b.status === 'pending_payment' && !b.locked).length ?? 0;
   const liveOffers = offers.data?.offers.filter((o) => o.active && o.booked < o.capacity).length ?? 0;
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -73,6 +74,7 @@ export function CompanyDashboard() {
         </div>
       )}
       {c.status === 'suspended' && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-center text-sm text-red-300">Votre entreprise est suspendue. Contactez le support.</p>}
+      {c.status === 'active' && <CreditBar />}
       {active && (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

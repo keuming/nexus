@@ -119,6 +119,9 @@ export const bookings = pgTable('bookings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   payMethod: text('pay_method').notNull().default('digital'),
   unitPriceFcfa: integer('unit_price_fcfa'),
+  /** Renseigné = commande verrouillée : le fournisseur n'a pas de crédit (aucun débit, aucun détail visible) jusqu'à cette échéance. */
+  creditLockUntil: timestamp('credit_lock_until', { withTimezone: true }),
+  triedCompanyIds: uuid('tried_company_ids').array().notNull().default(sql`'{}'`),
 });
 
 export const creditLedger = pgTable('credit_ledger', {
@@ -217,4 +220,17 @@ export const reviews = pgTable('reviews', {
   comment: text('comment').notNull().default(''),
   status: text('status').notNull().default('published'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const creditPurchases = pgTable('credit_purchases', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  credits: integer('credits').notNull(),
+  amountFcfa: integer('amount_fcfa').notNull(),
+  status: text('status').notNull().default('pending'),
+  idempotencyKey: text('idempotency_key').notNull(),
+  orzRef: text('orz_ref'),
+  payUrl: text('pay_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
 });

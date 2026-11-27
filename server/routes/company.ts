@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
-import { and, desc, eq, getTableColumns, sql } from 'drizzle-orm';
-import { bookings, companies, creditLedger, offerPhotos, offers, payments, users } from '../db/schema.js';
+import { and, desc, eq, getTableColumns, isNull, sql } from 'drizzle-orm';
+import { bookings, companies, creditLedger, creditPurchases, offerPhotos, offers, payments, users } from '../db/schema.js';
 import { AppError, conflict, notFound } from '../lib/errors.js';
 import { CATEGORIES, ROUTE_ACTIVITIES } from '../../shared/search.js';
 import type { Activity } from '../../shared/constants.js';
@@ -11,6 +11,8 @@ import { config } from '../config.js';
 import { notify, notifyAdmins, sendMail } from '../lib/notify.js';
 import { encryptSecret, safeCompany } from '../lib/secrets.js';
 import { OrzayahError } from '../lib/orzayah.js';
+import { appUrlOf, purchaseAmount, startPurchase, sweepLocked, syncPurchase } from '../lib/credits.js';
+import { CREDIT_PRICE_FCFA, LOCK_MINUTES } from '../../shared/constants.js';
 import { FULFILLMENT, FULFILLMENT_LABEL } from '../../shared/orders.js';
 import { cityName, companyInput, countryCode, phoneField, placeList } from '../lib/schemas.js';
 import type { Db } from '../db/client.js';
@@ -195,15 +197,60 @@ export const companyRoutes = new Hono<Env>()
   })
   .get('/bookings', async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
+    try { await sweepLocked({ db: c.get('db'), orzFor: c.get('orzFor'), appUrl: appUrlOf(c) }, 5); } catch (e) { console.error('[sweep-locked]', e); }
     const rows = await c.get('db')
-      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, customerName: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, reference: bookings.reference, contactPhone: bookings.contactPhone, guests: bookings.guests, note: bookings.note, paymentStatus: payments.status, amountFcfa: payments.amountFcfa, payMethod: bookings.payMethod, dueFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa}) * ${bookings.seats}` , contactEmail: bookings.contactEmail, fulfillment: bookings.fulfillment, merchantNote: bookings.merchantNote, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, updatedAt: bookings.updatedAt, offerId: offers.id })
+      .select({ id: bookings.id, seats: bookings.seats, stop: bookings.stop, status: bookings.status, createdAt: bookings.createdAt, offerTitle: offers.title, customerName: sql<string>`coalesce(${bookings.contactName}, ${users.name})`, reference: bookings.reference, contactPhone: bookings.contactPhone, guests: bookings.guests, note: bookings.note, paymentStatus: payments.status, amountFcfa: payments.amountFcfa, payMethod: bookings.payMethod, dueFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa}) * ${bookings.seats}` , contactEmail: bookings.contactEmail, fulfillment: bookings.fulfillment, merchantNote: bookings.merchantNote, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, updatedAt: bookings.updatedAt, offerId: offers.id, creditLockUntil: bookings.creditLockUntil })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(users, eq(users.id, bookings.userId))
       .leftJoin(payments, eq(payments.bookingId, bookings.id))
       .where(eq(bookings.companyId, co.id))
       .orderBy(desc(bookings.createdAt)).limit(200);
-    return c.json({ bookings: rows });
+    // Commande verrouillée (boutique sans crédit) : AUCUN détail (ni client, ni article, ni montant) tant que du crédit n'est pas acheté.
+    const out = rows.map(({ creditLockUntil, ...r }) => creditLockUntil
+      ? { ...r, locked: true, lockUntil: creditLockUntil, offerTitle: '', customerName: '', reference: '', contactPhone: null, contactEmail: null, guests: [] as string[], note: '', stop: null, seats: 0, paymentStatus: null, amountFcfa: null, dueFcfa: 0, merchantNote: '', offerId: '' }
+      : { ...r, locked: false, lockUntil: null as Date | null });
+    return c.json({ bookings: out });
+  })
+  /**
+   * Crédits : solde, commandes verrouillées (aucun détail), derniers achats, et coordonnées de l'administrateur pays
+   * (recours si l'achat en ligne est indisponible).
+   */
+  .get('/credits', async (c) => {
+    const db = c.get('db');
+    const co = await myCompany(db, c.get('user')!.id);
+    try { await sweepLocked({ db, orzFor: c.get('orzFor'), appUrl: appUrlOf(c) }, 5); } catch (e) { console.error('[sweep-locked]', e); }
+    const [fresh] = await db.select({ credits: companies.credits }).from(companies).where(eq(companies.id, co.id)).limit(1);
+    const locked = await db.select({ id: bookings.id, createdAt: bookings.createdAt, lockUntil: bookings.creditLockUntil }).from(bookings)
+      .where(and(eq(bookings.companyId, co.id), eq(bookings.status, 'pending_payment'), sql`${bookings.creditLockUntil} is not null`)).orderBy(bookings.createdAt);
+    const purchases = await db.select({ id: creditPurchases.id, credits: creditPurchases.credits, amountFcfa: creditPurchases.amountFcfa, status: creditPurchases.status, createdAt: creditPurchases.createdAt, payUrl: creditPurchases.payUrl })
+      .from(creditPurchases).where(eq(creditPurchases.companyId, co.id)).orderBy(desc(creditPurchases.createdAt)).limit(8);
+    const [mgr] = await db.select({ name: users.name, phone: users.phone, orzAccount: users.orzAccount }).from(users)
+      .where(and(eq(users.role, 'admin'), eq(users.adminCountry, co.country), sql`${users.disabledAt} is null`)).limit(1);
+    return c.json({ credits: fresh?.credits ?? 0, priceFcfa: CREDIT_PRICE_FCFA, lockMinutes: LOCK_MINUTES, onlinePurchase: !!c.get('orz'), locked, purchases, countryManager: mgr ? { name: mgr.name, phone: mgr.phone, orzAccount: mgr.orzAccount } : null });
+  })
+  /** Achat de crédit en ligne : crée le lien de paiement ORZAYAH (1 crédit = CREDIT_PRICE_FCFA). */
+  .post('/credits/purchase', v('json', z.object({ credits: z.number().int().min(1).max(5000) })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    if (co.status !== 'active') throw conflict('not_active', "Votre entreprise doit être validée avant d'acheter du crédit");
+    const orz = c.get('orz');
+    if (!orz) throw new AppError(503, 'purchase_unavailable', "L'achat de crédit en ligne n'est pas disponible pour le moment : contactez votre administrateur pays");
+    const { credits } = c.req.valid('json');
+    try {
+      const r = await startPurchase({ db: c.get('db'), orzFor: c.get('orzFor'), appUrl: appUrlOf(c) }, orz, co.id, credits);
+      return c.json({ id: r.id, payUrl: r.payUrl, amountFcfa: purchaseAmount(credits) }, 201);
+    } catch (e) {
+      if (e instanceof OrzayahError) throw new AppError(e.status === 400 ? 400 : 503, 'purchase_failed', e.status === 400 ? `Paiement refusé : ${e.message}` : "Le paiement en ligne est momentanément indisponible");
+      throw e;
+    }
+  })
+  /** Retour de la page de paiement : relit l'achat chez ORZAYAH et crédite le solde s'il est payé. */
+  .post('/credits/purchases/:id/sync', v('param', z.object({ id: z.string().uuid() })), async (c) => {
+    const co = await myCompany(c.get('db'), c.get('user')!.id);
+    const orz = c.get('orz');
+    if (!orz) throw new AppError(503, 'purchase_unavailable', "L'achat de crédit en ligne n'est pas disponible pour le moment");
+    const status = await syncPurchase({ db: c.get('db'), orzFor: c.get('orzFor'), appUrl: appUrlOf(c) }, orz, c.req.valid('param').id, co.id);
+    return c.json({ status });
   })
   /** Suivi de commande : fait avancer (ou corrige) l'étape d'une réservation confirmée. Alerte le client aux étapes clés. */
   .post('/bookings/:id/status', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ fulfillment: z.enum(FULFILLMENT) })), async (c) => {
@@ -232,7 +279,7 @@ export const companyRoutes = new Hono<Env>()
   .patch('/bookings/:id/note', v('param', z.object({ id: z.string().uuid() })), v('json', z.object({ note: z.string().trim().max(500) })), async (c) => {
     const co = await myCompany(c.get('db'), c.get('user')!.id);
     const [b] = await c.get('db').update(bookings).set({ merchantNote: c.req.valid('json').note, updatedAt: new Date() })
-      .where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id))).returning({ id: bookings.id });
+      .where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.companyId, co.id), isNull(bookings.creditLockUntil))).returning({ id: bookings.id });
     if (!b) throw notFound('Réservation');
     return c.json({ ok: true });
   })

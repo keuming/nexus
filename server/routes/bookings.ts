@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { v } from '../lib/validate.js';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNotNull, sql } from 'drizzle-orm';
 import { bookings, companies, creditLedger, offers, payments } from '../db/schema.js';
 import { AppError, conflict, notFound } from '../lib/errors.js';
 import { requireRole, type Env } from '../middleware/auth.js';
@@ -10,6 +10,7 @@ import { config } from '../config.js';
 import { OrzayahError, type OrzayahClient } from '../lib/orzayah.js';
 import { notify, notifyBookingConfirmed } from '../lib/notify.js';
 import { phoneField } from '../lib/schemas.js';
+import { appUrlOf, lockUntil, notifyLockedOrder, sweepLocked } from '../lib/credits.js';
 import { applyLink, closePayment, linkInput, publicPayment, sweepExpired, syncPayment } from '../lib/payments.js';
 
 const id = z.object({ id: z.string().uuid() });
@@ -42,6 +43,7 @@ export const bookingRoutes = new Hono<Env>()
     const ctx = { db, orzFor: c.get('orzFor') };
 
     try { await sweepExpired(ctx, 3); } catch (e) { console.error('[sweep]', e); }
+    try { await sweepLocked({ ...ctx, appUrl: appUrlOf(c) }, 3); } catch (e) { console.error('[sweep-locked]', e); }
 
     const [pre] = await db.select({ price: offers.priceFcfa, allowCash: offers.allowCash, companyId: offers.companyId }).from(offers).where(eq(offers.id, offerId)).limit(1);
     if (!pre) throw notFound('Offre');
@@ -85,14 +87,15 @@ export const bookingRoutes = new Hono<Env>()
       if (act?.activity === 'transport' ? guests.length !== seats : guests.length > seats) throw new AppError(400, 'invalid', act?.activity === 'transport' ? 'Indiquez le nom de chaque passager' : 'Trop de noms de participants par rapport au nombre de places');
       // Le prix peut avoir changé entre la lecture et le verrou : on ne débite jamais un montant différent.
       if ((o.price * seats > 0) !== priced || o.price * seats !== totalFcfa) throw conflict('price_changed', "Le prix de l'offre vient de changer, réessayez");
-      const [co] = await tx.update(companies)
-        .set({ credits: sql`${companies.credits} - 1` })
-        .where(and(eq(companies.id, o.companyId), eq(companies.status, 'active'), sql`${companies.credits} >= 1`))
-        .returning({ id: companies.id });
-      if (!co) throw new AppError(409, 'company_unavailable', "Cette entreprise ne peut pas accepter de réservation pour le moment");
-      const [b] = await tx.insert(bookings).values({ offerId, companyId: o.companyId, userId: user.id, seats, stop: chosenStop, status: paid ? 'pending_payment' : 'confirmed', payMethod, unitPriceFcfa: o.price, contactName: contact.name, contactPhone: contact.phone, contactEmail: contact.email, guests, note, termsAcceptedAt: new Date() }).returning();
-      await tx.insert(creditLedger).values({ companyId: o.companyId, delta: -1, reason: 'booking', bookingId: b.id });
-      if (paid) {
+      // Boutique sans crédit : la commande est acceptée mais VERROUILLÉE (aucun débit, aucun paiement demandé au client, aucun détail pour la boutique)
+      // pendant LOCK_MINUTES ; si la boutique n'achète pas de crédit à temps, elle est attribuée à une autre boutique.
+      const [cs] = await tx.select({ status: companies.status, credits: companies.credits }).from(companies).where(eq(companies.id, o.companyId)).for('update');
+      if (!cs || cs.status !== 'active') throw new AppError(409, 'company_unavailable', "Cette entreprise ne peut pas accepter de réservation pour le moment");
+      const locked = cs.credits < 1;
+      if (!locked) await tx.update(companies).set({ credits: sql`${companies.credits} - 1` }).where(eq(companies.id, o.companyId));
+      const [b] = await tx.insert(bookings).values({ offerId, companyId: o.companyId, userId: user.id, seats, stop: chosenStop, status: paid || locked ? 'pending_payment' : 'confirmed', creditLockUntil: locked ? lockUntil() : null, payMethod, unitPriceFcfa: o.price, contactName: contact.name, contactPhone: contact.phone, contactEmail: contact.email, guests, note, termsAcceptedAt: new Date() }).returning();
+      if (!locked) await tx.insert(creditLedger).values({ companyId: o.companyId, delta: -1, reason: 'booking', bookingId: b.id });
+      if (paid && !locked) {
         await tx.insert(payments).values({
           id: paymentId, orzScope: 'merchant', bookingId: b.id, companyId: o.companyId, userId: user.id, amountFcfa: totalFcfa,
           idempotencyKey: `bm-${paymentId}`, returnUrl: `${appUrl}/reservation/${b.id}`,
@@ -101,6 +104,10 @@ export const bookingRoutes = new Hono<Env>()
       }
       return b;
     });
+    if (booking.creditLockUntil) {
+      await notifyLockedOrder(db, booking.id, booking.companyId);
+      return c.json({ booking, payment: null, locked: true }, 201);
+    }
     if (!paid) { await notifyBookingConfirmed(db, booking.id); return c.json({ booking, payment: null }, 201); }
 
     // Création du lien de paiement ORZAYAH : le client y est redirigé pour payer (Mobile Money, carte, wallet).
@@ -122,7 +129,7 @@ export const bookingRoutes = new Hono<Env>()
   })
   .get('/mine', async (c) => {
     const rows = await c.get('db')
-      .select({ offerId: bookings.offerId, myRating: sql<number | null>`(select r.rating from reviews r where r.booking_id = ${bookings.id})`, id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, payMethod: bookings.payMethod, priceFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa})`, createdAt: bookings.createdAt, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
+      .select({ offerId: bookings.offerId, myRating: sql<number | null>`(select r.rating from reviews r where r.booking_id = ${bookings.id})`, id: bookings.id, reference: bookings.reference, seats: bookings.seats, stop: bookings.stop, country: offers.country, city: offers.city, destCountry: offers.destCountry, destCity: offers.destCity, status: bookings.status, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, payMethod: bookings.payMethod, priceFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa})`, createdAt: bookings.createdAt, creditLockUntil: bookings.creditLockUntil, offerTitle: offers.title, startsAt: offers.startsAt, companyName: companies.name, paymentId: payments.id, paymentStatus: payments.status, amountFcfa: payments.amountFcfa })
       .from(bookings)
       .innerJoin(offers, eq(offers.id, bookings.offerId))
       .innerJoin(companies, eq(companies.id, bookings.companyId))
@@ -137,10 +144,11 @@ export const bookingRoutes = new Hono<Env>()
     const user = c.get('user')!;
     const db = c.get('db');
     // Retour de la page de paiement : on relit le lien chez ORZAYAH (espacé de 3 s) pour afficher l'état réel.
+    try { await sweepLocked({ db, orzFor: c.get('orzFor'), appUrl: appUrlOf(c) }, 3); } catch (e) { console.error('[sweep-locked]', e); }
     const [open] = await db.select().from(payments).where(and(eq(payments.bookingId, c.req.valid('param').id), eq(payments.userId, user.id))).limit(1);
     if (open) await syncPayment({ db, orzFor: c.get('orzFor') }, open);
     const [r] = await db.select({
-      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt,
+      id: bookings.id, userId: bookings.userId, reference: bookings.reference, status: bookings.status, payMethod: bookings.payMethod, fulfillment: bookings.fulfillment, cancelReason: bookings.cancelReason, cancelledBy: bookings.cancelledBy, cashCollectedAt: bookings.cashCollectedAt, seats: bookings.seats, stop: bookings.stop, createdAt: bookings.createdAt, creditLockUntil: bookings.creditLockUntil,
       contactName: bookings.contactName, contactPhone: bookings.contactPhone, contactEmail: bookings.contactEmail, guests: bookings.guests, note: bookings.note,
       offerId: offers.id, offerTitle: offers.title, startsAt: offers.startsAt, city: offers.city, country: offers.country, destCity: offers.destCity, destCountry: offers.destCountry, priceFcfa: sql<number>`coalesce(${bookings.unitPriceFcfa}, ${offers.priceFcfa})`, photoCount: sql<number>`(select count(*)::int from offer_photos p where p.offer_id = ${offers.id})`,
       companyName: companies.name, companyPhone: companies.phone, companyAddress: companies.address,
@@ -157,6 +165,15 @@ export const bookingRoutes = new Hono<Env>()
   /** Annulation par le client (réservations confirmées gratuites) : libère les places et rembourse le crédit. */
   .post('/:id/cancel', v('param', id), async (c) => {
     const user = c.get('user')!;
+    // Commande encore verrouillée (aucun crédit débité, aucun paiement) : annulation libre, sans remboursement de crédit.
+    const freed = await c.get('db').transaction(async (tx) => {
+      const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.userId, user.id), eq(bookings.status, 'pending_payment'), isNotNull(bookings.creditLockUntil))).for('update');
+      if (!b) return false;
+      await tx.update(bookings).set({ status: 'cancelled', creditLockUntil: null, cancelledBy: 'customer', cancelReason: 'Annulée par le client', updatedAt: new Date() }).where(eq(bookings.id, b.id));
+      await tx.update(offers).set({ booked: sql`${offers.booked} - ${b.seats}` }).where(eq(offers.id, b.offerId));
+      return true;
+    });
+    if (freed) return c.json({ ok: true });
     const cancelled = await c.get('db').transaction(async (tx) => {
       const [b] = await tx.select().from(bookings).where(and(eq(bookings.id, c.req.valid('param').id), eq(bookings.userId, user.id), eq(bookings.status, 'confirmed'))).for('update');
       if (!b) throw notFound('Réservation');

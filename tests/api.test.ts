@@ -4,7 +4,7 @@ import { shareRoutes } from '../server/routes/share.js';
 import { resetConfig } from '../server/config.js';
 import { eq } from 'drizzle-orm';
 import { Client, FakeOrz, makeApp } from './helpers.js';
-import { bookings, companies, offers, payments, users } from '../server/db/schema.js';
+import { bookings, companies, creditLedger, creditPurchases, notifications, offers, payments, users } from '../server/db/schema.js';
 import { hashPassword } from '../server/lib/auth.js';
 import { OrzayahError } from '../server/lib/orzayah.js';
 
@@ -124,15 +124,17 @@ describe('réservations', () => {
     expect(o.booked).toBe(1);
   });
 
-  it('annule tout (rollback) si l\'entreprise n\'a plus de crédits', async () => {
+  it('sans crédit : la commande est acceptée mais verrouillée (place retenue, aucun débit, aucun paiement)', async () => {
     const { offer, co } = await setup(0, 5);
     const cust = await register('customer', 'c@x.test');
     const r = await cust.post('/bookings', { ...BK, offerId: offer.id });
-    expect(r.status).toBe(409);
+    expect(r.status).toBe(201);
+    expect(r.json.locked).toBe(true);
     const [o] = await ctx.db.select().from(offers).where(eq(offers.id, offer.id));
-    expect(o.booked).toBe(0); // la place n'a pas été consommée
+    expect(o.booked).toBe(1);
     const [c] = await ctx.db.select().from(companies).where(eq(companies.id, co.id));
     expect(c.credits).toBe(0);
+    expect(await ctx.db.select().from(payments)).toHaveLength(0);
   });
 
   it('refuse une offre inexistante ou une entreprise suspendue', async () => {
@@ -1538,5 +1540,162 @@ describe('administrateurs pays (périmètre par pays)', () => {
     expect(await has(ci)).toBe(false);
     expect(await has(bj)).toBe(false);
     void bjCo;
+  });
+});
+
+
+describe('crédits : commandes verrouillées, réattribution et achat de crédit', () => {
+  let orz: FakeOrz;
+  beforeEach(async () => { orz = new FakeOrz(); ctx = await makeApp(orz); });
+  const expire = (id: string) => ctx.db.update(bookings).set({ creditLockUntil: new Date(Date.now() - 60_000) }).where(eq(bookings.id, id));
+  const credits = async (id: string) => (await ctx.db.select().from(companies).where(eq(companies.id, id)))[0].credits;
+  const booked = async (id: string) => (await ctx.db.select().from(offers).where(eq(offers.id, id)))[0].booked;
+  /** Deuxième boutique, même activité, mêmes lieux, mêmes horaires. */
+  async function rival(credits: number, price = 0) {
+    const o2 = await register('owner', 'rival@x.test');
+    const co2 = (await o2.post('/company', { name: 'Bus Rival', activity: 'transport', country: 'CI', city: 'Abidjan', serviceCities: ['Bouaké'], phone: '+225 05 00 00 00 00', ...geo })).json.company;
+    const adm = new Client(ctx.app);
+    await adm.post('/auth/login', { email: 'admin@backmarket.test', password: 'adminpass123' });
+    await adm.post(`/admin/companies/${co2.id}/review`, { decision: 'approve' });
+    if (credits) await adm.post(`/admin/companies/${co2.id}/credits`, { credits });
+    await o2.put('/company/payments-setup', { apiKey: 'test-key-0123456789' });
+    const offer2 = (await o2.post('/company/offers', { title: 'Abidjan → Bouaké (rival)', country: 'CI', city: 'Abidjan', destCountry: 'CI', destCity: 'Bouaké', stops: [], priceFcfa: price, capacity: 5, startsAt: future() })).json.offer;
+    return { o2, co2, offer2 };
+  }
+
+  it("le partenaire ne voit aucun détail d'une commande verrouillée (liste, alerte)", async () => {
+    const { owner, offer, co } = await setup(0, 5);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    const list = (await owner.get('/company/bookings')).json.bookings;
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ locked: true, offerTitle: '', customerName: '', reference: '', contactPhone: null, contactEmail: null, guests: [], dueFcfa: 0 });
+    expect(JSON.stringify(list)).not.toContain('Kouamé');
+    expect(JSON.stringify(list)).not.toContain(b.reference);
+    const cr = (await owner.get('/company/credits')).json;
+    expect(cr).toMatchObject({ credits: 0, priceFcfa: 125 });
+    expect(cr.locked).toHaveLength(1);
+    expect(JSON.stringify(cr)).not.toContain('Kouamé');
+    const [n] = await ctx.db.select().from(notifications).where(eq(notifications.kind, 'order_locked'));
+    expect(n.title + n.body).not.toMatch(/Kouamé|Abidjan|Bouaké|client@x\.test|NX-/);
+    expect((await owner.patch(`/company/bookings/${b.id}/note`, { note: 'espion' })).status).toBe(404);
+    expect((await owner.post(`/company/bookings/${b.id}/status`, { fulfillment: 'accepted' })).status).toBe(409);
+    expect(co.id).toBeTruthy();
+  });
+
+  it("achat de crédit : lien ORZAYAH, crédit du solde une seule fois, puis déverrouillage de la commande (détails visibles)", async () => {
+    const { owner, offer, co } = await setup(0, 5);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    expect((await owner.post('/company/credits/purchase', { credits: 0 })).status).toBe(400);
+    const buy = await owner.post('/company/credits/purchase', { credits: 10 });
+    expect(buy.status).toBe(201);
+    expect(buy.json).toMatchObject({ amountFcfa: 1250 });
+    expect(buy.json.payUrl).toMatch(/^https:\/\//);
+    expect(orz.links[0]).toMatchObject({ amountCentimes: 125000 });
+    expect((await owner.post(`/company/credits/purchases/${buy.json.id}/sync`)).json.status).toBe('pending');
+    expect(await credits(co.id)).toBe(0);
+    orz.set(`cr-${buy.json.id}`, 'SUCCESS');
+    expect((await owner.post(`/company/credits/purchases/${buy.json.id}/sync`)).json.status).toBe('paid');
+    expect(await credits(co.id)).toBe(9); // 10 achetés − 1 pour la commande débloquée
+    expect((await owner.post(`/company/credits/purchases/${buy.json.id}/sync`)).json.status).toBe('paid');
+    expect(await credits(co.id)).toBe(9); // idempotent
+    const [row] = await ctx.db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(row).toMatchObject({ status: 'confirmed', creditLockUntil: null });
+    const list = (await owner.get('/company/bookings')).json.bookings;
+    expect(list[0]).toMatchObject({ locked: false, customerName: 'Kouamé Client', reference: b.reference });
+    const led = await ctx.db.select().from(creditLedger).where(eq(creditLedger.companyId, co.id));
+    expect(led.map((l) => l.delta).sort((x, y) => x - y)).toEqual([-1, 10]);
+    expect((await ctx.db.select().from(creditPurchases))[0].status).toBe('paid');
+  });
+
+  it("un autre partenaire ne peut pas synchroniser l'achat d'autrui", async () => {
+    const { owner } = await setup(0, 5);
+    const buy = await owner.post('/company/credits/purchase', { credits: 5 });
+    const { o2 } = await rival(0);
+    expect((await o2.post(`/company/credits/purchases/${buy.json.id}/sync`)).json.status).toBe('unknown');
+  });
+
+  it("l'achat en ligne est refusé proprement sans compte ORZAYAH de la plateforme", async () => {
+    ctx = await makeApp(null);
+    const o = await register('owner', 'o@x.test');
+    const co = (await o.post('/company', { name: 'Bus', activity: 'transport', country: 'CI', city: 'Abidjan', serviceCities: [], phone: '+225 07 00 00 00 00', ...geo })).json.company;
+    const adm = await admin();
+    await adm.post(`/admin/companies/${co.id}/review`, { decision: 'approve' });
+    expect((await o.post('/company/credits/purchase', { credits: 5 })).status).toBe(503);
+    expect((await o.get('/company/credits')).json.onlinePurchase).toBe(false);
+  });
+
+  it("après 1 h sans crédit, la commande est attribuée à une autre boutique ayant la même marchandise", async () => {
+    const { owner, offer, co } = await setup(0, 5);
+    const { co2, offer2 } = await rival(5);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    expect(await booked(offer.id)).toBe(1);
+    await owner.get('/company/bookings'); // pas encore expirée : rien ne bouge
+    expect((await ctx.db.select().from(bookings).where(eq(bookings.id, b.id)))[0].companyId).toBe(co.id);
+    await expire(b.id);
+    await owner.get('/company/bookings');
+    const [row] = await ctx.db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(row).toMatchObject({ companyId: co2.id, offerId: offer2.id, status: 'confirmed', creditLockUntil: null });
+    expect(row.triedCompanyIds).toContain(co.id);
+    expect(await booked(offer.id)).toBe(0);
+    expect(await booked(offer2.id)).toBe(1);
+    expect(await credits(co2.id)).toBe(4);
+    expect(await credits(co.id)).toBe(0);
+    expect((await ctx.db.select().from(notifications).where(eq(notifications.kind, 'order_reassigned'))).length).toBe(1);
+  });
+
+  it("réattribution d'une commande payée en ligne : le lien de paiement est créé chez la NOUVELLE boutique seulement, après attribution", async () => {
+    const { offer } = await setup(0, 5, 5000);
+    const { co2 } = await rival(5, 4000);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    expect(orz.links).toHaveLength(0); // rien n'est demandé au client tant que la commande n'est pas attribuée
+    expect(await ctx.db.select().from(payments)).toHaveLength(0);
+    await expire(b.id);
+    const r = await cust.get(`/bookings/${b.id}`);
+    expect(r.json.booking.companyName).toBe('Bus Rival');
+    const [p] = await ctx.db.select().from(payments);
+    expect(p).toMatchObject({ companyId: co2.id, amountFcfa: 4000, status: 'pending' });
+    expect(orz.links).toHaveLength(1);
+  });
+
+  it("sans boutique de remplacement : la commande est annulée, la place libérée, le client prévenu, aucun crédit touché", async () => {
+    const { owner, offer, co } = await setup(0, 5);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    await expire(b.id);
+    await owner.get('/company/credits');
+    const [row] = await ctx.db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(row).toMatchObject({ status: 'cancelled', cancelledBy: 'system', creditLockUntil: null });
+    expect(await booked(offer.id)).toBe(0);
+    expect(await credits(co.id)).toBe(0);
+    expect((await ctx.db.select().from(notifications).where(eq(notifications.kind, 'order_unassigned'))).length).toBe(1);
+  });
+
+  it("une boutique qui achète du crédit avant l'échéance garde sa commande, même si le délai est dépassé au moment du traitement", async () => {
+    const { owner, offer, co } = await setup(0, 5);
+    await rival(5);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    const adm = new Client(ctx.app);
+    await adm.post('/auth/login', { email: 'admin@backmarket.test', password: 'adminpass123' });
+    await adm.post(`/admin/companies/${co.id}/credits`, { credits: 3 });
+    await expire(b.id);
+    await owner.get('/company/bookings');
+    const [row] = await ctx.db.select().from(bookings).where(eq(bookings.id, b.id));
+    expect(row).toMatchObject({ companyId: co.id, status: 'confirmed' });
+    expect(await credits(co.id)).toBe(2);
+  });
+
+  it("le client peut annuler une commande verrouillée : place libérée, aucun crédit rendu", async () => {
+    const { offer, co } = await setup(0, 5);
+    const cust = await register('customer', 'c@x.test');
+    const b = (await cust.post('/bookings', { ...BK, offerId: offer.id })).json.booking;
+    expect((await cust.post(`/bookings/${b.id}/cancel`)).json.ok).toBe(true);
+    expect(await booked(offer.id)).toBe(0);
+    expect(await credits(co.id)).toBe(0);
+    expect((await ctx.db.select().from(creditLedger))).toHaveLength(0); // aucun débit, donc aucun remboursement fantôme
   });
 });

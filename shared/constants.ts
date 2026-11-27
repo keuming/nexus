@@ -5,6 +5,8 @@ export const ACTIVITIES = [
 ] as const;
 export type Activity = (typeof ACTIVITIES)[number];
 export const CREDIT_PRICE_FCFA = 125;
+/** Délai laissé à une boutique sans crédit pour en acheter avant que la commande soit attribuée à une autre boutique. */
+export const LOCK_MINUTES = 60;
 export const COOKIE_NAME = 'backmarket_session';
 export const SESSION_DAYS = 7;
 

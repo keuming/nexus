@@ -56,7 +56,9 @@ export function Account() {
                     ? <ReviewForm bookingId={b.id} onDone={() => { setReviewing(null); qc.invalidateQueries({ queryKey: ['my-bookings'] }); qc.invalidateQueries({ queryKey: ['offer-reviews'] }); }} />
                     : <button type="button" className="mt-1 text-sm text-brand hover:underline" onClick={() => setReviewing(b.id)}>{t('★ Laisser un avis')}</button>)}
               </div>
-              {b.status === 'pending_payment' && b.paymentId
+              {b.status === 'pending_payment' && b.creditLockUntil
+                ? <span className="text-sm text-amber-300">{t('Commande en cours d’attribution')}</span>
+                : b.status === 'pending_payment' && b.paymentId
                 ? <button className="btn" onClick={() => setPaying(b.paymentId!)}>{t('Suivre le paiement')}</button>
                 : b.status === 'confirmed'
                   ? b.paymentStatus

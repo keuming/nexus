@@ -195,6 +195,25 @@ alter table offers    add column if not exists stops text[] not null default '{}
 alter table bookings  add column if not exists stop text;
 create index if not exists offers_geo_idx on offers (country, city) where active;
 
+-- ===== Crédits : commandes verrouillées (boutique sans crédit) et achat de crédit en ligne =====
+-- Tant que `credit_lock_until` est renseigné, aucun crédit n'a été débité et le partenaire ne voit aucun détail ; passé ce délai, la commande est attribuée à une autre boutique.
+alter table bookings add column if not exists credit_lock_until timestamptz;
+alter table bookings add column if not exists tried_company_ids uuid[] not null default '{}';
+create index if not exists bookings_lock_idx on bookings (credit_lock_until) where credit_lock_until is not null;
+create table if not exists credit_purchases (
+  id              uuid primary key default gen_random_uuid(),
+  company_id      uuid not null references companies(id) on delete cascade,
+  credits         integer not null check (credits > 0),
+  amount_fcfa     integer not null check (amount_fcfa > 0),
+  status          text not null default 'pending' check (status in ('pending','paid','failed','expired')),
+  idempotency_key text not null unique,
+  orz_ref         text,
+  pay_url         text,
+  created_at      timestamptz not null default now(),
+  paid_at         timestamptz
+);
+create index if not exists credit_purchases_company_idx on credit_purchases (company_id, created_at desc);
+
 commit;
 
 -- v13 : parcours de réservation (référence, contact, passagers, note, acceptation des conditions)
